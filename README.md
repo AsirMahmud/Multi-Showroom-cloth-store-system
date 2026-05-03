@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🛍️ RawStitch — Retail Management System + E-Commerce Platform
 
 > A unified platform that powers your physical shop and online store from a single dashboard.
@@ -247,3 +248,6 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 ---
 
 > Built with ❤️ for retail businesses in Bangladesh
+=======
+
+>>>>>>> 54707dbb8a3285dfa34ef8d4e9b8bea4fcd17283
