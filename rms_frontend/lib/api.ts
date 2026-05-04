@@ -1,5 +1,5 @@
 import axios from 'axios';
-const baseUrl= process.env.NEXT_PUBLIC_BASEURL
+const baseUrl="https://rawstitch.info/demo/api"
 console.log("Base Url:",baseUrl)
 export const api = axios.create({
     baseURL:baseUrl,
