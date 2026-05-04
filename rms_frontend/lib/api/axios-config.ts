@@ -2,7 +2,7 @@ import axios from 'axios';
 import Cookies from 'js-cookie';
 
 
-export const API_URL = 'https://www.rawstitch.info/v2/api'
+export const API_URL = 'https://www.rawstitch.info/demo/api'
 
 // Create axios instance with default config
 const axiosInstance = axios.create({
