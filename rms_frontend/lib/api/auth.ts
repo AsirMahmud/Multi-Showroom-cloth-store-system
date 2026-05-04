@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-export const API_URL = process.env.NEXT_PUBLIC_BASEURL || 'http://localhost:8000/api';
+export const API_URL ="https://rawstitch.info/demo/api" || 'http://localhost:8000/api';
 
 
 export interface LoginCredentials {
