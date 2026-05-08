@@ -9,6 +9,7 @@ import { useProducts, useInfiniteProducts } from "@/hooks/queries/useInventory";
 import { Product } from "@/types/inventory";
 import { usePOSStore } from "@/store/pos-store";
 import type { ProductVariation as BaseProductVariation } from "@/types/inventory";
+import { formatCurrency } from "@/lib/utils";
 
 type ProductVariation = BaseProductVariation & { color_hax?: string };
 
@@ -76,18 +77,7 @@ export default function ProductGrid({
     };
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  // Flatten pages into a single list of products
   const products = data?.pages.flatMap((page) => page.results) || [];
-
-  // Client-side price filtering (fallback if backend doesn't support it, but ideally backend should)
-  // For infinite scroll, client-side filtering is weird because you only filter what you loaded.
-  // We will assume backend handles major filtering.
-
-  console.log("Products loaded:", products.length);
-
-  const formatCurrency = (price: number | string): string => {
-    return `$${Number(price).toFixed(2)}`;
-  };
 
   const getUniqueValues = (
     variations: Product["variations"] = [],
@@ -188,8 +178,7 @@ export default function ProductGrid({
   };
 
   const handleViewProductHistory = (product: Product) => {
-    console.log("View history for product:", product.id);
-    // Implement your history viewing logic here
+    // TODO: Implement product history viewing logic
   };
 
   const getCurrentVariationStock = (product: Product): number => {
@@ -244,7 +233,7 @@ export default function ProductGrid({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {products.map((product) => {
           const sizes = getUniqueValues(product.variations, "size");
           const colors = getUniqueValues(product.variations, "color");

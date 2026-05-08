@@ -31,6 +31,32 @@ from .serializers import (
 )
 from rest_framework.exceptions import ValidationError
 from apps.sales.models import SaleItem
+from apps.branches.permissions import (
+    get_allowed_branch_ids,
+    get_requested_branch_id,
+    is_admin,
+)
+from apps.authentication.permissions import HasReadWritePermission
+
+
+def _branch_filter_q(request, field='branch_id'):
+    """Build a Q object that scopes a queryset by the request's branch context.
+
+    Returns Q() (matches everything) when the caller is admin and no branch is
+    requested. Returns Q(pk__in=[]) (matches nothing) when the caller asked for
+    a branch they cannot access.
+    """
+    requested = get_requested_branch_id(request)
+    if requested:
+        if not request.user.can_access_branch(requested):
+            return Q(pk__in=[])
+        # Include rows that explicitly belong to the branch + legacy null rows
+        # so we don't lose visibility into pre-multi-branch data.
+        return Q(**{field: requested}) | Q(**{f'{field}__isnull': True})
+    if is_admin(request.user):
+        return Q()
+    allowed = get_allowed_branch_ids(request.user)
+    return Q(**{f'{field}__in': allowed}) | Q(**{f'{field}__isnull': True})
 
 class StandardResultsSetPagination(pagination.PageNumberPagination):
     page_size = 20
@@ -42,7 +68,8 @@ class CategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     search_fields = ['name', 'description']
-    permission_classes = [permissions.IsAuthenticated]
+    # Anyone authenticated may read; write requires `manage_categories`.
+    permission_classes = [HasReadWritePermission(read=None, write="manage_categories")]
 
     def get_queryset(self):
         queryset = Category.objects.prefetch_related('products')
@@ -81,6 +108,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
 class SupplierViewSet(viewsets.ModelViewSet):
     queryset = Supplier.objects.all()
     serializer_class = SupplierSerializer
+    permission_classes = [HasReadWritePermission(read=None, write="manage_suppliers")]
     filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'code', 'contact_person', 'email']
 
@@ -100,7 +128,9 @@ class ProductViewSet(viewsets.ModelViewSet):
     ordering_fields = ['name', 'created_at', 'stock_quantity', 'selling_price']
     ordering = ['-created_at']
     parser_classes = (MultiPartParser, FormParser, JSONParser)
-    permission_classes = [permissions.IsAuthenticated]
+    # Read open to authenticated users; catalog edits require manage_product_catalog.
+    # Branch-scoped sub-actions like add_stock check `add_stock` separately.
+    permission_classes = [HasReadWritePermission(read=None, write="manage_product_catalog")]
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
@@ -355,10 +385,15 @@ class ProductViewSet(viewsets.ModelViewSet):
         variation.stock = variation.stock + quantity
         variation.save()
 
-        # Record stock movement
+        # Record stock movement, stamping the originating branch.
+        branch_id = (
+            get_requested_branch_id(request)
+            or request.user.managed_branch_id
+        )
         StockMovement.objects.create(
             product=product,
             variation=variation,
+            branch_id=branch_id,
             movement_type='IN',
             quantity=quantity,
             reference_number=reference_number,
@@ -992,6 +1027,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 class ProductVariationViewSet(viewsets.ModelViewSet):
     queryset = ProductVariation.objects.all()
     serializer_class = ProductVariationSerializer
+    permission_classes = [HasReadWritePermission(read=None, write="manage_product_catalog")]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['product', 'is_active']
     search_fields = ['size', 'color']
@@ -1062,8 +1098,16 @@ class StockMovementViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
-        movement = serializer.save(created_by=self.request.user)
-        
+        # Stamp the originating branch on the movement so analytics scope correctly.
+        branch_id = (
+            get_requested_branch_id(self.request)
+            or self.request.user.managed_branch_id
+        )
+        save_kwargs = {"created_by": self.request.user}
+        if branch_id:
+            save_kwargs["branch_id"] = branch_id
+        movement = serializer.save(**save_kwargs)
+
         # Update variant stock if specified
         if movement.variation:
             if movement.movement_type == 'IN':
@@ -1073,7 +1117,7 @@ class StockMovementViewSet(viewsets.ModelViewSet):
                     raise ValidationError(f"Not enough stock in variation. Available: {movement.variation.stock}")
                 movement.variation.stock -= movement.quantity
             movement.variation.save()
-        
+
         # Update main product stock by recalculating from all variants
         product = movement.product
         total_variant_stock = product.variations.aggregate(
@@ -1082,11 +1126,12 @@ class StockMovementViewSet(viewsets.ModelViewSet):
         product.stock_quantity = total_variant_stock
         product.save()
 
-        # Check for alerts
+        # Check for alerts (branch-aware so each branch sees its own warnings)
         if product.stock_quantity <= product.minimum_stock:
             InventoryAlert.objects.create(
                 product=product,
                 variation=movement.variation,
+                branch_id=branch_id,
                 alert_type='LOW',
                 message=f'Low stock alert: {product.name} has {product.stock_quantity} units remaining'
             )
@@ -1094,21 +1139,23 @@ class StockMovementViewSet(viewsets.ModelViewSet):
             InventoryAlert.objects.create(
                 product=product,
                 variation=movement.variation,
+                branch_id=branch_id,
                 alert_type='OUT',
                 message=f'Out of stock alert: {product.name} has no units remaining'
             )
 
     def get_queryset(self):
-        queryset = StockMovement.objects.all()
+        queryset = StockMovement.objects.filter(_branch_filter_q(self.request))
         product_id = self.request.query_params.get('product', None)
         movement_type = self.request.query_params.get('type', None)
-        
+
         if product_id:
             queryset = queryset.filter(product_id=product_id)
         if movement_type:
             queryset = queryset.filter(movement_type=movement_type)
-            
+
         return queryset
+
 
 class InventoryAlertViewSet(viewsets.ModelViewSet):
     queryset = InventoryAlert.objects.all()
@@ -1116,15 +1163,15 @@ class InventoryAlertViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        queryset = InventoryAlert.objects.all()
+        queryset = InventoryAlert.objects.filter(_branch_filter_q(self.request))
         is_active = self.request.query_params.get('active', None)
         alert_type = self.request.query_params.get('type', None)
-        
+
         if is_active is not None:
             queryset = queryset.filter(is_active=is_active)
         if alert_type:
             queryset = queryset.filter(alert_type=alert_type)
-            
+
         return queryset
 
     @action(detail=True, methods=['post'])
@@ -1233,8 +1280,9 @@ class DashboardViewSet(viewsets.ViewSet):
             total=Sum(F('cost_price') * F('stock_quantity'))
         )['total'] or 0
 
-        # Stock movement metrics
-        stock_movements = StockMovement.objects.filter(
+        # Stock movement metrics (branch scoped)
+        scoped_movements = StockMovement.objects.filter(_branch_filter_q(request))
+        stock_movements = scoped_movements.filter(
             created_at__range=(start_date, end_date)
         )
         stock_in = stock_movements.filter(movement_type='IN').aggregate(
@@ -1271,8 +1319,8 @@ class DashboardViewSet(viewsets.ViewSet):
             'out': out_of_stock_products
         }
 
-        # Recent stock movements
-        recent_movements = StockMovement.objects.select_related(
+        # Recent stock movements (branch scoped)
+        recent_movements = scoped_movements.select_related(
             'product', 'variation'
         ).order_by('-created_at')[:10]
 
@@ -1319,9 +1367,10 @@ class DashboardViewSet(viewsets.ViewSet):
             stock_quantity=0
         ).select_related('category', 'supplier')
 
-        # Get active alerts
+        # Get active alerts (branch scoped)
         active_alerts = InventoryAlert.objects.filter(
-            is_active=True
+            _branch_filter_q(request),
+            is_active=True,
         ).select_related('product', 'variation')
 
         return Response({
@@ -1349,9 +1398,10 @@ class DashboardViewSet(viewsets.ViewSet):
         period = request.query_params.get('period', 'month')
         start_date, end_date = self._get_date_range(period)
 
-        # Daily stock movements
+        # Daily stock movements (branch scoped)
         daily_movements = StockMovement.objects.filter(
-            created_at__range=(start_date, end_date)
+            _branch_filter_q(request),
+            created_at__range=(start_date, end_date),
         ).annotate(
             date=TruncDate('created_at')
         ).values('date').annotate(
@@ -1359,9 +1409,10 @@ class DashboardViewSet(viewsets.ViewSet):
             stock_out=Sum('quantity', filter=Q(movement_type='OUT'))
         ).order_by('date')
 
-        # Movement by category
+        # Movement by category (branch scoped)
         category_movements = StockMovement.objects.filter(
-            created_at__range=(start_date, end_date)
+            _branch_filter_q(request),
+            created_at__range=(start_date, end_date),
         ).values('product__category__name').annotate(
             stock_in=Sum('quantity', filter=Q(movement_type='IN')),
             stock_out=Sum('quantity', filter=Q(movement_type='OUT'))
@@ -1379,7 +1430,7 @@ class OnlineCategoryViewSet(viewsets.ModelViewSet):
     """
     queryset = OnlineCategory.objects.all()
     serializer_class = OnlineCategorySerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [HasReadWritePermission(read=None, write="manage_online_categories")]
     filterset_fields = ['name', 'parent', 'gender']
     search_fields = ['name', 'description']
     ordering_fields = ['name', 'order', 'created_at']

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { expensesApi, Expense, ExpenseCategory, DashboardStats } from "@/lib/api/expenses";
 import { useToast } from "@/hooks/use-toast";
+import { useBranch } from "@/contexts/branch-context";
 
 export function useExpenses(params?: {
     search?: string;
@@ -10,15 +11,17 @@ export function useExpenses(params?: {
     start_date?: string;
     end_date?: string;
 }) {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: ["expenses", params],
+        queryKey: ["expenses", params, selectedBranchId],
         queryFn: () => expensesApi.getExpenses(params),
     });
 }
 
 export function useExpense(id: number) {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: ["expense", id],
+        queryKey: ["expense", id, selectedBranchId],
         queryFn: () => expensesApi.getExpense(id),
     });
 }
@@ -140,8 +143,9 @@ export function useRejectExpense() {
 }
 
 export function useCategories() {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: ["expense-categories"],
+        queryKey: ["expense-categories", selectedBranchId],
         queryFn: expensesApi.getCategories,
     });
 }
@@ -217,8 +221,9 @@ export function useDeleteCategory() {
 }
 
 export function useDashboardStats() {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: ["expense-dashboard-stats"],
+        queryKey: ["expense-dashboard-stats", selectedBranchId],
         queryFn: expensesApi.getDashboardStats,
     });
 } 

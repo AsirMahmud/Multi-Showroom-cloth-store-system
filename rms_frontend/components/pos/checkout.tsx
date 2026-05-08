@@ -92,7 +92,6 @@ export function Checkout({
       }
     } else {
       // Item-specific discount would be handled by the parent component
-      console.log("Item discount:", discountData);
     }
   };
 
@@ -108,7 +107,7 @@ export function Checkout({
         </div>
         {selectedCustomer && (
           <div className="flex items-center justify-between mt-2 text-sm">
-            <span>Customer: John Doe</span>
+            <span>Customer: {selectedCustomer || "Walk-in"}</span>
             {customerCredit > 0 && (
               <Badge variant="outline" className="ml-2">
                 Credit: ${customerCredit.toFixed(2)}

@@ -244,6 +244,13 @@ class StockMovement(models.Model):
     quantity = models.IntegerField()
     reference_number = models.CharField(max_length=50, blank=True)  # For linking to purchase orders, sales, etc.
     notes = models.TextField(blank=True)
+    branch = models.ForeignKey(
+        "branches.Branch",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="stock_movements",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
   
 
@@ -262,6 +269,13 @@ class InventoryAlert(models.Model):
     alert_type = models.CharField(max_length=3, choices=ALERT_TYPES)
     message = models.TextField()
     is_active = models.BooleanField(default=True)
+    branch = models.ForeignKey(
+        "branches.Branch",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="inventory_alerts",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     resolved_at = models.DateTimeField(null=True, blank=True)
 
@@ -307,3 +321,143 @@ def delete_product_image(sender, instance, **kwargs):
         except (ValueError, OSError):
             # File might have been already deleted or path might be invalid
             pass
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Per-Branch Inventory Models
+# ─────────────────────────────────────────────────────────────────────────────
+
+class BranchProduct(models.Model):
+    """Per-branch stock and optional price overrides for a product."""
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="branch_products",
+    )
+    branch = models.ForeignKey(
+        "branches.Branch",
+        on_delete=models.CASCADE,
+        related_name="branch_products",
+    )
+    stock_quantity = models.IntegerField(default=0, validators=[MinValueValidator(0)])
+    minimum_stock = models.IntegerField(default=10)
+    cost_price_override = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="If set, overrides product.cost_price for this branch.",
+    )
+    selling_price_override = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="If set, overrides product.selling_price for this branch.",
+    )
+
+    class Meta:
+        unique_together = ("product", "branch")
+        ordering = ["branch", "product"]
+
+    def __str__(self):
+        return f"{self.product.name} @ {self.branch.name}"
+
+    @property
+    def effective_cost_price(self):
+        return self.cost_price_override or self.product.cost_price
+
+    @property
+    def effective_selling_price(self):
+        return self.selling_price_override or self.product.selling_price
+
+
+class BranchVariationStock(models.Model):
+    """Per-branch stock count for a specific product variation."""
+    variation = models.ForeignKey(
+        ProductVariation,
+        on_delete=models.CASCADE,
+        related_name="branch_stocks",
+    )
+    branch = models.ForeignKey(
+        "branches.Branch",
+        on_delete=models.CASCADE,
+        related_name="variation_stocks",
+    )
+    stock = models.IntegerField(default=0, validators=[MinValueValidator(0)])
+
+    class Meta:
+        unique_together = ("variation", "branch")
+
+    def __str__(self):
+        return f"{self.variation} @ {self.branch.name} ({self.stock})"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stock Transfer System
+# ─────────────────────────────────────────────────────────────────────────────
+
+class StockTransfer(models.Model):
+    """A transfer of stock between two branches."""
+
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Pending"
+        APPROVED = "APPROVED", "Approved"
+        COMPLETED = "COMPLETED", "Completed"
+        CANCELLED = "CANCELLED", "Cancelled"
+
+    source_branch = models.ForeignKey(
+        "branches.Branch",
+        on_delete=models.CASCADE,
+        related_name="outgoing_transfers",
+    )
+    dest_branch = models.ForeignKey(
+        "branches.Branch",
+        on_delete=models.CASCADE,
+        related_name="incoming_transfers",
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=Status.choices,
+        default=Status.PENDING,
+        db_index=True,
+    )
+    notes = models.TextField(blank=True)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="transfer_requests",
+    )
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="transfer_approvals",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Transfer #{self.pk}: {self.source_branch} → {self.dest_branch} ({self.status})"
+
+
+class StockTransferItem(models.Model):
+    """A line item in a stock transfer."""
+    transfer = models.ForeignKey(
+        StockTransfer,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    variation = models.ForeignKey(
+        ProductVariation,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
+    quantity = models.PositiveIntegerField()
+
+    def __str__(self):
+        label = self.product.name
+        if self.variation:
+            label += f" ({self.variation.size}/{self.variation.color})"
+        return f"{label} x{self.quantity}"

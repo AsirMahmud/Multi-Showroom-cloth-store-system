@@ -18,6 +18,14 @@ axiosInstance.interceptors.request.use(
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
+        if (typeof window !== "undefined") {
+            const selectedBranchId = localStorage.getItem("selectedBranchId");
+            if (selectedBranchId) {
+                config.headers["X-Branch-Id"] = selectedBranchId;
+            } else {
+                delete config.headers["X-Branch-Id"];
+            }
+        }
         return config;
     },
     (error) => {

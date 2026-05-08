@@ -80,6 +80,7 @@ import {
 } from "lucide-react";
 import { useSales } from "@/hooks/queries/use-sales";
 import type { SaleStatus, PaymentMethod, Sale, SaleItem, SalePayment, DuePayment, SaleType } from "@/types/sales";
+import { formatCurrency as formatCurrencyUtil } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import {
   DropdownMenu,
@@ -399,7 +400,7 @@ export default function SalesHistory() {
 
   const formatCurrency = (amount: number | string | undefined) => {
     const num = typeof amount === 'string' ? parseFloat(amount) : (amount || 0);
-    return `$${num.toFixed(2)}`;
+    return formatCurrencyUtil(num);
   };
 
   const calculateGiftCostPrice = (sale: SaleWithCustomerDetails) => {

@@ -6,8 +6,6 @@ import {
   X,
   Plus,
   Minus,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,20 +24,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePOSStore } from "@/store/pos-store";
 import PaymentSection from "./PaymentSection";
 import type { PaymentMethod } from "@/types/sales";
-import { Card } from "../ui/card";
-import { motion, AnimatePresence } from "framer-motion";
-import { useState, useRef, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
-
-const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(amount);
-};
+import { formatCurrency } from "@/lib/utils";
 
 export default function CartAndCheckout() {
-  const { toast } = useToast();
   const {
     cart,
     cartDiscount,
@@ -52,8 +39,6 @@ export default function CartAndCheckout() {
     setShowNewCustomerForm,
     setShowCustomerSearch,
     setShowDiscountModal,
-    handleCompletePayment,
-    setCurrentSaleData,
     paymentMethod,
     setPaymentMethod,
     showSplitPayment,
@@ -63,29 +48,6 @@ export default function CartAndCheckout() {
     cashAmount,
     setCashAmount,
   } = usePOSStore();
-
-  const [isMounted, setIsMounted] = useState(true);
-  const cartRef = useRef<HTMLDivElement>(null);
-  const toggleButtonRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        isMounted &&
-        cartRef.current &&
-        !cartRef.current.contains(event.target as Node) &&
-        toggleButtonRef.current &&
-        !toggleButtonRef.current.contains(event.target as Node)
-      ) {
-        setIsMounted(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isMounted]);
 
   // Calculate totals
   const subtotal = cart.reduce((sum, item) => {
@@ -153,56 +115,9 @@ export default function CartAndCheckout() {
     }
   };
 
-  const handleCompleteSale = async () => {
-    if (!selectedCustomer) {
-      toast({
-        title: "Customer Required",
-        description: "Please select a customer first",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (cart.length === 0) {
-      toast({
-        title: "Empty Cart",
-        description: "Your cart is empty",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      // Call the complete payment function with toast
-      await handleCompletePayment(toast);
-      handleClearCart();
-    } catch (error) {
-      console.error("Error completing sale:", error);
-      toast({
-        title: "Error",
-        description: "Failed to complete sale. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
   return (
-    <>
-      <AnimatePresence>
-        {isMounted ? (
-          <motion.div
-            ref={cartRef}
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{
-              type: "spring",
-              stiffness: 300,
-              damping: 30,
-            }}
-            className="fixed bottom-0 right-[100px] z-50"
-          >
-            <Card className="w-[1000px] bg-white border-t flex flex-col p-4 h-[70vh] mb-8 overflow-hidden">
+    <div className="w-[680px] h-full bg-white border-l flex flex-col overflow-hidden">
+      <div className="p-4 h-full flex flex-col overflow-hidden">
               {/* Cart Header */}
               <div className="p-2 border-b flex justify-between items-center">
                                  <h2 className="text-sm font-semibold flex items-center">
@@ -233,281 +148,264 @@ export default function CartAndCheckout() {
                     <Trash2 className="h-3 w-3 mr-1" />
                     Clear
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs px-2"
-                    onClick={() => setIsMounted(false)}
-                  >
-                    <ChevronRight className="h-3 w-3" />
-                  </Button>
                 </div>
               </div>
 
-              {/* Cart Items */}
-              <ScrollArea className="flex-1">
-                {cart.length > 0 ? (
-                  <div className="p-2 space-y-2">
-                    {cart.map((item) => (
-                      <div key={item.id} className="border rounded-md p-1.5">
-                                                 <div className="flex items-center">
-                           <div className="h-10 w-10 bg-gray-100 rounded mr-2 flex-shrink-0 overflow-hidden">
-                             <img
-                               src={item.image || "/api/placeholder/40/40"}
-                               alt={item.name}
-                               className="h-full w-full object-cover rounded"
-                               onError={(e) => {
-                                 const target = e.target as HTMLImageElement;
-                                 target.src = "/api/placeholder/40/40";
-                               }}
-                             />
-                           </div>
-                                                     <div className="flex-1 min-w-0">
-                             <p className="font-medium text-xs truncate">
-                               {item.name}
-                             </p>
-                             <div className="flex items-center text-[10px] text-muted-foreground flex-wrap">
-                               <span>Size: {item.size || 'Standard'}</span>
-                               <span className="mx-1">•</span>
-                               <span>Color: {item.color || 'Default'}</span>
-                               <span className="mx-1">•</span>
-                               <span className="font-medium">{formatCurrency(item.price)}</span>
-                             </div>
-                             {(item as any).sku && (
-                               <div className="text-[9px] text-gray-400 mt-0.5">
-                                 SKU: {(item as any).sku}
-                               </div>
-                             )}
-                           </div>
-                          <div className="flex items-center">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => handleUpdateQuantity(item.id, -1)}
-                              disabled={item.quantity <= 1}
-                            >
-                              <Minus className="h-3 w-3" />
-                            </Button>
-                            <span className="w-4 text-center text-xs">
-                              {item.quantity}
-                            </span>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => handleUpdateQuantity(item.id, 1)}
-                            >
-                              <Plus className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-red-600"
-                              onClick={() => handleRemoveItem(item.id)}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-
-                        {/* Item discount section */}
-                        <div className="mt-1 flex items-center justify-between">
-                          <div className="flex-1">
-                            {item.discount ? (
-                              <div className="flex items-center">
-                                <Badge
-                                  variant="outline"
-                                  className="bg-red-50 text-red-600 mr-1 text-[10px]"
-                                >
-                                  {item.discount.type === "percentage"
-                                    ? `${item.discount.value}% OFF`
-                                    : `$${item.discount.value} OFF`}
-                                </Badge>
+              {/* Cart Body */}
+              <div className="flex-1 min-h-0 pt-2">
+                <div className="h-full min-h-0 flex flex-row gap-3">
+                  {/* Left side: dedicated cart product showcase */}
+                  <div className="basis-[56%] min-w-0 h-full min-h-0 border rounded-md bg-gray-50">
+                    <ScrollArea className="h-full pr-2">
+                      {cart.length > 0 ? (
+                        <div className="p-2 space-y-2">
+                          {cart.map((item) => (
+                            <div key={item.id} className="border rounded-lg p-1.5 bg-white shadow-sm">
+                              {/* Top Division: product details */}
+                              <div className="flex items-start gap-3">
+                                <div className="h-12 w-12 bg-gray-100 rounded-md flex-shrink-0 overflow-hidden border">
+                                  <img
+                                    src={item.image || "/api/placeholder/48/48"}
+                                    alt={item.name}
+                                    className="h-full w-full object-cover rounded-md"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.src = "/api/placeholder/48/48";
+                                    }}
+                                  />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold text-xs truncate">{item.name}</p>
+                                  <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] text-muted-foreground">
+                                    <span className="rounded bg-gray-100 px-1.5 py-0.5">
+                                      Size: {item.size || "Standard"}
+                                    </span>
+                                    <span className="rounded bg-gray-100 px-1.5 py-0.5">
+                                      Color: {item.color || "Default"}
+                                    </span>
+                                    <span className="font-medium text-gray-700">
+                                      Unit: {formatCurrency(item.price)}
+                                    </span>
+                                  </div>
+                                  {(item as any).sku && (
+                                    <div className="text-[10px] text-gray-400 mt-1">
+                                      SKU: {(item as any).sku}
+                                    </div>
+                                  )}
+                                </div>
                                 <Button
                                   variant="ghost"
-                                  size="sm"
-                                  className="h-5 text-[10px] text-red-600 p-0"
-                                  onClick={() =>
-                                    handleRemoveItemDiscount(item.id)
-                                  }
+                                  size="icon"
+                                  className="h-6 w-6 text-red-600 shrink-0"
+                                  onClick={() => handleRemoveItem(item.id)}
                                 >
-                                  Remove
+                                  <X className="h-3.5 w-3.5" />
                                 </Button>
                               </div>
-                            ) : (
-                              <Dialog>
-                                <DialogTrigger asChild>
+
+                              {/* Bottom Division: quantity + discount + line total */}
+                              <div className="mt-1.5 pt-1.5 border-t flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-1 rounded-md border px-1 py-0.5">
                                   <Button
                                     variant="ghost"
-                                    size="sm"
-                                    className="h-5 text-[10px] p-0"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => handleUpdateQuantity(item.id, -1)}
+                                    disabled={item.quantity <= 1}
                                   >
-                                    <Percent className="h-2 w-2 mr-1" />
-                                    Add Discount
+                                    <Minus className="h-3 w-3" />
                                   </Button>
-                                </DialogTrigger>
-                                <DialogContent className="sm:max-w-[425px]">
-                                  <DialogHeader>
-                                    <DialogTitle className="text-sm">
-                                      Apply Item Discount
-                                    </DialogTitle>
-                                    <DialogDescription className="text-xs">
-                                      Apply a discount to this specific item.
-                                    </DialogDescription>
-                                  </DialogHeader>
-                                  <div className="grid gap-2 py-2">
-                                    <Tabs defaultValue="percentage">
-                                      <TabsList className="grid w-full grid-cols-2 h-8">
-                                        <TabsTrigger
-                                          value="percentage"
-                                          className="text-xs"
-                                        >
-                                          Percentage (%)
-                                        </TabsTrigger>
-                                        <TabsTrigger
-                                          value="fixed"
-                                          className="text-xs"
-                                        >
-                                          Fixed Amount ($)
-                                        </TabsTrigger>
-                                      </TabsList>
-                                      <TabsContent
-                                        value="percentage"
-                                        className="space-y-2 mt-2"
-                                      >
-                                        <div className="space-y-1">
-                                          <Label
-                                            htmlFor="percentage"
-                                            className="text-xs"
-                                          >
-                                            Discount Percentage
-                                          </Label>
-                                          <div className="flex items-center">
-                                            <Input
-                                              id="percentage"
-                                              type="number"
-                                              min="0"
-                                              max="100"
-                                              defaultValue="10"
-                                              className="h-7 text-xs"
-                                            />
-                                            <span className="ml-1 text-xs">
-                                              %
-                                            </span>
-                                          </div>
-                                        </div>
-                                        <Button
-                                          className="w-full h-7 text-xs"
-                                          onClick={(e) => {
-                                            const input =
-                                              document.getElementById(
-                                                "percentage"
-                                              ) as HTMLInputElement;
-                                            handleItemDiscount(
-                                              item.id,
-                                              "percentage",
-                                              Number(input.value)
-                                            );
-                                            const dialogElement = (
-                                              e.target as HTMLElement
-                                            ).closest("dialog");
-                                            if (dialogElement) {
-                                              closeDialog(dialogElement);
-                                            }
-                                          }}
-                                        >
-                                          Apply Percentage Discount
-                                        </Button>
-                                      </TabsContent>
-                                      <TabsContent
-                                        value="fixed"
-                                        className="space-y-2 mt-2"
-                                      >
-                                        <div className="space-y-1">
-                                          <Label
-                                            htmlFor="fixed"
-                                            className="text-xs"
-                                          >
-                                            Discount Amount
-                                          </Label>
-                                          <div className="flex items-center">
-                                            <span className="mr-1 text-xs">
-                                              $
-                                            </span>
-                                            <Input
-                                              id="fixed"
-                                              type="number"
-                                              min="0"
-                                              max={item.price * item.quantity}
-                                              defaultValue="5"
-                                              className="h-7 text-xs"
-                                            />
-                                          </div>
-                                        </div>
-                                        <Button
-                                          className="w-full h-7 text-xs"
-                                          onClick={(e) => {
-                                            const input =
-                                              document.getElementById(
-                                                "fixed"
-                                              ) as HTMLInputElement;
-                                            handleItemDiscount(
-                                              item.id,
-                                              "fixed",
-                                              Number(input.value)
-                                            );
-                                            const dialogElement = (
-                                              e.target as HTMLElement
-                                            ).closest("dialog");
-                                            if (dialogElement) {
-                                              closeDialog(dialogElement);
-                                            }
-                                          }}
-                                        >
-                                          Apply Fixed Discount
-                                        </Button>
-                                      </TabsContent>
-                                    </Tabs>
-                                  </div>
-                                </DialogContent>
-                              </Dialog>
-                            )}
-                          </div>
-                          <div className="text-xs font-medium">
-                            {formatCurrency(
-                              item.discount
-                                ? item.discount.type === "percentage"
-                                  ? item.price *
-                                    item.quantity *
-                                    (1 - item.discount.value / 100)
-                                  : item.price * item.quantity -
-                                    item.discount.value
-                                : item.price * item.quantity
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                                 ) : (
-                   <div className="h-full flex flex-col items-center justify-center p-4 text-center">
-                     <div className="bg-gray-100 rounded-full p-4 mb-3">
-                       <ShoppingCart className="h-8 w-8 text-gray-400" />
-                     </div>
-                     <h3 className="text-sm font-medium text-gray-700 mb-1">Your cart is empty</h3>
-                     <p className="text-xs text-muted-foreground">
-                       Browse products and add items to start a new order
-                     </p>
-                   </div>
-                 )}
-              </ScrollArea>
+                                  <span className="w-5 text-center text-xs font-medium">
+                                    {item.quantity}
+                                  </span>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => handleUpdateQuantity(item.id, 1)}
+                                  >
+                                    <Plus className="h-3 w-3" />
+                                  </Button>
+                                </div>
 
-              {/* Cart Footer - Subtotal, Tax, Total, and Checkout */}
-              <div className="border-t">
-                <div className="grid md:grid-cols-2 gap-2">
-                  {/* Customer Section */}
-                  <div className="p-2 border-r">
+                                <div className="flex-1 min-w-0">
+                                  {item.discount ? (
+                                    <div className="flex items-center gap-1">
+                                      <Badge
+                                        variant="outline"
+                                        className="bg-red-50 text-red-600 text-[10px]"
+                                      >
+                                        {item.discount.type === "percentage"
+                                          ? `${item.discount.value}% OFF`
+                                          : `৳${item.discount.value} OFF`}
+                                      </Badge>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-5 text-[10px] text-red-600 p-0"
+                                        onClick={() => handleRemoveItemDiscount(item.id)}
+                                      >
+                                        Remove
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <Dialog>
+                                      <DialogTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-5 text-[10px] p-0"
+                                        >
+                                          <Percent className="h-2 w-2 mr-1" />
+                                          Add Discount
+                                        </Button>
+                                      </DialogTrigger>
+                                      <DialogContent className="sm:max-w-[425px]">
+                                        <DialogHeader>
+                                          <DialogTitle className="text-sm">
+                                            Apply Item Discount
+                                          </DialogTitle>
+                                          <DialogDescription className="text-xs">
+                                            Apply a discount to this specific item.
+                                          </DialogDescription>
+                                        </DialogHeader>
+                                        <div className="grid gap-2 py-2">
+                                          <Tabs defaultValue="percentage">
+                                            <TabsList className="grid w-full grid-cols-2 h-8">
+                                              <TabsTrigger
+                                                value="percentage"
+                                                className="text-xs"
+                                              >
+                                                Percentage (%)
+                                              </TabsTrigger>
+                                              <TabsTrigger value="fixed" className="text-xs">
+                                                Fixed Amount (৳)
+                                              </TabsTrigger>
+                                            </TabsList>
+                                            <TabsContent
+                                              value="percentage"
+                                              className="space-y-2 mt-2"
+                                            >
+                                              <div className="space-y-1">
+                                                <Label
+                                                  htmlFor="percentage"
+                                                  className="text-xs"
+                                                >
+                                                  Discount Percentage
+                                                </Label>
+                                                <div className="flex items-center">
+                                                  <Input
+                                                    id="percentage"
+                                                    type="number"
+                                                    min="0"
+                                                    max="100"
+                                                    defaultValue="10"
+                                                    className="h-7 text-xs"
+                                                  />
+                                                  <span className="ml-1 text-xs">%</span>
+                                                </div>
+                                              </div>
+                                              <Button
+                                                className="w-full h-7 text-xs"
+                                                onClick={(e) => {
+                                                  const input = document.getElementById(
+                                                    "percentage"
+                                                  ) as HTMLInputElement;
+                                                  handleItemDiscount(
+                                                    item.id,
+                                                    "percentage",
+                                                    Number(input.value)
+                                                  );
+                                                  const dialogElement = (
+                                                    e.target as HTMLElement
+                                                  ).closest("dialog");
+                                                  if (dialogElement) {
+                                                    closeDialog(dialogElement);
+                                                  }
+                                                }}
+                                              >
+                                                Apply Percentage Discount
+                                              </Button>
+                                            </TabsContent>
+                                            <TabsContent value="fixed" className="space-y-2 mt-2">
+                                              <div className="space-y-1">
+                                                <Label htmlFor="fixed" className="text-xs">
+                                                  Discount Amount
+                                                </Label>
+                                                <div className="flex items-center">
+                                                  <span className="mr-1 text-xs">৳</span>
+                                                  <Input
+                                                    id="fixed"
+                                                    type="number"
+                                                    min="0"
+                                                    max={item.price * item.quantity}
+                                                    defaultValue="5"
+                                                    className="h-7 text-xs"
+                                                  />
+                                                </div>
+                                              </div>
+                                              <Button
+                                                className="w-full h-7 text-xs"
+                                                onClick={(e) => {
+                                                  const input = document.getElementById(
+                                                    "fixed"
+                                                  ) as HTMLInputElement;
+                                                  handleItemDiscount(
+                                                    item.id,
+                                                    "fixed",
+                                                    Number(input.value)
+                                                  );
+                                                  const dialogElement = (
+                                                    e.target as HTMLElement
+                                                  ).closest("dialog");
+                                                  if (dialogElement) {
+                                                    closeDialog(dialogElement);
+                                                  }
+                                                }}
+                                              >
+                                                Apply Fixed Discount
+                                              </Button>
+                                            </TabsContent>
+                                          </Tabs>
+                                        </div>
+                                      </DialogContent>
+                                    </Dialog>
+                                  )}
+                                </div>
+                                <div className="text-xs font-semibold shrink-0">
+                                  {formatCurrency(
+                                    item.discount
+                                      ? item.discount.type === "percentage"
+                                        ? item.price *
+                                          item.quantity *
+                                          (1 - item.discount.value / 100)
+                                        : item.price * item.quantity - item.discount.value
+                                      : item.price * item.quantity
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="h-full flex flex-col items-center justify-center p-4 text-center">
+                          <div className="bg-gray-100 rounded-full p-4 mb-3">
+                            <ShoppingCart className="h-8 w-8 text-gray-400" />
+                          </div>
+                          <h3 className="text-sm font-medium text-gray-700 mb-1">
+                            Your cart is empty
+                          </h3>
+                          <p className="text-xs text-muted-foreground">
+                            Browse products and add items to start a new order
+                          </p>
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </div>
+
+                  {/* Right side: customer + payment */}
+                  <div className="basis-[44%] min-w-0 h-full min-h-0 border rounded-md bg-white overflow-y-auto">
+                    <div className="p-2">
                     <div className="flex items-center justify-between mb-1">
                       <Label htmlFor="customer" className="text-xs">
                         Customer
@@ -543,37 +441,10 @@ export default function CartAndCheckout() {
                         Add New Customer
                       </Button>
                     )}
-
-                    {/* Cart Summary */}
-                    <div className="mt-2 bg-gray-50 p-2 rounded-md">
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-xs">
-                          <span>Subtotal</span>
-                          <span>{formatCurrency(subtotal)}</span>
-                        </div>
-                        {cartDiscount && (
-                          <div className="flex justify-between text-xs text-red-600">
-                            <span>
-                              {cartDiscount.type === "percentage"
-                                ? `Discount (${cartDiscount.value}%)`
-                                : "Discount"}
-                            </span>
-                            <span>
-                              -{formatCurrency(subtotal - discountedSubtotal)}
-                            </span>
-                          </div>
-                        )}
-                        <div className="flex justify-between font-semibold pt-1 border-t text-xs">
-                          <span>Total</span>
-                          <span>{formatCurrency(discountedSubtotal)}</span>
-                        </div>
-                      </div>
-                    </div>
                   </div>
 
-                  {/* Payment Section */}
-                  <div className="p-2">
-                                         <PaymentSection
+                    <div className="border-t p-2">
+                      <PaymentSection
                        paymentMethod={paymentMethod}
                        setPaymentMethod={setPaymentMethod}
                        showSplitPayment={showSplitPayment}
@@ -587,38 +458,15 @@ export default function CartAndCheckout() {
                        total={discountedSubtotal}
                        changeDue={changeDue}
                        cart={cart}
-                       handleCompletePayment={handleCompleteSale}
                        formatCurrency={formatCurrency}
                        allowPartialPayment={false}
                        setAllowPartialPayment={undefined}
                      />
+                    </div>
                   </div>
                 </div>
               </div>
-            </Card>
-          </motion.div>
-        ) : (
-          <motion.div
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            className="fixed bottom-4 right-[100px] z-50"
-          >
-            <Button
-              ref={toggleButtonRef}
-              variant="outline"
-              size="sm"
-              className="bg-white shadow-md"
-              onClick={() => setIsMounted(true)}
-            >
-                             <ChevronLeft className="h-4 w-4 mr-1" />
-               Show Cart
-               {cart.length > 0 && (
-                 <Badge className="ml-1 text-xs bg-blue-500 hover:bg-blue-600">{cart.length}</Badge>
-               )}
-            </Button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+      </div>
+    </div>
   );
 }

@@ -6,6 +6,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Sum, Count, Q
 from .models import Customer
 from .serializers import CustomerSerializer, TopCustomerSerializer
+from apps.authentication.permissions import HasReadWritePermission
 
 class CustomerPagination(PageNumberPagination):
     page_size = 20
@@ -20,6 +21,9 @@ class CustomerViewSet(viewsets.ModelViewSet):
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
     pagination_class = CustomerPagination
+    permission_classes = [
+        HasReadWritePermission(read="view_customers", write="manage_customers")
+    ]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['gender', 'is_active', 'customer_type']
     search_fields = ['first_name', 'last_name', 'email', 'phone']

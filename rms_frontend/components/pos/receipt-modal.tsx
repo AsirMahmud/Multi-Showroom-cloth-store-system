@@ -34,7 +34,6 @@ export function ReceiptModal({
 
   const handleEmail = () => {
     // TODO: Implement email receipt functionality
-    console.log("Email receipt:", receiptData);
   };
 
   if (!receiptData) return null;

@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'corsheaders',
     
     # local apps
+    'apps.branches',
     'apps.authentication',
     'apps.inventory',
     "apps.customer",
@@ -63,11 +64,18 @@ INSTALLED_APPS = [
     'apps.preorder',
     'apps.ecommerce',
     'apps.online_preorder',
+    'apps.notifications',
+    'apps.auditlog',
 ]
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    # Default to IsAuthenticated. Public endpoints (storefront, login) must
+    # opt-in explicitly with `permission_classes = [AllowAny]`.
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_FILTER_BACKENDS': (
         'django_filters.rest_framework.DjangoFilterBackend',
@@ -150,8 +158,6 @@ DATABASES = {
     }
 }
 
-print(os.getenv('DB_HOST'))
-
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
 
@@ -231,6 +237,16 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "authorization",
+    "content-type",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+    "x-branch-id",
+]
 
 # Email Configuration (Gmail)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

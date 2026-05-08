@@ -23,6 +23,7 @@ from apps.online_preorder.serializers import OnlinePreorderSerializer, OnlinePre
 from django.db.models import Sum
 from decimal import Decimal
 from .discount_utils import calculate_discounted_price
+from apps.authentication.permissions import HasReadWritePermission
 
 
 class DiscountViewSet(viewsets.ModelViewSet):
@@ -37,7 +38,7 @@ class DiscountViewSet(viewsets.ModelViewSet):
     """
     queryset = Discount.objects.all()
     serializer_class = DiscountSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasReadWritePermission(read=None, write="manage_discounts")]
     
     def get_serializer_class(self):
         if self.action == 'list':
@@ -134,9 +135,10 @@ class ProductStatusViewSet(viewsets.ModelViewSet):
     """
     queryset = ProductStatus.objects.all()
     serializer_class = ProductStatusSerializer
-    permission_classes = [IsAuthenticated]
-    
+    permission_classes = [HasReadWritePermission(read=None, write="manage_product_status")]
+
     def get_permissions(self):
+        # Listing/retrieving stays public so the storefront can render sections.
         if self.action in ['list', 'retrieve']:
             return [AllowAny()]
         return super().get_permissions()
@@ -158,7 +160,7 @@ class BrandViewSet(viewsets.ModelViewSet):
     """
     queryset = Brand.objects.all()
     serializer_class = BrandSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasReadWritePermission(read=None, write="manage_brands")]
     
     def get_queryset(self):
         queryset = Brand.objects.all()
@@ -183,7 +185,9 @@ class HomePageSettingsViewSet(viewsets.ModelViewSet):
     """
     queryset = HomePageSettings.objects.all()
     serializer_class = HomePageSettingsSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [
+        HasReadWritePermission(read=None, write="manage_home_page_settings")
+    ]
     lookup_field = 'id'
     parser_classes = [MultiPartParser, FormParser]
     
@@ -593,7 +597,7 @@ class HeroSlideViewSet(viewsets.ModelViewSet):
     """
     queryset = HeroSlide.objects.all()
     serializer_class = HeroSlideSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasReadWritePermission(read=None, write="manage_hero_slides")]
     parser_classes = [MultiPartParser, FormParser]
     
     def get_queryset(self):
@@ -621,7 +625,9 @@ class PromotionalModalViewSet(viewsets.ModelViewSet):
     """
     queryset = PromotionalModal.objects.all()
     serializer_class = PromotionalModalSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [
+        HasReadWritePermission(read=None, write="manage_promotional_modals")
+    ]
     parser_classes = [MultiPartParser, FormParser]
 
     def get_queryset(self):

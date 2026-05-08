@@ -20,6 +20,7 @@ import {
 import { useExpenseReport } from "@/hooks/queries/use-reports";
 import { DateRange } from "react-day-picker";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatCurrency } from "@/lib/utils";
 
 const COLORS = [
   "#0088FE",
@@ -154,7 +155,7 @@ export function ExpenseReport({
                   </Pie>
                   <Tooltip
                     formatter={(value: string) =>
-                      `$${parseFloat(value).toFixed(2)}`
+                      formatCurrency(parseFloat(value))
                     }
                   />
                   <Legend />

@@ -58,6 +58,13 @@ class Sale(models.Model):
     gift_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0.00'))])
     
     notes = models.TextField(blank=True)
+    branch = models.ForeignKey(
+        "branches.Branch",
+        on_delete=models.PROTECT,
+        related_name="sales",
+        null=True,
+        blank=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -144,7 +151,8 @@ class Sale(models.Model):
                         movement_type=movement_type,
                         quantity=item.quantity,
                         reference_number=self.invoice_number,
-                        notes=movement_notes
+                        notes=movement_notes,
+                        branch=self.branch,
                     )
                     
                     # Update variation stock
@@ -543,7 +551,8 @@ class ReturnItem(models.Model):
                 movement_type='IN',
                 quantity=self.quantity,
                 reference_number=self.return_order.return_number,
-                notes=f"Return item from {self.return_order.return_number}"
+                notes=f"Return item from {self.return_order.return_number}",
+                branch=getattr(self.return_order.sale, "branch", None),
             )
             
             # Update product stock

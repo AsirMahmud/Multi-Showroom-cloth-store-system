@@ -323,8 +323,7 @@ export function ModernPOS() {
       setSelectedCustomer(updatedCustomer);
     }
 
-    // In a real app, you would save this transaction to your backend
-    console.log("Transaction completed:", receipt);
+    // Save transaction to backend in a real app
 
     completePayment(toast);
   };
@@ -781,7 +780,7 @@ export function ModernPOS() {
       {/* Main POS Interface - Two Column Layout */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left Column - Product Selection */}
-        <div className="flex-1 bg-gray-50 overflow-y-auto pb-20">
+        <div className="flex-1 min-w-0 bg-gray-50 overflow-y-auto">
           <div className="p-4">
             {/* Search & Filter Bar */}
             <div className="mb-4 space-y-2">

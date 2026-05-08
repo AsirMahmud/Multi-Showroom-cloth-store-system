@@ -1,6 +1,7 @@
 "use client"
 
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "@/components/ui/chart"
+import { formatCurrency } from "@/lib/utils"
 
 const data = [
   {
@@ -46,11 +47,11 @@ export function SalesOverview() {
       <BarChart data={data}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} />
         <XAxis dataKey="name" tickLine={false} axisLine={false} fontSize={12} tickMargin={10} />
-        <YAxis yAxisId="left" tickLine={false} axisLine={false} fontSize={12} tickFormatter={(value) => `$${value}`} />
+        <YAxis yAxisId="left" tickLine={false} axisLine={false} fontSize={12} tickFormatter={(value) => formatCurrency(Number(value))} />
         <YAxis yAxisId="right" orientation="right" tickLine={false} axisLine={false} fontSize={12} />
         <Tooltip
           formatter={(value, name) => {
-            if (name === "Revenue") return [`$${value}`, name]
+            if (name === "Revenue") return [formatCurrency(Number(value)), name]
             return [value, name]
           }}
         />

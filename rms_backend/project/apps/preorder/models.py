@@ -105,6 +105,13 @@ class Preorder(models.Model):
     profit = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
     unit_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    branch = models.ForeignKey(
+        "branches.Branch",
+        on_delete=models.PROTECT,
+        related_name="preorders",
+        null=True,
+        blank=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

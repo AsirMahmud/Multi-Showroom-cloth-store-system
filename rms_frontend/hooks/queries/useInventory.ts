@@ -10,6 +10,7 @@ import {
     dashboardApi
 } from '@/lib/api/inventory';
 import { supplierApi } from '@/lib/api/supplier';
+import { useBranch } from '@/contexts/branch-context';
 import {
     Category,
     Product,
@@ -73,15 +74,17 @@ export const inventoryKeys = {
 
 // Category Hooks
 export const useCategories = (filters?: string) => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: inventoryKeys.categories.list(filters || ''),
+        queryKey: [...inventoryKeys.categories.list(filters || ''), selectedBranchId],
         queryFn: categoriesApi.getAll,
     });
 };
 
 export const useOnlineCategories = (filters?: string) => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: ['online-categories', filters],
+        queryKey: ['online-categories', filters, selectedBranchId],
         queryFn: () => onlineCategoriesApi.getAll(),
     });
 };
@@ -128,8 +131,9 @@ export const useUpdateOnlineCategoryOrder = () => {
 };
 
 export const useCategory = (id: number) => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: inventoryKeys.categories.detail(id),
+        queryKey: [...inventoryKeys.categories.detail(id), selectedBranchId],
         queryFn: () => categoriesApi.getById(id),
         enabled: !!id,
     });
@@ -169,15 +173,17 @@ export const useDeleteCategory = () => {
 
 // Supplier Hooks
 export const useSuppliers = (filters?: string) => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: ['suppliers', filters],
+        queryKey: ['suppliers', filters, selectedBranchId],
         queryFn: supplierApi.getAll,
     });
 };
 
 export const useSupplier = (id: number) => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: ['suppliers', id],
+        queryKey: ['suppliers', id, selectedBranchId],
         queryFn: () => supplierApi.getById(id),
         enabled: !!id,
     });
@@ -217,22 +223,25 @@ export const useDeleteSupplier = () => {
 
 // Product Hooks
 export const useProducts = (params?: any) => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: inventoryKeys.products.list(params),
+        queryKey: [...inventoryKeys.products.list(params), selectedBranchId],
         queryFn: () => productsApi.getAll(params),
     });
 };
 
 export const useProductStats = (params?: any) => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: [...inventoryKeys.products.lists(), 'stats', { params }],
+        queryKey: [...inventoryKeys.products.lists(), 'stats', { params }, selectedBranchId],
         queryFn: () => productsApi.getStats(params),
     });
 };
 
 export const useInfiniteProducts = (params?: any, options?: any) => {
+    const { selectedBranchId } = useBranch();
     return useInfiniteQuery({
-        queryKey: [...inventoryKeys.products.lists(), 'infinite', { params }],
+        queryKey: [...inventoryKeys.products.lists(), 'infinite', { params }, selectedBranchId],
         queryFn: ({ pageParam = 1 }) => productsApi.getAll({ ...params, page: pageParam }),
         getNextPageParam: (lastPage) => {
             if (lastPage.next) {
@@ -247,8 +256,9 @@ export const useInfiniteProducts = (params?: any, options?: any) => {
 };
 
 export const useProduct = (id: number) => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: inventoryKeys.products.detail(id),
+        queryKey: [...inventoryKeys.products.detail(id), selectedBranchId],
         queryFn: () => productsApi.getById(id),
         enabled: !!id,
     });
@@ -294,16 +304,18 @@ export const useDeleteProduct = () => {
 
 // Product Variation Hooks
 export const useProductVariations = (productId: number) => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: inventoryKeys.products.variations(productId),
+        queryKey: [...inventoryKeys.products.variations(productId), selectedBranchId],
         queryFn: () => productVariationsApi.getAll(productId),
         enabled: !!productId,
     });
 };
 
 export const useProductVariation = (productId: number, id: number) => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: inventoryKeys.products.variation(productId, id),
+        queryKey: [...inventoryKeys.products.variation(productId, id), selectedBranchId],
         queryFn: () => productVariationsApi.getById(productId, id),
         enabled: !!productId && !!id,
     });
@@ -343,16 +355,18 @@ export const useDeleteProductVariation = (productId: number) => {
 
 // Gallery Hooks
 export const useProductGalleries = (productId: number) => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: inventoryKeys.products.galleries(productId),
+        queryKey: [...inventoryKeys.products.galleries(productId), selectedBranchId],
         queryFn: () => galleriesApi.getAll(productId),
         enabled: !!productId,
     });
 };
 
 export const useGallery = (id: number) => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: ['gallery', id],
+        queryKey: ['gallery', id, selectedBranchId],
         queryFn: () => galleriesApi.getById(id),
         enabled: !!id,
     });
@@ -403,53 +417,60 @@ export const useDeleteGalleryImage = () => {
 
 // Dashboard Hooks
 export const useDashboardOverview = (period: 'day' | 'month' | 'year' = 'day') => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: inventoryKeys.dashboard.overview(period),
+        queryKey: [...inventoryKeys.dashboard.overview(period), selectedBranchId],
         queryFn: () => dashboardApi.getOverview(period),
     });
 };
 
 export const useStockAlerts = () => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: inventoryKeys.dashboard.stockAlerts(),
+        queryKey: [...inventoryKeys.dashboard.stockAlerts(), selectedBranchId],
         queryFn: dashboardApi.getStockAlerts,
     });
 };
 
 export const useCategoryMetrics = () => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: inventoryKeys.dashboard.categoryMetrics(),
+        queryKey: [...inventoryKeys.dashboard.categoryMetrics(), selectedBranchId],
         queryFn: dashboardApi.getCategoryMetrics,
     });
 };
 
 export const useStockMovementAnalysis = (period: 'day' | 'month' | 'year' = 'month') => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: inventoryKeys.dashboard.stockMovementAnalysis(period),
+        queryKey: [...inventoryKeys.dashboard.stockMovementAnalysis(period), selectedBranchId],
         queryFn: () => dashboardApi.getStockMovementAnalysis(period),
     });
 };
 
 // Product Analytics Hooks
 export const useProductAnalytics = (productId: number, days?: number) => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: inventoryKeys.products.analytics(productId, days),
+        queryKey: [...inventoryKeys.products.analytics(productId, days), selectedBranchId],
         queryFn: () => productsApi.getAnalytics(productId, days),
         enabled: !!productId,
     });
 };
 
 export const useProductStockHistory = (productId: number, days?: number) => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: inventoryKeys.products.stockHistory(productId, days),
+        queryKey: [...inventoryKeys.products.stockHistory(productId, days), selectedBranchId],
         queryFn: () => productsApi.getStockHistory(productId, days),
         enabled: !!productId,
     });
 };
 
 export const useProductSalesHistory = (productId: number, days?: number) => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: inventoryKeys.products.salesHistory(productId, days),
+        queryKey: [...inventoryKeys.products.salesHistory(productId, days), selectedBranchId],
         queryFn: () => productsApi.getSalesHistory(productId, days),
         enabled: !!productId,
     });

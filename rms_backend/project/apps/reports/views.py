@@ -1,5 +1,6 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db.models import Sum, Count, Avg, F, Q, DecimalField, Max, OuterRef, Subquery, Case, When, Value, CharField, DateField
 from django.db.models.functions import Coalesce, Cast, TruncDate
@@ -27,6 +28,7 @@ logger = logging.getLogger(__name__)
 class ReportViewSet(viewsets.ModelViewSet):
     queryset = Report.objects.all()
     serializer_class = ReportSerializer
+    permission_classes = [IsAuthenticated]
 
     def _get_date_range(self, request):
         date_from_str = request.query_params.get('date_from')
@@ -810,6 +812,7 @@ class ReportViewSet(viewsets.ModelViewSet):
 class SavedReportViewSet(viewsets.ModelViewSet):
     queryset = SavedReport.objects.all()
     serializer_class = SavedReportSerializer
+    permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         report = Report.objects.get(id=serializer.validated_data['report_id'])

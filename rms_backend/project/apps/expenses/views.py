@@ -1,29 +1,46 @@
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db.models import Sum, Count, Q
 from django.utils import timezone
 from datetime import datetime, timedelta
 from .models import Expense, ExpenseCategory
 from .serializers import ExpenseSerializer, ExpenseCategorySerializer
+from apps.branches.permissions import get_allowed_branch_ids, get_requested_branch_id, is_admin
+from apps.authentication.permissions import HasReadWritePermission
 
 class ExpenseCategoryViewSet(viewsets.ModelViewSet):
     queryset = ExpenseCategory.objects.all()
     serializer_class = ExpenseCategorySerializer
+    permission_classes = [
+        HasReadWritePermission(read=None, write="manage_expense_categories")
+    ]
     filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'description']
 
 class ExpenseViewSet(viewsets.ModelViewSet):
     queryset = Expense.objects.all()
     serializer_class = ExpenseSerializer
+    permission_classes = [IsAuthenticated]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['description', 'reference_number', 'notes']
     ordering_fields = ['date', 'amount', 'status', 'created_at']
     ordering = ['-date', '-created_at']
 
+    def _scoped_queryset(self, queryset):
+        requested_branch_id = get_requested_branch_id(self.request)
+        if requested_branch_id:
+            if not self.request.user.can_access_branch(requested_branch_id):
+                return queryset.none()
+            return queryset.filter(branch_id=requested_branch_id)
+        if is_admin(self.request.user):
+            return queryset
+        return queryset.filter(branch_id__in=get_allowed_branch_ids(self.request.user))
+
     def get_queryset(self):
-        queryset = super().get_queryset()
-        
+        queryset = self._scoped_queryset(super().get_queryset())
+
         # Filter by date range
         start_date = self.request.query_params.get('start_date')
         end_date = self.request.query_params.get('end_date')
@@ -47,33 +64,33 @@ class ExpenseViewSet(viewsets.ModelViewSet):
         
         return queryset
 
+    def perform_create(self, serializer):
+        branch_id = get_requested_branch_id(self.request) or self.request.user.managed_branch_id
+        serializer.save(branch_id=branch_id)
+
     @action(detail=False, methods=['get'])
     def dashboard_stats(self, request):
         today = timezone.now().date()
         start_of_month = today.replace(day=1)
-        
-        # Today's expenses
-        today_expenses = Expense.objects.filter(
-            date=today
-        ).aggregate(
+
+        # All aggregations honour the requested branch context.
+        scope = self._scoped_queryset(Expense.objects.all())
+
+        today_expenses = scope.filter(date=today).aggregate(
             total_amount=Sum('amount'),
             total_count=Count('id'),
             pending_count=Count('id', filter=Q(status='PENDING')),
             approved_count=Count('id', filter=Q(status='APPROVED'))
         )
-        
-        # Monthly expenses
-        monthly_expenses = Expense.objects.filter(
-            date__gte=start_of_month
-        ).aggregate(
+
+        monthly_expenses = scope.filter(date__gte=start_of_month).aggregate(
             total_amount=Sum('amount'),
             total_count=Count('id'),
             pending_count=Count('id', filter=Q(status='PENDING')),
             approved_count=Count('id', filter=Q(status='APPROVED'))
         )
-        
-        # Category distribution
-        category_distribution = Expense.objects.filter(
+
+        category_distribution = scope.filter(
             date__gte=start_of_month
         ).values(
             'category__name',
@@ -82,23 +99,19 @@ class ExpenseViewSet(viewsets.ModelViewSet):
             total=Sum('amount'),
             count=Count('id')
         ).order_by('-total')
-        
-        # Payment method distribution
-        payment_distribution = Expense.objects.filter(
+
+        payment_distribution = scope.filter(
             date__gte=start_of_month
         ).values('payment_method').annotate(
             total=Sum('amount'),
             count=Count('id')
         ).order_by('-total')
-        
-        # Recent expenses
-        recent_expenses = Expense.objects.select_related(
-            'category'
-        ).order_by('-created_at')[:5]
+
+        recent_expenses = scope.select_related('category').order_by('-created_at')[:5]
 
         # Monthly trend (last 6 months)
         six_months_ago = today - timedelta(days=180)
-        monthly_trend = Expense.objects.filter(
+        monthly_trend = scope.filter(
             date__gte=six_months_ago
         ).values(
             'date__month'
