@@ -77,37 +77,41 @@ export function BranchSelectorModal() {
           }}
           className={cn(
             "fixed left-1/2 top-1/2 z-50 flex flex-col w-[95vw] max-w-6xl -translate-x-1/2 -translate-y-1/2",
-            "max-h-[75vh] min-h-[400px] overflow-hidden rounded-3xl border bg-background shadow-2xl",
+            "max-h-[85vh] min-h-[500px] overflow-hidden rounded-[40px] border-none bg-white shadow-[0_32px_64px_-12px_rgba(22,54,37,0.15)]",
             "data-[state=open]:animate-in data-[state=closed]:animate-out",
             "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
             "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
           )}
         >
           {/* Header Section */}
-          <div className="relative shrink-0 overflow-hidden bg-[#163625] px-6 py-6 text-white">
+          <div className="relative shrink-0 overflow-hidden bg-white border-b border-slate-50 px-10 py-10">
             {/* Decorative background elements */}
-            <div className="absolute right-0 top-0 -translate-y-1/4 translate-x-1/4 opacity-20">
-              <div className="h-64 w-64 rounded-full bg-[#E4FCD5] blur-[100px]" />
+            <div className="absolute right-0 top-0 -translate-y-1/4 translate-x-1/4 opacity-30">
+              <div className="h-64 w-64 rounded-full bg-brand-secondary blur-[100px]" />
             </div>
-            <div className="absolute left-0 bottom-0 translate-y-1/4 -translate-x-1/4 opacity-10">
-              <div className="h-48 w-48 rounded-full bg-white blur-[80px]" />
+            <div className="absolute left-0 bottom-0 translate-y-1/4 -translate-x-1/4 opacity-20">
+              <div className="h-48 w-48 rounded-full bg-brand-secondary blur-[80px]" />
             </div>
 
-            <div className="relative flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="relative flex flex-col md:flex-row md:items-start justify-between gap-6">
               <div className="space-y-1">
-                <DialogPrimitive.Title className="text-3xl font-bold tracking-tight text-[#E4FCD5]">
+                <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-brand-secondary/50 text-brand-primary text-[9px] font-black uppercase tracking-widest mb-1">
+                  <Sparkles className="h-2.5 w-2.5" />
+                  System Workspace
+                </div>
+                <DialogPrimitive.Title className="text-2xl font-black tracking-tight text-brand-primary leading-tight">
                   {selectionMade ? "Switch Environment" : "Select Your Workspace"}
                 </DialogPrimitive.Title>
-                <p className="text-emerald-50/70 text-base max-w-lg">
+                <p className="text-slate-400 text-sm max-w-lg font-medium">
                   {selectionMade
-                    ? "Transition between branches to manage localized inventory, sales, and staff data."
-                    : `Welcome, ${user.username}. Choose a branch to begin your management session.`}
+                    ? "Seamlessly transition between branches to manage localized data."
+                    : `Welcome back, ${user.username}. Select a branch to begin.`}
                 </p>
               </div>
               
               {selectionMade && (
                 <DialogPrimitive.Close
-                  className="absolute right-0 top-0 md:relative rounded-full p-2 text-emerald-100/50 hover:bg-white/10 hover:text-white transition-all"
+                  className="rounded-xl p-2 text-slate-300 hover:bg-slate-50 hover:text-brand-primary transition-all border border-slate-100"
                   aria-label="Close"
                 >
                   <X className="h-5 w-5" />
@@ -116,27 +120,26 @@ export function BranchSelectorModal() {
             </div>
 
             <div className="relative mt-6 max-w-xl">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-emerald-200/40" />
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-slate-300" />
               </div>
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Find a branch by name, city or street address..."
-                className="pl-11 h-12 bg-white/10 border-white/10 text-white placeholder:text-emerald-100/30 focus-visible:ring-[#E4FCD5]/30 focus-visible:bg-white/15 transition-all rounded-xl"
+                placeholder="Search branches..."
+                className="pl-11 h-11 bg-slate-50 border-slate-100 text-brand-primary placeholder:text-slate-300 focus-visible:ring-brand-primary/10 focus-visible:bg-white focus-visible:border-brand-primary/20 transition-all rounded-xl text-sm font-medium"
               />
             </div>
           </div>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto px-6 py-6 bg-[#fdfdfd] dark:bg-slate-950 scrollbar-thin scrollbar-thumb-emerald-200/50 scrollbar-track-transparent hover:scrollbar-thumb-emerald-300/50">
+          <div className="flex-1 overflow-y-auto px-8 py-8 bg-[#f8fafc] dark:bg-slate-950 scrollbar-none hover:scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
             {/* All Branches pinned card - admin only */}
             {isAdmin && (
-              <div className="mb-8">
+              <div className="mb-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="h-px flex-1 bg-slate-200" />
-                  <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                    Administrative View
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-300 flex-shrink-0">
+                    Administrative
                   </span>
                   <div className="h-px flex-1 bg-slate-200" />
                 </div>
@@ -150,10 +153,9 @@ export function BranchSelectorModal() {
               </div>
             )}
 
-            <div className="flex items-center gap-3 mb-6">
-              <div className="h-px flex-1 bg-slate-200" />
-              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                {isAdmin ? "Available Branches" : "Your Assigned Branches"}
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-300 flex-shrink-0">
+                {isAdmin ? "Branches" : "Assigned"}
               </span>
               <div className="h-px flex-1 bg-slate-200" />
             </div>
@@ -187,7 +189,7 @@ export function BranchSelectorModal() {
                 )}
               </div>
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {visibleBranches.map((branch) => (
                   <BranchCard
                     key={branch.id}

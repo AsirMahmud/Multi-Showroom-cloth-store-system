@@ -50,6 +50,11 @@ body {
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --brand-primary: 153 42% 15%; /* #163625 */
+    --brand-secondary: 95 85% 91%; /* #E4FCD5 */
+    --brand-accent: 142 71% 45%; /* Emerald 500 */
+    --brand-gradient: linear-gradient(135deg, #f8fafc 0%, hsl(var(--brand-secondary) / 0.2) 40%, hsl(var(--brand-primary) / 0.08) 100%);
   }
 
   .dark {
@@ -85,6 +90,12 @@ body {
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Brand Identity - Dark Mode (Subtle adjustment) */
+    --brand-primary: 153 42% 20%;
+    --brand-secondary: 95 85% 15%;
+    --brand-accent: 142 71% 40%;
+    --brand-gradient: linear-gradient(135deg, hsl(var(--brand-primary) / 0.2) 0%, hsl(0 0% 4%) 100%);
   }
 
   /* Global reset */
@@ -93,7 +104,9 @@ body {
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply min-h-screen text-foreground;
+    background: var(--brand-gradient);
+    background-attachment: fixed;
   }
 
   /* 🔧 Remove spinner arrows on number inputs - Chrome/Safari */

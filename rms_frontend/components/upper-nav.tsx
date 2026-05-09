@@ -47,14 +47,14 @@ export function UpperNav() {
     user?.role === "admin" || (user?.branchIds?.length ?? 0) > 1;
 
   return (
-    <header className="w-full bg-white border-b border-slate-200/80 px-4 md:px-6 py-3">
-      <div className="flex items-center justify-between gap-3">
+    <header className="sticky top-0 z-40 w-full border-b border-brand-primary/5 bg-white/60 backdrop-blur-xl px-4 md:px-6 py-4">
+      <div className="flex items-center justify-between gap-6">
         <div className="min-w-0">
-          <div className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">
+          <div className="text-[10px] uppercase tracking-widest font-bold text-brand-primary/40">
             Retail Management System
           </div>
-          <div className="text-base md:text-lg font-semibold text-slate-800 truncate">
-            {user ? `Welcome, ${user.username}` : "Welcome"}
+          <div className="text-xl font-bold bg-gradient-to-r from-brand-primary to-emerald-800 bg-clip-text text-transparent truncate">
+            {user ? `Hello, ${user.username}` : "Hello"}
           </div>
         </div>
 
@@ -62,29 +62,29 @@ export function UpperNav() {
           {/* Branch badge / switcher */}
           {user && selectionMade && (
             <Button
-              variant="outline"
+              variant="ghost"
               onClick={openBranchSelector}
               disabled={!canSwitch}
               className={cn(
-                "h-10 gap-2 pl-2 pr-3 border-slate-200 bg-slate-50 hover:bg-slate-100",
+                "h-11 gap-3 pl-2 pr-4 bg-brand-primary/5 hover:bg-brand-primary/10 border border-brand-primary/5 rounded-2xl transition-all",
                 !canSwitch && "opacity-90 cursor-default"
               )}
             >
               <span
                 className={cn(
-                  "inline-flex h-7 w-7 items-center justify-center rounded-md text-[#E4FCD5]",
+                  "inline-flex h-8 w-8 items-center justify-center rounded-xl text-brand-secondary shadow-lg shadow-brand-primary/20",
                   isAll
-                    ? "bg-gradient-to-br from-[#163625] to-[#2a5d45]"
-                    : "bg-gradient-to-br from-[#163625] via-[#1a4d35] to-[#163625]"
+                    ? "bg-brand-primary"
+                    : "bg-emerald-600"
                 )}
               >
-                <Icon className="h-3.5 w-3.5" />
+                <Icon className="h-4 w-4" />
               </span>
               <div className="flex flex-col items-start leading-tight">
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                <span className="text-[10px] uppercase tracking-widest text-brand-primary/40 font-bold">
                   Branch
                 </span>
-                <span className="text-sm font-semibold text-slate-800 truncate max-w-[160px]">
+                <span className="text-sm font-bold text-brand-primary truncate max-w-[160px]">
                   {branchLabel}
                 </span>
               </div>
@@ -103,16 +103,16 @@ export function UpperNav() {
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="h-10 gap-2 pl-1.5 pr-2.5 hover:bg-slate-100"
+                  className="h-11 gap-3 pl-1.5 pr-3 hover:bg-brand-primary/5 rounded-2xl transition-all border border-transparent hover:border-brand-primary/5"
                 >
-                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-slate-700 to-slate-900 text-white text-xs font-semibold">
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-brand-primary text-brand-secondary text-xs font-bold shadow-lg shadow-brand-primary/20">
                     {user.username.slice(0, 2).toUpperCase()}
                   </span>
                   <div className="hidden md:flex flex-col items-start leading-tight">
-                    <span className="text-sm font-semibold text-slate-800">
+                    <span className="text-sm font-bold text-brand-primary">
                       {user.username}
                     </span>
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                    <span className="text-[10px] uppercase tracking-widest text-brand-primary/40 font-bold">
                       {ROLE_LABELS[user.role] ?? user.role}
                     </span>
                   </div>

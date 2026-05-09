@@ -42,10 +42,8 @@ const taka = (value: number | string | null | undefined) => {
   }).format(n);
 };
 
-const ALL_BRANCHES_GRADIENT =
-  "from-[#163625] via-[#1a4d35] to-[#163625]";
-const BRANCH_GRADIENT =
-  "from-[#163625] via-[#224f3a] to-[#1a4331]";
+const ALL_BRANCHES_GRADIENT = "bg-white";
+const BRANCH_GRADIENT = "bg-white";
 
 function KpiStrip({
   data,
@@ -92,15 +90,15 @@ function KpiStrip({
         return (
           <div
             key={item.label}
-            className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-lg px-2.5 py-2"
+            className="bg-white border border-slate-100 rounded-xl px-3 py-2 group/kpi hover:bg-brand-secondary/30 transition-colors"
           >
-            <div className="flex items-center gap-2 text-white/80 text-[11px] uppercase tracking-wide font-medium">
-              <Icon className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1.5 text-slate-400 text-[9px] uppercase tracking-widest font-black">
+              <Icon className="h-3 w-3 text-brand-primary/30 group-hover/kpi:text-brand-primary transition-colors" />
               {item.label}
             </div>
-            <div className="mt-1 font-semibold text-white text-base leading-tight tabular-nums">
+            <div className="mt-0.5 font-black text-brand-primary text-sm leading-tight tabular-nums">
               {loading ? (
-                <Skeleton className="h-4 w-16 bg-white/30" />
+                <Skeleton className="h-3.5 w-12 bg-slate-100" />
               ) : (
                 item.value ?? "—"
               )}
@@ -146,55 +144,46 @@ export function BranchCard({
       onClick={onSelect}
       aria-pressed={selected}
       className={cn(
-        "group relative w-full text-left overflow-hidden rounded-2xl",
-        "bg-gradient-to-br shadow-md border border-[#163625]/20",
-        "transition-all duration-300 ease-out",
-        "hover:-translate-y-1 hover:shadow-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#163625] focus-visible:ring-offset-2",
-        gradient,
-        selected && "ring-2 ring-[#163625] ring-offset-2 ring-offset-white shadow-xl"
+        "group relative w-full text-left overflow-hidden rounded-[24px]",
+        "transition-all duration-500 ease-out",
+        "hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2",
+        selected 
+          ? "bg-white ring-2 ring-brand-primary shadow-[0_20px_40px_-12px_rgba(22,54,37,0.1)] z-10" 
+          : "bg-slate-50/80 border border-slate-200 hover:bg-white hover:border-brand-primary/30 hover:shadow-lg"
       )}
     >
-      {/* decorative blob */}
-      <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
-      <div className="pointer-events-none absolute -left-12 -bottom-12 h-40 w-40 rounded-full bg-white/5 blur-2xl" />
+      {/* subtle decorative background */}
+      <div className="absolute top-0 right-0 p-6 opacity-[0.02] group-hover:opacity-[0.04] transition-opacity pointer-events-none">
+        <Icon className="w-24 h-24 rotate-12" />
+      </div>
 
-      <div className="relative p-4 text-white">
+      <div className="relative p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="h-11 w-11 shrink-0 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm border border-white/20">
+            <div className={cn(
+              "h-11 w-11 shrink-0 rounded-xl flex items-center justify-center transition-all duration-500 group-hover:scale-105",
+              selected ? "bg-brand-primary text-brand-secondary shadow-lg shadow-brand-primary/10" : "bg-white text-slate-300 border border-slate-100 group-hover:border-brand-primary/20 group-hover:text-brand-primary"
+            )}>
               <Icon className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <div className="text-base font-semibold leading-tight truncate">
+              <div className="text-sm font-black leading-tight text-brand-primary truncate">
                 {name}
               </div>
-              <div className="flex items-center gap-1.5 text-xs text-white/80 mt-0.5">
-                <MapPin className="h-3 w-3" />
+              <div className="flex items-center gap-1 text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                <MapPin className="h-2.5 w-2.5 text-brand-primary/20" />
                 <span className="truncate">
                   {variant === "all"
-                    ? "Aggregate view across all branches"
-                    : address?.trim() || "No address provided"}
+                    ? "Aggregate view"
+                    : address?.trim() || "Location not set"}
                 </span>
               </div>
             </div>
           </div>
           <div className="flex flex-col items-end gap-1.5 shrink-0">
-            {variant === "branch" && (
-              <Badge
-                variant="secondary"
-                className={cn(
-                  "border-0 text-[10px] uppercase tracking-wider font-semibold",
-                  active
-                    ? "bg-emerald-400/20 text-emerald-50 border border-emerald-200/30"
-                    : "bg-rose-400/20 text-rose-50 border border-rose-200/30"
-                )}
-              >
-                {active ? "Active" : "Inactive"}
-              </Badge>
-            )}
             {selected && (
-              <Badge className="bg-[#E4FCD5] text-[#163625] hover:bg-[#d8f5c8] border-0 text-[10px] uppercase tracking-wider font-bold">
-                Active Branch
+              <Badge className="bg-brand-primary text-brand-secondary hover:bg-brand-primary border-0 text-[8px] uppercase tracking-widest font-black px-2 py-0.5 shadow-sm">
+                Active
               </Badge>
             )}
           </div>
@@ -204,17 +193,17 @@ export function BranchCard({
           <KpiStrip data={data} loading={isLoading} variant={variant} />
         )}
 
-        <div className="mt-3 flex items-center justify-between text-xs text-white/85">
-          <span className="font-medium">
-            {variant === "all" ? "View consolidated data" : "Open this branch"}
+        <div className="mt-4 pt-3 border-t border-slate-200/50 flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-slate-400">
+          <span className="group-hover:text-brand-primary transition-colors">
+            {variant === "all" ? "Organization" : "Branch"}
           </span>
-          <span className="inline-flex items-center gap-1 font-semibold opacity-90 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all">
+          <span className="inline-flex items-center gap-1 text-brand-primary group-hover:translate-x-0.5 transition-transform">
             {isLoading && !hideKpis ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <Loader2 className="h-3 w-3 animate-spin" />
             ) : (
-              <ArrowRight className="h-3.5 w-3.5" />
+              <ArrowRight className="h-3 w-3" />
             )}
-            <span>Select</span>
+            <span>Activate</span>
           </span>
         </div>
       </div>

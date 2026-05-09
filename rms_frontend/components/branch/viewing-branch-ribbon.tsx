@@ -31,28 +31,28 @@ export function ViewingBranchRibbon({ className }: { className?: string }) {
     <div
       className={cn(
         "sticky top-0 z-30 w-full",
-        "bg-gradient-to-r from-indigo-50 via-white to-violet-50",
-        "border-b border-indigo-100",
+        "bg-white/60 backdrop-blur-xl",
+        "border-b border-brand-primary/5",
         className
       )}
     >
-      <div className="flex items-center justify-between gap-3 px-4 py-2.5 md:px-6">
-        <div className="flex items-center gap-2.5 min-w-0">
+      <div className="flex items-center justify-between gap-3 px-4 py-2.5 md:px-8">
+        <div className="flex items-center gap-4 min-w-0">
           <span
             className={cn(
-              "inline-flex h-7 w-7 items-center justify-center rounded-full",
+              "inline-flex h-8 w-8 items-center justify-center rounded-xl shadow-lg",
               isAll
-                ? "bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white"
-                : "bg-gradient-to-br from-sky-500 to-indigo-600 text-white"
+                ? "bg-brand-primary text-brand-secondary"
+                : "bg-brand-secondary text-brand-primary"
             )}
           >
-            <Icon className="h-3.5 w-3.5" />
+            <Icon className="h-4 w-4" />
           </span>
-          <div className="min-w-0">
-            <span className="text-[11px] uppercase tracking-wider font-semibold text-indigo-500/80">
-              Viewing
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-[10px] uppercase tracking-widest font-black text-slate-300">
+              Environment:
             </span>
-            <span className="ml-2 text-sm font-semibold text-slate-800 truncate">
+            <span className="text-sm font-black text-brand-primary truncate">
               {label}
             </span>
           </div>
@@ -62,11 +62,11 @@ export function ViewingBranchRibbon({ className }: { className?: string }) {
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 gap-1.5 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-100/60"
+            className="h-9 px-4 gap-2 text-brand-primary hover:text-emerald-700 hover:bg-brand-secondary/50 rounded-xl transition-all border border-brand-primary/5 font-black text-[10px] uppercase tracking-widest"
             onClick={openBranchSelector}
           >
             <Repeat className="h-3.5 w-3.5" />
-            <span className="text-xs font-semibold">Switch</span>
+            Switch Workspace
           </Button>
         )}
       </div>
