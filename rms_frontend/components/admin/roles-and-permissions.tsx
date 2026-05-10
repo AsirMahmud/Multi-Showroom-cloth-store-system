@@ -2,15 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ShieldCheck, Sparkles, UserCheck } from "lucide-react";
+import { Check, ShieldCheck, Sparkles, UserCheck, Search, Filter } from "lucide-react";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { DataPanel } from "@/components/ui/professional";
 import { Badge } from "@/components/ui/badge";
 import {
   Tabs,
@@ -32,34 +26,49 @@ import { accountsApi } from "@/lib/api/accounts";
 import { permissionsApi, type PermissionCatalogItem } from "@/lib/api/permissions";
 import type { Account } from "@/types/hr";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 const CATEGORY_TITLE: Record<PermissionCatalogItem["category"], string> = {
-  global: "Global resources",
-  branch: "Branch operations",
-  system: "System & administration",
+  global: "Global Intelligence",
+  branch: "Local Operations",
+  system: "Core Protocol & Admin",
 };
 
 const ROLE_LABEL: Record<string, string> = {
-  admin: "Admin",
-  branch_manager: "Branch Manager",
-  hr: "HR",
+  admin: "Root Admin",
+  branch_manager: "Node Manager",
+  hr: "Operator",
 };
 
 export function RolesAndPermissions() {
   return (
-    <Tabs defaultValue="grants" className="space-y-4">
-      <TabsList>
-        <TabsTrigger value="grants">
-          <UserCheck className="mr-2 h-4 w-4" /> Per-user grants
+    <Tabs defaultValue="grants" className="space-y-8">
+      <TabsList className="bg-white/50 backdrop-blur-xl border border-brand-primary/5 shadow-premium rounded-2xl p-1 h-auto overflow-x-auto no-scrollbar w-full sm:w-auto">
+        <TabsTrigger 
+          value="grants"
+          className={cn(
+            "flex-1 sm:min-w-[180px] py-2.5 rounded-xl transition-all duration-300 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap",
+            "data-[state=active]:bg-brand-primary data-[state=active]:text-brand-secondary data-[state=active]:shadow-lg data-[state=active]:shadow-brand-primary/20",
+            "text-slate-400 hover:text-slate-600"
+          )}
+        >
+          <UserCheck className="mr-2 h-3.5 w-3.5" /> Identity Overrides
         </TabsTrigger>
-        <TabsTrigger value="cheatsheet">
-          <Sparkles className="mr-2 h-4 w-4" /> Role cheatsheet
+        <TabsTrigger 
+          value="cheatsheet"
+          className={cn(
+            "flex-1 sm:min-w-[180px] py-2.5 rounded-xl transition-all duration-300 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap",
+            "data-[state=active]:bg-brand-primary data-[state=active]:text-brand-secondary data-[state=active]:shadow-lg data-[state=active]:shadow-brand-primary/20",
+            "text-slate-400 hover:text-slate-600"
+          )}
+        >
+          <Sparkles className="mr-2 h-3.5 w-3.5" /> Hierarchy Matrix
         </TabsTrigger>
       </TabsList>
-      <TabsContent value="grants">
+      <TabsContent value="grants" className="focus-visible:outline-none">
         <PerUserGrants />
       </TabsContent>
-      <TabsContent value="cheatsheet">
+      <TabsContent value="cheatsheet" className="focus-visible:outline-none">
         <RoleCheatsheet />
       </TabsContent>
     </Tabs>
@@ -136,30 +145,27 @@ function PerUserGrants() {
   };
 
   return (
-    <Card className="border border-slate-200/80 shadow-sm">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <UserCheck className="h-5 w-5" /> Per-user permission grants
-        </CardTitle>
-        <CardDescription>
-          Pick a user to view their inherited (role) permissions and toggle
-          additional explicit grants. Admins implicitly have every permission.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center">
-          <div className="md:w-80">
+    <DataPanel
+      title="Identity Overrides"
+      description="Inject specific capability overrides into a persona's default hierarchy profile."
+    >
+      <div className="space-y-8">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+          <div className="md:w-96">
             <Select
               value={selectedUserId ? String(selectedUserId) : ""}
               onValueChange={(v) => setSelectedUserId(Number(v))}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a user" />
+              <SelectTrigger className="h-11 bg-slate-50 border-none rounded-xl font-bold text-sm text-brand-primary">
+                <div className="flex items-center gap-2">
+                  <Search className="h-3.5 w-3.5 text-slate-400" />
+                  <SelectValue placeholder="Target Persona" />
+                </div>
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="rounded-xl border-brand-primary/5">
                 {accountsLoading ? (
                   <SelectItem value="loading" disabled>
-                    Loading...
+                    Loading Personnel Directory...
                   </SelectItem>
                 ) : (
                   (accounts ?? []).map((u) => (
@@ -172,18 +178,18 @@ function PerUserGrants() {
             </Select>
           </div>
           {selectedAccount ? (
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">
-                Role: {ROLE_LABEL[selectedAccount.role] ?? selectedAccount.role}
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className="bg-slate-50 text-slate-500 border-slate-100 rounded-lg px-2 py-0.5 text-[10px] font-black uppercase tracking-widest">
+                Tier: {ROLE_LABEL[selectedAccount.role] ?? selectedAccount.role}
               </Badge>
               {selectedAccount.managed_branch_name && (
-                <Badge variant="outline" className="border-indigo-200 bg-indigo-50 text-indigo-700">
-                  Branch: {selectedAccount.managed_branch_name}
+                <Badge className="bg-indigo-50 text-indigo-600 border-indigo-100 rounded-lg px-2 py-0.5 text-[10px] font-black uppercase tracking-widest">
+                  Node: {selectedAccount.managed_branch_name}
                 </Badge>
               )}
               {selectedAccount.role === "admin" ? (
-                <Badge className="bg-amber-100 text-amber-800">
-                  All permissions (implicit)
+                <Badge className="bg-amber-100 text-amber-800 border-none rounded-lg px-2 py-0.5 text-[10px] font-black uppercase tracking-widest shadow-sm shadow-amber-500/20">
+                  ROOT_OMNISCIENCE
                 </Badge>
               ) : null}
             </div>
@@ -191,25 +197,27 @@ function PerUserGrants() {
         </div>
 
         {!selectedUserId ? (
-          <EmptyState message="Select a user to view their permissions." />
+          <EmptyState message="Select an identity node from the selector above to manage overrides." />
         ) : userPermsLoading ? (
-          <div className="space-y-3">
-            <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-32 w-full" />
+          <div className="grid gap-6 lg:grid-cols-3">
+            {[...Array(3)].map((_, i) => (
+              <Skeleton key={i} className="h-64 rounded-3xl" />
+            ))}
           </div>
         ) : (
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid gap-6 lg:grid-cols-3">
             {(["global", "branch", "system"] as const).map((cat) => (
-              <Card
+              <div
                 key={cat}
-                className="border-slate-200/80 bg-gradient-to-br from-white to-slate-50/40"
+                className="bg-slate-50/50 rounded-3xl p-6 border border-slate-100/50"
               >
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-semibold text-slate-800">
+                <div className="mb-6 flex items-center justify-between">
+                  <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-400">
                     {CATEGORY_TITLE[cat]}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
+                  </h4>
+                  <div className="h-1.5 w-1.5 rounded-full bg-brand-primary opacity-20" />
+                </div>
+                <div className="space-y-4">
                   {groupedCatalog[cat].map((p) => {
                     const isDefault = defaultSet.has(p.code);
                     const isGranted = grantedSet.has(p.code);
@@ -222,44 +230,39 @@ function PerUserGrants() {
                     return (
                       <div
                         key={p.code}
-                        className="flex items-start gap-3 rounded-md border border-transparent p-2 hover:border-slate-200 hover:bg-white"
+                        className="group flex items-start gap-4 p-4 bg-white rounded-2xl border border-transparent hover:border-brand-primary/5 hover:shadow-xl hover:shadow-brand-primary/5 transition-all duration-300"
                       >
                         <Switch
                           checked={checked}
                           disabled={disabled}
                           onCheckedChange={(v) => togglePermission(p.code, v)}
+                          className="mt-1 data-[state=checked]:bg-brand-primary"
                         />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-slate-800">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <span className="text-xs font-black text-brand-primary leading-none uppercase tracking-tight">
                               {p.name}
                             </span>
                             {isDefault && (
-                              <Badge
-                                variant="outline"
-                                className="border-emerald-200 bg-emerald-50 text-[10px] text-emerald-700"
-                              >
-                                role default
+                              <Badge className="bg-emerald-50 text-emerald-600 border-none rounded-md px-1.5 h-4 text-[8px] font-black uppercase tracking-tighter">
+                                ROLE_DEF
                               </Badge>
                             )}
                           </div>
-                          <p className="text-xs text-slate-500">
+                          <p className="text-[10px] text-slate-400 font-medium leading-relaxed line-clamp-2">
                             {p.description || p.code}
                           </p>
-                          <code className="mt-0.5 inline-block text-[10px] font-mono text-slate-400">
-                            {p.code}
-                          </code>
                         </div>
                       </div>
                     );
                   })}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </DataPanel>
   );
 }
 
@@ -274,50 +277,56 @@ function RoleCheatsheet() {
   });
 
   if (isLoading || !catalog) {
-    return <Skeleton className="h-64 w-full" />;
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-64 rounded-3xl" />
+      </div>
+    );
   }
 
   const roles: Array<keyof typeof ROLE_LABEL> = ["admin", "branch_manager", "hr"];
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <ShieldCheck className="h-5 w-5" /> Role capability matrix
-        </CardTitle>
-        <CardDescription>
-          What each role can do by default. Specific users can be granted extra
-          codes from the &ldquo;Per-user grants&rdquo; tab.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="overflow-x-auto">
-        <table className="w-full text-sm">
+    <DataPanel
+      title="Hierarchy Matrix"
+      description="Core capability blueprints defined for standard organizational tiers."
+    >
+      <div className="overflow-x-auto -mx-6 px-6">
+        <table className="w-full">
           <thead>
-            <tr className="border-b text-left text-xs uppercase tracking-wider text-slate-500">
-              <th className="py-2 pr-4">Permission</th>
+            <tr className="border-b border-brand-primary/5">
+              <th className="py-5 pr-6 text-left">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Core Capability</span>
+              </th>
               {roles.map((r) => (
-                <th key={r} className="px-2 py-2 text-center">
-                  {ROLE_LABEL[r]}
+                <th key={r} className="px-6 py-5 text-center">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{ROLE_LABEL[r]}</span>
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-brand-primary/5">
             {catalog.map((p) => (
-              <tr key={p.code} className="border-b last:border-0 hover:bg-slate-50/60">
-                <td className="py-2 pr-4">
-                  <div className="font-medium text-slate-800">{p.name}</div>
-                  <div className="text-xs text-slate-500">{p.code}</div>
+              <tr key={p.code} className="group hover:bg-slate-50/50 transition-colors">
+                <td className="py-4 pr-6">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-black text-brand-primary leading-none uppercase tracking-tight group-hover:text-emerald-700 transition-colors">{p.name}</span>
+                    <span className="text-[10px] font-mono text-slate-300 mt-1 uppercase tracking-tighter">{p.code}</span>
+                  </div>
                 </td>
                 {roles.map((r) => {
                   const has = data?.[r as keyof typeof data]?.includes(p.code);
                   return (
-                    <td key={r} className="px-2 py-2 text-center">
-                      {has ? (
-                        <Check className="mx-auto h-4 w-4 text-emerald-600" />
-                      ) : (
-                        <span className="text-slate-300">—</span>
-                      )}
+                    <td key={r} className="px-6 py-4">
+                      <div className="flex justify-center">
+                        {has ? (
+                          <div className="h-7 w-7 rounded-lg bg-emerald-50 flex items-center justify-center">
+                            <Check className="h-4 w-4 text-emerald-600 stroke-[3]" />
+                          </div>
+                        ) : (
+                          <div className="h-1 w-4 rounded-full bg-slate-100" />
+                        )}
+                      </div>
                     </td>
                   );
                 })}
@@ -325,16 +334,18 @@ function RoleCheatsheet() {
             ))}
           </tbody>
         </table>
-      </CardContent>
-    </Card>
+      </div>
+    </DataPanel>
   );
 }
 
 function EmptyState({ message }: { message: string }) {
   return (
-    <div className="rounded-xl border border-dashed bg-slate-50 p-10 text-center">
-      <Sparkles className="mx-auto h-8 w-8 text-slate-400" />
-      <p className="mt-2 text-sm font-medium text-slate-600">{message}</p>
+    <div className="rounded-[40px] border-2 border-dashed border-brand-primary/5 bg-slate-50/50 p-20 text-center flex flex-col items-center">
+      <div className="h-16 w-16 rounded-3xl bg-white shadow-premium flex items-center justify-center mb-6">
+        <Sparkles className="h-8 w-8 text-slate-200" />
+      </div>
+      <p className="text-sm font-black text-slate-400 uppercase tracking-widest">{message}</p>
     </div>
   );
 }

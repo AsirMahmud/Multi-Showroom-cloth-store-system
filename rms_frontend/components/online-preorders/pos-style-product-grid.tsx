@@ -9,6 +9,7 @@ import { useInfiniteProducts } from "@/hooks/queries/useInventory";
 import { Product } from "@/types/inventory";
 import { Discount } from "@/lib/api/ecommerce";
 import { useDebounce } from "@/hooks/use-debounce";
+import { GridSkeleton } from "@/components/ui/professional";
 
 interface POSStyleProductGridProps {
     searchQuery?: string;
@@ -149,11 +150,7 @@ export default function POSStyleProductGrid({
     };
 
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-        );
+        return <GridSkeleton cols={3} rows={2} />;
     }
 
     if (isError) {
@@ -298,8 +295,12 @@ export default function POSStyleProductGrid({
             </div>
 
             {hasNextPage && (
-                <div ref={observerTarget} className="flex justify-center py-4">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary opacity-50"></div>
+                <div ref={observerTarget} className="flex justify-center py-8">
+                    {isFetchingNextPage && (
+                        <div className="w-full">
+                            <GridSkeleton count={4} />
+                        </div>
+                    )}
                 </div>
             )}
         </div>

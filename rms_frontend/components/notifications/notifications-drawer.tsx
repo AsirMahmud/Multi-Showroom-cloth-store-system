@@ -147,8 +147,16 @@ export function NotificationsDrawer() {
         <Separator />
         <ScrollArea className="h-[calc(100vh-80px)]">
           {isLoading ? (
-            <div className="flex items-center justify-center h-32">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
+            <div className="space-y-4 p-4">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex gap-3 animate-pulse">
+                  <div className="h-9 w-9 rounded-full bg-slate-100" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 w-1/2 bg-slate-100 rounded" />
+                    <div className="h-2 w-full bg-slate-100 rounded" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-center px-4">

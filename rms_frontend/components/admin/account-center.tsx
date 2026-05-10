@@ -11,6 +11,8 @@ import {
   ShieldOff,
   UserCog,
   Users2,
+  Filter,
+  X
 } from "lucide-react";
 
 import { accountsApi } from "@/lib/api/accounts";
@@ -18,13 +20,7 @@ import { branchesApi } from "@/lib/api/branches";
 import type { Account } from "@/types/hr";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { DataPanel } from "@/components/ui/professional";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -63,6 +59,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 const ROLE_LABEL: Record<Account["role"], string> = {
   admin: "Admin",
@@ -156,182 +153,184 @@ export function AccountCenter() {
   }, [data]);
 
   return (
-    <Card className="border border-slate-200/80 shadow-sm">
-      <CardHeader>
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <UserCog className="h-5 w-5 text-slate-700" />
-              Account Center
-            </CardTitle>
-            <CardDescription>
-              Manage staff accounts: edit, deactivate, or reset passwords. Admin
-              only.
-            </CardDescription>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <KpiPill label="Total" value={counts.total} />
-            <KpiPill label="Admins" value={counts.admins} tone="amber" />
-            <KpiPill label="Managers" value={counts.managers} tone="indigo" />
-            <KpiPill label="HR" value={counts.hr} tone="emerald" />
-            <KpiPill label="Inactive" value={counts.inactive} tone="rose" />
-          </div>
+    <DataPanel
+      title="Identity Directory"
+      description="Holistic auditing of organizational personas and access hierarchies."
+    >
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-center gap-2">
+          <KpiPill label="Total Nodes" value={counts.total} />
+          <KpiPill label="Supervisors" value={counts.admins} tone="amber" />
+          <KpiPill label="Node Managers" value={counts.managers} tone="indigo" />
+          <KpiPill label="Ops Support" value={counts.hr} tone="emerald" />
+          <KpiPill label="Revoked" value={counts.inactive} tone="rose" />
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative w-full sm:max-w-xs">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name, email, branch..."
-              className="pl-8"
+              placeholder="Search identity or email..."
+              className="pl-10 h-11 bg-slate-50 border-none rounded-xl font-bold text-sm"
             />
           </div>
-          <Select value={roleFilter} onValueChange={setRoleFilter}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Role" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All roles</SelectItem>
-              <SelectItem value="admin">Admins</SelectItem>
-              <SelectItem value="branch_manager">Branch Managers</SelectItem>
-              <SelectItem value="hr">HR</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="active">Active only</SelectItem>
-              <SelectItem value="inactive">Inactive only</SelectItem>
-              <SelectItem value="all">All statuses</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex flex-wrap gap-2">
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="w-[160px] h-11 bg-slate-50 border-none rounded-xl font-bold text-xs uppercase tracking-widest text-brand-primary">
+                <Filter className="h-3.5 w-3.5 mr-2 text-slate-400" />
+                <SelectValue placeholder="Hierarchy" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-brand-primary/5">
+                <SelectItem value="all">All Access</SelectItem>
+                <SelectItem value="admin">Administrators</SelectItem>
+                <SelectItem value="branch_manager">Node Managers</SelectItem>
+                <SelectItem value="hr">Operators</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[160px] h-11 bg-slate-50 border-none rounded-xl font-bold text-xs uppercase tracking-widest text-brand-primary">
+                <Shield className="h-3.5 w-3.5 mr-2 text-slate-400" />
+                <SelectValue placeholder="Integrity" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-brand-primary/5">
+                <SelectItem value="active">Verified Only</SelectItem>
+                <SelectItem value="inactive">Revoked Only</SelectItem>
+                <SelectItem value="all">Universal View</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
-        <div className="overflow-hidden rounded-lg border border-slate-200">
+        <div className="overflow-hidden rounded-[24px] border border-brand-primary/5 shadow-sm">
           <Table>
-            <TableHeader>
-              <TableRow className="bg-slate-50/80">
-                <TableHead>Account</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Branch access</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Last login</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+            <TableHeader className="bg-brand-primary">
+              <TableRow className="hover:bg-brand-primary border-none">
+                <TableHead className="text-brand-secondary font-black text-[10px] uppercase tracking-widest py-4">Identity</TableHead>
+                <TableHead className="text-brand-secondary font-black text-[10px] uppercase tracking-widest py-4">Hierarchy</TableHead>
+                <TableHead className="text-brand-secondary font-black text-[10px] uppercase tracking-widest py-4">Node Boundary</TableHead>
+                <TableHead className="text-brand-secondary font-black text-[10px] uppercase tracking-widest py-4">Integrity</TableHead>
+                <TableHead className="text-brand-secondary font-black text-[10px] uppercase tracking-widest py-4 text-right">Procedures</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 Array.from({ length: 4 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell colSpan={6}>
-                      <Skeleton className="h-10 w-full" />
+                    <TableCell colSpan={5} className="py-8">
+                      <Skeleton className="h-10 w-full rounded-xl" />
                     </TableCell>
                   </TableRow>
                 ))
               ) : error ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-10 text-center text-sm text-rose-600">
-                    Failed to load accounts. Please retry.
+                  <TableCell colSpan={5} className="py-20 text-center">
+                    <p className="text-sm font-black text-rose-500 uppercase tracking-widest">Synchronization Failure</p>
+                    <p className="text-xs text-slate-400 mt-2">Failed to retrieve organizational identity matrix.</p>
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-12 text-center text-sm text-slate-500">
-                    <Users2 className="mx-auto mb-2 h-8 w-8 text-slate-300" />
-                    No accounts match your filters.
+                  <TableCell colSpan={5} className="py-32 text-center">
+                    <Users2 className="mx-auto mb-4 h-12 w-12 text-slate-200" />
+                    <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Null Identity Set</p>
+                    <p className="text-xs text-slate-300 mt-2">No personas match the active filter criteria.</p>
                   </TableCell>
                 </TableRow>
               ) : (
                 filtered.map((account) => (
-                  <TableRow key={account.id} className="hover:bg-slate-50/60">
+                  <TableRow key={account.id} className="group hover:bg-slate-50/50 transition-colors border-brand-primary/5">
                     <TableCell>
-                      <div className="font-medium text-slate-900">
-                        {account.username}
-                        {account.is_superuser ? (
-                          <Shield className="ml-1 inline h-3.5 w-3.5 text-amber-500" />
-                        ) : null}
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        {account.email || "—"}
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-xl bg-brand-secondary text-brand-primary flex items-center justify-center font-black text-xs shadow-sm">
+                          {account.username.slice(0, 2).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-sm font-black text-brand-primary flex items-center gap-1.5">
+                            {account.username}
+                            {account.is_superuser && (
+                              <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-none rounded-md px-1.5 h-4 text-[9px] font-black uppercase tracking-tighter">Root</Badge>
+                            )}
+                          </p>
+                          <p className="text-[10px] font-bold text-slate-400 truncate max-w-[200px]">{account.email || "NO_EMAIL_RECORD"}</p>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
                       <Badge
-                        variant="outline"
-                        className={ROLE_BADGE_CLASS[account.role]}
+                        className={cn(
+                          "rounded-lg px-2 py-0.5 text-[10px] font-black uppercase tracking-widest border-none",
+                          ROLE_BADGE_CLASS[account.role]
+                        )}
                       >
                         {ROLE_LABEL[account.role]}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-xs text-slate-600">
-                      {account.role === "admin" ? (
-                        "All branches"
-                      ) : account.role === "branch_manager" ? (
-                        account.managed_branch_name || "—"
-                      ) : account.hr_branch_names.length > 0 ? (
-                        account.hr_branch_names.join(", ")
-                      ) : (
-                        "All branches"
-                      )}
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Shield className="h-3.5 w-3.5 text-slate-300" />
+                        <p className="text-[11px] font-bold text-slate-600">
+                          {account.role === "admin" ? (
+                            "Global Omniscience"
+                          ) : account.role === "branch_manager" ? (
+                            account.managed_branch_name || "Unassigned"
+                          ) : account.hr_branch_names.length > 0 ? (
+                            account.hr_branch_names.join(", ")
+                          ) : (
+                            "Global Access"
+                          )}
+                        </p>
+                      </div>
                     </TableCell>
                     <TableCell>
                       {account.is_active ? (
-                        <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
-                          <ShieldCheck className="mr-1 h-3 w-3" /> Active
-                        </Badge>
+                        <div className="flex items-center gap-1.5 text-emerald-600">
+                          <ShieldCheck className="h-3.5 w-3.5" />
+                          <span className="text-[10px] font-black uppercase tracking-widest">Verified</span>
+                        </div>
                       ) : (
-                        <Badge variant="outline" className="border-rose-200 bg-rose-50 text-rose-700">
-                          <ShieldOff className="mr-1 h-3 w-3" /> Inactive
-                        </Badge>
+                        <div className="flex items-center gap-1.5 text-rose-500">
+                          <ShieldOff className="h-3.5 w-3.5" />
+                          <span className="text-[10px] font-black uppercase tracking-widest">Revoked</span>
+                        </div>
                       )}
                     </TableCell>
-                    <TableCell className="text-xs text-slate-500">
-                      {account.last_login
-                        ? new Date(account.last_login).toLocaleString()
-                        : "Never"}
-                    </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
+                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
                         <Button
                           variant="ghost"
-                          size="sm"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg text-slate-400 hover:text-brand-primary hover:bg-brand-secondary/50"
                           onClick={() => setEditing(account)}
-                          title="Edit"
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="h-3.5 w-3.5" />
                         </Button>
                         <Button
                           variant="ghost"
-                          size="sm"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg text-slate-400 hover:text-brand-primary hover:bg-brand-secondary/50"
                           onClick={() => setResetting(account)}
-                          title="Reset password"
                         >
-                          <KeyRound className="h-4 w-4" />
+                          <KeyRound className="h-3.5 w-3.5" />
                         </Button>
                         {account.is_active ? (
                           <Button
                             variant="ghost"
-                            size="sm"
+                            size="icon"
+                            className="h-8 w-8 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50"
                             onClick={() => setConfirmDeactivate(account)}
-                            className="text-rose-600 hover:bg-rose-50 hover:text-rose-700"
-                            title="Deactivate"
                           >
-                            <ShieldOff className="h-4 w-4" />
+                            <ShieldOff className="h-3.5 w-3.5" />
                           </Button>
                         ) : (
                           <Button
                             variant="ghost"
-                            size="sm"
+                            size="icon"
+                            className="h-8 w-8 rounded-lg text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50"
                             onClick={() => activateMutation.mutate(account.id)}
-                            className="text-emerald-700 hover:bg-emerald-50"
-                            title="Reactivate"
                           >
-                            <ShieldCheck className="h-4 w-4" />
+                            <ShieldCheck className="h-3.5 w-3.5" />
                           </Button>
                         )}
                       </div>
@@ -342,7 +341,7 @@ export function AccountCenter() {
             </TableBody>
           </Table>
         </div>
-      </CardContent>
+      </div>
 
       <EditAccountDialog
         account={editing}
@@ -363,18 +362,18 @@ export function AccountCenter() {
         open={!!confirmDeactivate}
         onOpenChange={(open) => !open && setConfirmDeactivate(null)}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-[32px] border-none p-8">
           <AlertDialogHeader>
-            <AlertDialogTitle>Deactivate this account?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmDeactivate?.username} will lose access immediately. You
-              can reactivate them later from the same page.
+            <AlertDialogTitle className="text-xl font-black text-brand-primary tracking-tight">Revoke Access?</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-slate-500 font-medium">
+              Person: <span className="font-black text-brand-primary">{confirmDeactivate?.username}</span>. 
+              Revoking access will immediately disconnect this identity from the organizational grid.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="gap-3">
+            <AlertDialogCancel className="h-12 rounded-xl font-bold border-none bg-slate-50">Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-rose-600 hover:bg-rose-700"
+              className="h-12 rounded-xl font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-600/20"
               onClick={() => {
                 if (confirmDeactivate) {
                   deactivateMutation.mutate(confirmDeactivate.id);
@@ -382,12 +381,12 @@ export function AccountCenter() {
                 setConfirmDeactivate(null);
               }}
             >
-              Deactivate
+              Confirm Revocation
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Card>
+    </DataPanel>
   );
 }
 
@@ -401,17 +400,17 @@ function KpiPill({
   tone?: "slate" | "amber" | "indigo" | "emerald" | "rose";
 }) {
   const TONES: Record<string, string> = {
-    slate: "bg-slate-100 text-slate-700",
-    amber: "bg-amber-100 text-amber-800",
-    indigo: "bg-indigo-100 text-indigo-800",
-    emerald: "bg-emerald-100 text-emerald-800",
-    rose: "bg-rose-100 text-rose-700",
+    slate: "bg-slate-100/50 text-slate-500 border-slate-100",
+    amber: "bg-amber-50 text-amber-600 border-amber-100",
+    indigo: "bg-indigo-50 text-indigo-600 border-indigo-100",
+    emerald: "bg-emerald-50 text-emerald-600 border-emerald-100",
+    rose: "bg-rose-50 text-rose-500 border-rose-100",
   };
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-medium ${TONES[tone]}`}>
-      <span className="text-[11px] uppercase tracking-wider opacity-80">{label}</span>
-      <span className="text-sm">{value}</span>
-    </span>
+    <div className={cn("inline-flex items-center gap-2 rounded-xl px-3 py-1.5 border transition-all", TONES[tone])}>
+      <span className="text-[10px] font-black uppercase tracking-widest opacity-70">{label}</span>
+      <span className="text-xs font-black">{value}</span>
+    </div>
   );
 }
 
@@ -427,22 +426,21 @@ function EditAccountDialog({
   onSaved: () => void;
 }) {
   const { toast } = useToast();
-  const [email, setEmail] = useState(account?.email ?? "");
-  const [firstName, setFirstName] = useState(account?.first_name ?? "");
-  const [lastName, setLastName] = useState(account?.last_name ?? "");
-  const [role, setRole] = useState<Account["role"]>(account?.role ?? "hr");
-  const [managedBranch, setManagedBranch] = useState<string>(
-    account?.managed_branch ? String(account.managed_branch) : ""
-  );
+  const [email, setEmail] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [role, setRole] = useState<Account["role"]>("hr");
+  const [managedBranch, setManagedBranch] = useState<string>("");
 
-  // When the dialog reopens with a different account, reset the form.
-  if (account && account.email !== email && email === "" && firstName === "") {
-    setEmail(account.email ?? "");
-    setFirstName(account.first_name ?? "");
-    setLastName(account.last_name ?? "");
-    setRole(account.role);
-    setManagedBranch(account.managed_branch ? String(account.managed_branch) : "");
-  }
+  useMemo(() => {
+    if (account) {
+      setEmail(account.email ?? "");
+      setFirstName(account.first_name ?? "");
+      setLastName(account.last_name ?? "");
+      setRole(account.role);
+      setManagedBranch(account.managed_branch ? String(account.managed_branch) : "");
+    }
+  }, [account]);
 
   const save = useMutation({
     mutationFn: () =>
@@ -471,73 +469,65 @@ function EditAccountDialog({
   return (
     <Dialog
       open={!!account}
-      onOpenChange={(open) => {
-        if (!open) {
-          setEmail("");
-          setFirstName("");
-          setLastName("");
-          setManagedBranch("");
-          onClose();
-        }
-      }}
+      onOpenChange={(open) => !open && onClose()}
     >
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg rounded-[32px] border-none p-8">
         <DialogHeader>
-          <DialogTitle>Edit account</DialogTitle>
-          <DialogDescription>
-            {account?.username} — admin-only change.
+          <DialogTitle className="text-xl font-black text-brand-primary tracking-tight uppercase">Update Personnel Identity</DialogTitle>
+          <DialogDescription className="text-sm text-slate-400 font-medium">
+            Modifying access level for node: <span className="font-bold text-brand-primary">{account?.username}</span>
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-6 sm:grid-cols-2 pt-4">
           <div className="space-y-1.5">
-            <Label htmlFor="edit-first">First name</Label>
+            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">First Name</Label>
             <Input
-              id="edit-first"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
+              className="h-11 bg-slate-50 border-none rounded-xl font-bold text-sm"
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="edit-last">Last name</Label>
+            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Last Name</Label>
             <Input
-              id="edit-last"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
+              className="h-11 bg-slate-50 border-none rounded-xl font-bold text-sm"
             />
           </div>
           <div className="sm:col-span-2 space-y-1.5">
-            <Label htmlFor="edit-email">Email</Label>
+            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Secure Email</Label>
             <Input
-              id="edit-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              className="h-11 bg-slate-50 border-none rounded-xl font-bold text-sm"
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Role</Label>
+            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Access Hierarchy</Label>
             <Select
               value={role}
               onValueChange={(v: Account["role"]) => setRole(v)}
             >
-              <SelectTrigger>
+              <SelectTrigger className="h-11 bg-slate-50 border-none rounded-xl font-bold text-sm">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="admin">Admin</SelectItem>
+              <SelectContent className="rounded-xl border-brand-primary/5">
+                <SelectItem value="admin">Administrator</SelectItem>
                 <SelectItem value="branch_manager">Branch Manager</SelectItem>
-                <SelectItem value="hr">HR</SelectItem>
+                <SelectItem value="hr">Human Resources</SelectItem>
               </SelectContent>
             </Select>
           </div>
           {role === "branch_manager" && (
             <div className="space-y-1.5">
-              <Label>Managed branch</Label>
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Node Assignment</Label>
               <Select value={managedBranch} onValueChange={setManagedBranch}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select branch" />
+                <SelectTrigger className="h-11 bg-slate-50 border-none rounded-xl font-bold text-sm">
+                  <SelectValue placeholder="Select node..." />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-xl border-brand-primary/5">
                   {branches.map((b) => (
                     <SelectItem key={b.id} value={String(b.id)}>
                       {b.name}
@@ -548,15 +538,16 @@ function EditAccountDialog({
             </div>
           )}
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+        <DialogFooter className="gap-3 pt-4">
+          <Button variant="ghost" className="h-12 rounded-xl font-bold text-slate-400" onClick={onClose}>
             Cancel
           </Button>
           <Button
+            className="h-12 rounded-xl font-bold bg-brand-primary text-brand-secondary hover:bg-emerald-900 shadow-lg shadow-brand-primary/20 px-8"
             onClick={() => save.mutate()}
             disabled={save.isPending || (role === "branch_manager" && !managedBranch)}
           >
-            {save.isPending ? "Saving..." : "Save changes"}
+            {save.isPending ? "Syncing..." : "Update Identity"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -597,52 +588,49 @@ function ResetPasswordDialog({
   return (
     <Dialog
       open={!!account}
-      onOpenChange={(open) => {
-        if (!open) {
-          setPw("");
-          setPw2("");
-          onClose();
-        }
-      }}
+      onOpenChange={(open) => !open && onClose()}
     >
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md rounded-[32px] border-none p-8">
         <DialogHeader>
-          <DialogTitle>Reset password</DialogTitle>
-          <DialogDescription>
-            Set a new password for {account?.username}. Share it with them
-            securely.
+          <DialogTitle className="text-xl font-black text-brand-primary tracking-tight uppercase">Credential Reset</DialogTitle>
+          <DialogDescription className="text-sm text-slate-400 font-medium">
+            Generating new security hash for: <span className="font-bold text-brand-primary">{account?.username}</span>
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-3">
+        <div className="space-y-5 pt-4">
           <div className="space-y-1.5">
-            <Label htmlFor="rp-1">New password</Label>
+            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">New Credential</Label>
             <Input
-              id="rp-1"
               type="password"
               value={pw}
               onChange={(e) => setPw(e.target.value)}
-              placeholder="Min 6 characters"
+              placeholder="Entropy minimum: 6 chars"
+              className="h-11 bg-slate-50 border-none rounded-xl font-bold text-sm"
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="rp-2">Confirm password</Label>
+            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Confirm Credential</Label>
             <Input
-              id="rp-2"
               type="password"
               value={pw2}
               onChange={(e) => setPw2(e.target.value)}
+              className="h-11 bg-slate-50 border-none rounded-xl font-bold text-sm"
             />
             {pw && pw2 && pw !== pw2 ? (
-              <p className="text-xs text-rose-600">Passwords don&apos;t match.</p>
+              <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest mt-1 ml-1">Credential Mismatch</p>
             ) : null}
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+        <DialogFooter className="gap-3 pt-6">
+          <Button variant="ghost" className="h-12 rounded-xl font-bold text-slate-400" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={() => reset.mutate()} disabled={!valid || reset.isPending}>
-            {reset.isPending ? "Saving..." : "Update password"}
+          <Button 
+            className="h-12 rounded-xl font-bold bg-brand-primary text-brand-secondary hover:bg-emerald-900 shadow-lg shadow-brand-primary/20 px-8"
+            onClick={() => reset.mutate()} 
+            disabled={!valid || reset.isPending}
+          >
+            {reset.isPending ? "Hashing..." : "Commit Change"}
           </Button>
         </DialogFooter>
       </DialogContent>

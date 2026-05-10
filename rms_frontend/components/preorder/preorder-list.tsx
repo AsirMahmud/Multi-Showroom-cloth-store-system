@@ -72,6 +72,7 @@ import { Preorder } from "@/types/preorder";
 import axios from "@/lib/api/axios-config";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { TableSkeleton } from "@/components/ui/professional";
 
 const STATUS_OPTIONS = [
   { value: "all", label: "All Statuses" },
@@ -326,11 +327,7 @@ export function PreorderList({ source, title = "Preorders", showCreateButton = t
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <TableSkeleton cols={9} />;
   }
 
   return (

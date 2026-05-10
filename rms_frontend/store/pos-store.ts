@@ -193,6 +193,10 @@ export const usePOSStore = create<POSState>((set, get) => ({
             };
             set({ cart: [...cart, newItem] });
         }
+        toast({
+            title: "Added to Cart",
+            description: `${product.name} (${size}, ${color}) added.`,
+        });
         console.log('Updated cart:', get().cart);
     },
 
@@ -210,11 +214,22 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
     handleRemoveItem: (itemId) => {
         const { cart } = get();
+        const itemToRemove = cart.find(i => i.id === itemId);
         set({ cart: cart.filter(item => item.id !== itemId) });
+        if (itemToRemove) {
+            toast({
+                title: "Removed from Cart",
+                description: `${itemToRemove.name} removed.`,
+            });
+        }
     },
 
     handleClearCart: () => {
         set({ cart: [], cartDiscount: null });
+        toast({
+            title: "Cart Cleared",
+            description: "All items have been removed.",
+        });
     },
 
     handleItemDiscount: (itemId, discountType, discountValue) => {

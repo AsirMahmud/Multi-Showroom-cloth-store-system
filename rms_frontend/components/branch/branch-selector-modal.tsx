@@ -133,13 +133,13 @@ export function BranchSelectorModal() {
           </div>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto px-8 py-8 bg-[#f8fafc] dark:bg-slate-950 scrollbar-none hover:scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+          <div className="flex-1 overflow-y-auto px-6 py-6 bg-slate-100/80 dark:bg-slate-950 scrollbar-none hover:scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
             {/* All Branches pinned card - admin only */}
             {isAdmin && (
-              <div className="mb-6">
+              <div className="mb-6 px-2">
                 <div className="flex items-center gap-3 mb-4">
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-300 flex-shrink-0">
-                    Administrative
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 flex-shrink-0">
+                    Administrative Access
                   </span>
                   <div className="h-px flex-1 bg-slate-200" />
                 </div>
@@ -153,9 +153,9 @@ export function BranchSelectorModal() {
               </div>
             )}
 
-            <div className="flex items-center gap-3 mb-4">
-              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-300 flex-shrink-0">
-                {isAdmin ? "Branches" : "Assigned"}
+            <div className="flex items-center gap-3 mb-4 px-2">
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 flex-shrink-0">
+                {isAdmin ? "Organizational Branches" : "Your Workspaces"}
               </span>
               <div className="h-px flex-1 bg-slate-200" />
             </div>
@@ -189,7 +189,7 @@ export function BranchSelectorModal() {
                 )}
               </div>
             ) : (
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 px-2 pb-6">
                 {visibleBranches.map((branch) => (
                   <BranchCard
                     key={branch.id}

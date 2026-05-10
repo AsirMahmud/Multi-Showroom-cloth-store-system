@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 
-type Tone = "brand" | "emerald" | "amber" | "rose" | "slate" | "blue";
+type Tone = "brand" | "emerald" | "amber" | "rose" | "slate" | "blue" | "indigo" | "violet";
 
 const toneStyles: Record<Tone, { icon: string; badge: string; border: string }> = {
   brand: {
@@ -42,6 +42,16 @@ const toneStyles: Record<Tone, { icon: string; badge: string; border: string }> 
     icon: "bg-sky-100 text-sky-700",
     badge: "border-sky-200 bg-sky-50 text-sky-700",
     border: "border-l-sky-500",
+  },
+  indigo: {
+    icon: "bg-indigo-100 text-indigo-700",
+    badge: "border-indigo-200 bg-indigo-50 text-indigo-700",
+    border: "border-l-indigo-500",
+  },
+  violet: {
+    icon: "bg-violet-100 text-violet-700",
+    badge: "border-violet-200 bg-violet-50 text-violet-700",
+    border: "border-l-violet-500",
   },
 };
 
@@ -215,12 +225,82 @@ export function StatusBadge({
   );
 }
 
+export function TableSkeleton({ rows = 5, cols = 4 }: { rows?: number; cols?: number }) {
+  return (
+    <div className="w-full space-y-4">
+      <div className="flex items-center justify-between py-2">
+        <Skeleton className="h-8 w-[200px] rounded-xl" />
+        <Skeleton className="h-8 w-[100px] rounded-xl" />
+      </div>
+      <div className="rounded-2xl border border-slate-100 overflow-hidden bg-white/50">
+        <div className="bg-slate-50/50 p-4 border-b border-slate-100">
+          <div className="flex gap-4">
+            {Array.from({ length: cols }).map((_, i) => (
+              <Skeleton key={i} className="h-4 flex-1 rounded-lg" />
+            ))}
+          </div>
+        </div>
+        {Array.from({ length: rows }).map((_, index) => (
+          <div key={index} className="p-4 border-b border-slate-50 last:border-0">
+            <div className="flex gap-4 items-center">
+              {Array.from({ length: cols }).map((_, i) => (
+                <Skeleton key={i} className="h-4 flex-1 rounded-lg" />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function GridSkeleton({ count = 8 }: { count?: number }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {Array.from({ length: count }).map((_, i) => (
+        <Card key={i} className="rounded-[32px] border-slate-100 overflow-hidden bg-white/50 shadow-sm">
+          <Skeleton className="aspect-square w-full" />
+          <div className="p-5 space-y-3">
+            <Skeleton className="h-4 w-3/4 rounded-lg" />
+            <Skeleton className="h-3 w-1/2 rounded-lg" />
+            <div className="flex justify-between pt-2">
+              <Skeleton className="h-5 w-16 rounded-lg" />
+              <Skeleton className="h-8 w-24 rounded-xl" />
+            </div>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+export function ChartSkeleton() {
+  return (
+    <div className="w-full space-y-6">
+      <div className="flex items-end gap-3 h-[300px] pt-4">
+        {Array.from({ length: 12 }).map((_, i) => (
+          <Skeleton 
+            key={i} 
+            className="flex-1 rounded-t-xl bg-slate-100/50" 
+            style={{ height: `${Math.floor(Math.random() * 60) + 20}%` }} 
+          />
+        ))}
+      </div>
+      <div className="flex justify-between">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-3 w-12 rounded-lg" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function TableShell({
   children,
   isLoading,
   emptyMessage,
   emptyIcon,
-  colSpan = 1,
+  colSpan = 4,
 }: {
   children: ReactNode;
   isLoading?: boolean;
@@ -229,15 +309,7 @@ export function TableShell({
   colSpan?: number;
 }) {
   if (isLoading) {
-    return (
-      <div className="overflow-hidden rounded-lg border border-emerald-900/10 bg-white">
-        {Array.from({ length: 5 }).map((_, index) => (
-          <div key={index} className="border-b border-emerald-900/10 p-4 last:border-0">
-            <Skeleton className="h-9 w-full" />
-          </div>
-        ))}
-      </div>
-    );
+    return <TableSkeleton cols={colSpan} />;
   }
 
   if (emptyMessage) {

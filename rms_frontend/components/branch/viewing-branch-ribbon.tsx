@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Globe2, Repeat } from "lucide-react";
+import { Store, LayoutGrid, Repeat } from "lucide-react";
 
 import { useBranch } from "@/contexts/branch-context";
 import { useAuth } from "@/contexts/auth-context";
@@ -21,7 +21,7 @@ export function ViewingBranchRibbon({ className }: { className?: string }) {
 
   const isAll = selectedBranchId === null;
   const branch = availableBranches.find((b) => b.id === selectedBranchId);
-  const Icon = isAll ? Globe2 : Building2;
+  const Icon = isAll ? LayoutGrid : Store;
   const label = isAll
     ? "All Branches"
     : branch?.name ?? `Branch #${selectedBranchId ?? "—"}`;

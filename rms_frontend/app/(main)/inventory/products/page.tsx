@@ -60,8 +60,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { saveAs } from "file-saver";
-import { Skeleton } from "@/components/ui/skeleton";
+import { motion } from "framer-motion";
+import { useDebounce } from "@/hooks/use-debounce";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { PageHeader, MetricCard, DataPanel, TableSkeleton } from "@/components/ui/professional";
 import type { Product } from "@/types/inventory";
 import {
   AlertDialog,
@@ -74,7 +76,22 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { getImageUrl, slugify } from "@/lib/utils";
+import { getImageUrl, slugify, cn } from "@/lib/utils";
+
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+    },
+  },
+};
+
+const item = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0 },
+};
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -83,7 +100,7 @@ export default function ProductsPage() {
   // Search and Filter State
   const [searchQuery, setSearchQuery] = useState("");
   // Debounce search
-  const [debouncedSearch] = useDebounce(searchQuery, 300);
+  const debouncedSearch = useDebounce(searchQuery, 300);
 
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -145,19 +162,7 @@ export default function ProductsPage() {
 
   const deleteProduct = useDeleteProduct();
 
-  // Helper for debounce
-  function useDebounce<T>(value: T, delay: number): [T] {
-    const [debouncedValue, setDebouncedValue] = useState(value);
-    useEffect(() => {
-      const handler = setTimeout(() => {
-        setDebouncedValue(value);
-      }, delay);
-      return () => {
-        clearTimeout(handler);
-      };
-    }, [value, delay]);
-    return [debouncedValue];
-  }
+  // Helper for debounce is now imported
 
   const handleDeleteProduct = async () => {
     if (!productToDelete) return;
@@ -329,35 +334,29 @@ export default function ProductsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
-        <div className="max-w-7xl mx-auto space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-2">
-              <Skeleton className="h-8 w-48" />
-              <Skeleton className="h-4 w-96" />
-            </div>
-            <Skeleton className="h-10 w-32" />
+      <div className="space-y-8">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-8 w-64 bg-slate-100 animate-pulse rounded-xl" />
+            <div className="h-4 w-96 bg-slate-50 animate-pulse rounded-lg" />
           </div>
-
-          <div className="flex items-center gap-4">
-            <Skeleton className="h-10 w-80" />
-            <Skeleton className="h-10 w-32" />
-            <Skeleton className="h-10 w-32" />
-            <Skeleton className="h-10 w-32" />
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-24 w-full" />
-            ))}
-          </div>
-
-          <div className="grid gap-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-16 w-full" />
-            ))}
-          </div>
+          <div className="h-10 w-32 bg-slate-100 animate-pulse rounded-xl" />
         </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-28 rounded-[24px] bg-slate-100 animate-pulse" />
+          ))}
+        </div>
+
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="h-12 flex-1 bg-slate-50 animate-pulse rounded-xl" />
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-12 w-44 bg-slate-50 animate-pulse rounded-xl" />
+          ))}
+        </div>
+
+        <TableSkeleton cols={7} rows={10} />
       </div>
     );
   }
@@ -608,158 +607,93 @@ export default function ProductsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      <div className="max-w-7xl mx-auto p-6">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-              <ShoppingCart className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-                Products
-              </h1>
-              <p className="text-gray-600 mt-1">
-                Manage your product inventory and stock levels
-              </p>
-            </div>
-          </div>
-          <div className="flex justify-end gap-3">
+    <motion.div
+      variants={container}
+      initial="hidden"
+      animate="show"
+      className="space-y-8"
+    >
+      <PageHeader
+        title="Inventory Matrix"
+        description="Global SKU management and stock-level optimization control center."
+        icon={<ShoppingCart className="h-6 w-6" />}
+        actions={
+          <div className="flex gap-3">
             <Button
               variant="outline"
               onClick={handleDownloadCatalog}
-              className="border-blue-200 hover:bg-blue-50 text-blue-700 shadow-sm"
+              className="h-10 px-4 bg-white border-brand-primary/5 shadow-sm rounded-xl font-bold text-xs uppercase tracking-widest text-brand-primary hover:bg-slate-50"
             >
               <Download className="mr-2 h-4 w-4" />
-              Download Catalog (CSV)
+              Catalog Export
             </Button>
             <Button
               onClick={() => router.push("/inventory/add-product")}
-              className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white shadow-lg"
+              className="h-10 px-4 bg-brand-primary text-brand-secondary hover:bg-emerald-900 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-brand-primary/20"
             >
               <PlusCircle className="mr-2 h-4 w-4" />
-              Add Product
+              Add Node
             </Button>
           </div>
-        </div>
+        }
+      />
 
-        {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-700">
-                Total Products
-              </CardTitle>
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center">
-                <Package className="h-5 w-5 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-gray-900">
-                {isStatsLoading ? "..." : stats.total_products}
-              </div>
-              <p className="text-xs text-blue-600 font-medium mt-1">
-                {isStatsLoading ? "Loading..." : `${stats.active_products} Active Products`}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-700">
-                Total Cost
-              </CardTitle>
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-gray-900">
-                {isStatsLoading ? "..." : `$${stats.total_cost.toLocaleString()}`}
-              </div>
-              <p className="text-xs text-blue-600 font-medium mt-1">
-                Cost Value of Current Stock
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-700">
-                Total Value
-              </CardTitle>
-              <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-gray-900">
-                {isStatsLoading ? "..." : `$${stats.total_value.toLocaleString()}`}
-              </div>
-              <p className="text-xs text-green-600 font-medium mt-1">
-                Total Selling Value
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-700">
-                Potential Profit
-              </CardTitle>
-              <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-green-600">
-                {isStatsLoading ? "..." : `$${stats.potential_profit.toLocaleString()}`}
-              </div>
-              <p className="text-xs text-green-600 font-medium mt-1">
-                Expected Gross Profit
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-700">
-                Low Stock Items
-              </CardTitle>
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center">
-                <AlertTriangle className="h-5 w-5 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-gray-900">
-                {isStatsLoading ? "..." : stats.low_stock_products}
-              </div>
-              <p className="text-xs text-blue-600 font-medium mt-1">
-                Needs attention
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-700">
-                Out of Stock
-              </CardTitle>
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center">
-                <Package className="h-5 w-5 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-gray-900">
-                {isStatsLoading ? "..." : stats.out_of_stock_products}
-              </div>
-              <p className="text-xs text-blue-600 font-medium mt-1">
-                Immediate action required
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <motion.div variants={item}>
+          <MetricCard
+            label="Total Catalog"
+            value={isStatsLoading ? "..." : stats.total_products}
+            icon={<Package className="h-5 w-5" />}
+            tone="brand"
+            helper={isStatsLoading ? "Loading..." : `${stats.active_products} Live SKUs`}
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Capital Invested"
+            value={isStatsLoading ? "..." : `$${stats.total_cost.toLocaleString()}`}
+            icon={<DollarSign className="h-5 w-5" />}
+            tone="brand"
+            helper="Current inventory value"
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Expected Yield"
+            value={isStatsLoading ? "..." : `$${stats.total_value.toLocaleString()}`}
+            icon={<TrendingUp className="h-5 w-5" />}
+            tone="emerald"
+            helper="Potential gross revenue"
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Net Potential"
+            value={isStatsLoading ? "..." : `$${stats.potential_profit.toLocaleString()}`}
+            icon={<DollarSign className="h-5 w-5" />}
+            tone="brand"
+            helper="Projected gross profit"
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Low Stock Alerts"
+            value={isStatsLoading ? "..." : stats.low_stock_products}
+            icon={<AlertTriangle className="h-5 w-5" />}
+            tone="indigo"
+            helper="Restock recommended"
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Stockouts"
+            value={isStatsLoading ? "..." : stats.out_of_stock_products}
+            icon={<Package className="h-5 w-5" />}
+            tone="rose"
+            helper="Critical replenishment"
+          />
+        </motion.div>
+      </div>
 
         {/* Filters */}
         <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm mb-6">
@@ -831,6 +765,71 @@ export default function ProductsPage() {
         </Card>
 
         {/* Products List/Grid */}
+      <DataPanel title="Product Catalog" description="Manage your inventory nodes with granular control over stock, pricing, and distribution.">
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search products..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-11 bg-slate-50/50 border-none rounded-xl focus-visible:ring-brand-primary"
+            />
+          </div>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-[180px] h-11 bg-slate-50/50 border-none rounded-xl focus:ring-brand-primary">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {categoriesData.map((category) => (
+                <SelectItem key={category.id} value={category.id.toString()}>
+                  {category.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[180px] h-11 bg-slate-50/50 border-none rounded-xl focus:ring-brand-primary">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={stockFilter} onValueChange={setStockFilter}>
+            <SelectTrigger className="w-[180px] h-11 bg-slate-50/50 border-none rounded-xl focus:ring-brand-primary">
+              <SelectValue placeholder="Stock" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Stock</SelectItem>
+              <SelectItem value="in_stock">In Stock</SelectItem>
+              <SelectItem value="low_stock">Low Stock</SelectItem>
+              <SelectItem value="out_of_stock">Out of Stock</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="flex bg-slate-50/50 rounded-xl p-1 gap-1">
+            <Button
+              variant={viewMode === "table" ? "secondary" : "ghost"}
+              size="icon"
+              onClick={() => setViewMode("table")}
+              className={cn("h-9 w-9 rounded-lg", viewMode === "table" && "bg-white shadow-sm")}
+            >
+              <List className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "grid" ? "secondary" : "ghost"}
+              size="icon"
+              onClick={() => setViewMode("grid")}
+              className={cn("h-9 w-9 rounded-lg", viewMode === "grid" && "bg-white shadow-sm")}
+            >
+              <Grid3X3 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
         {viewMode === "grid" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProducts.map((product) => (
@@ -838,248 +837,153 @@ export default function ProductsPage() {
             ))}
           </div>
         ) : (
-          <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 border-b">
-              <CardTitle className="text-lg font-semibold text-slate-900">
-                Products List
-              </CardTitle>
-              <CardDescription>
-                {filteredProducts.length} products found
-              </CardDescription>
-            </CardHeader>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Online Cat.</TableHead>
-                    <TableHead>Stock</TableHead>
-                    <TableHead>Price</TableHead>
-                    <TableHead>Sale Price</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Online</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredProducts.map((product) => {
-                    // Get the first image from galleries for display
-                    const firstImage = product.galleries?.[0]?.images?.[0];
-                    const imageUrl = getImageUrl(firstImage?.image);
+          <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50/50 border-b border-slate-100 hover:bg-transparent">
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Product</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Category</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Online Node</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Stock</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Retail</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Sale Price</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Status</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Channels</TableHead>
+                  <TableHead className="text-right text-[10px] font-black uppercase tracking-widest py-4">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredProducts.map((product) => {
+                  const firstImage = product.galleries?.[0]?.images?.[0];
+                  const imageUrl = getImageUrl(firstImage?.image);
 
-                    return (
-                      <TableRow key={product.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            {imageUrl ? (
-                              <div className="w-12 h-12 rounded-lg overflow-hidden border border-gray-200">
-                                <img
-                                  src={imageUrl}
-                                  alt={product.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                            ) : (
-                              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center">
-                                <Package className="h-5 w-5 text-white" />
-                              </div>
-                            )}
-                            <div>
-                              <p className="font-medium">{product.name}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {product.sku}
-                              </p>
-                              {(product.size_type ||
-                                product.size_category ||
-                                product.gender) && (
-                                  <div className="flex gap-1 mt-1">
-                                    {product.size_type && (
-                                      <Badge
-                                        variant="outline"
-                                        className="text-xs bg-blue-100"
-                                      >
-                                        {product.size_type}
-                                      </Badge>
-                                    )}
-                                    {product.size_category && (
-                                      <Badge
-                                        variant="outline"
-                                        className="text-xs bg-emerald-200"
-                                      >
-                                        {product.size_category}
-                                      </Badge>
-                                    )}
-                                    {product.gender && (
-                                      <Badge
-                                        variant="outline"
-                                        className="text-xs bg-red-600 text-white"
-                                      >
-                                        {product.gender}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                )}
+                  return (
+                    <TableRow key={product.id} className="border-b border-slate-50 group hover:bg-slate-50/50 transition-colors">
+                      <TableCell className="py-4">
+                        <div className="flex items-center gap-3">
+                          {imageUrl ? (
+                            <div className="w-10 h-10 rounded-lg overflow-hidden border border-slate-100">
+                              <img src={imageUrl} alt={product.name} className="w-full h-full object-cover" />
                             </div>
+                          ) : (
+                            <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                              <Package className="h-4 w-4 text-slate-400" />
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-xs font-black text-slate-700">{product.name}</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{product.sku}</p>
                           </div>
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {product.category?.name || "Uncategorized"}
-                        </TableCell>
-                        <TableCell className="font-medium text-blue-600">
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-4">
+                        <Badge variant="secondary" className="bg-slate-100 text-slate-500 border-none font-bold text-[9px] uppercase tracking-widest">
+                          {product.category?.name || "N/A"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="py-4">
+                        <span className="text-[10px] font-bold text-brand-primary uppercase tracking-tight">
                           {product.online_categories && product.online_categories.length > 0
                             ? product.online_categories.map(c => c.name).join(", ")
                             : "-"}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <span>{product.stock_quantity}</span>
-                            {product.stock_quantity <= product.minimum_stock && (
-                              <Badge variant="destructive" className="text-xs">
-                                Low Stock
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>${product.selling_price}</TableCell>
-                        <TableCell>
-                          {product.discount_percentage && product.discount_percentage > 0 ? (
-                            <div className="flex flex-col">
-                              <span className="font-bold text-green-600">${product.sale_price}</span>
-                              <span className="text-[10px] text-muted-foreground line-through">${product.selling_price}</span>
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-black text-slate-600">{product.stock_quantity}</span>
+                          {product.stock_quantity <= product.minimum_stock && (
+                            <Badge variant="destructive" className="bg-rose-50 text-rose-600 border-none font-black text-[8px] uppercase">Low</Badge>
                           )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={product.is_active ? "default" : "secondary"}
-                          >
-                            {product.is_active ? "Active" : "Inactive"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant={product.assign_to_online ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => handleToggleOnlineAssignment(product)}
-                            className={`flex items-center gap-2 ${product.assign_to_online
-                              ? "bg-green-600 hover:bg-green-700 text-white"
-                              : "border-gray-300 hover:bg-gray-50"
-                              }`}
-                          >
-                            {product.assign_to_online ? (
-                              <>
-                                <Globe className="h-3 w-3" />
-                                Online
-                              </>
-                            ) : (
-                              <>
-                                <Globe2 className="h-3 w-3" />
-                                Offline
-                              </>
-                            )}
-                          </Button>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                              <DropdownMenuItem
-                                asChild
-                                className="cursor-pointer"
-                              >
-                                <Link href={`/inventory/products/${product.id}`}>
-                                  <Eye className="mr-2 h-4 w-4" />
-                                  View Details
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                asChild
-                                className="cursor-pointer"
-                              >
-                                <Link
-                                  href={`/inventory/edit-product/${product.id}`}
-                                >
-                                  <Edit3 className="mr-2 h-4 w-4" />
-                                  Edit Product
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-destructive cursor-pointer"
-                                onClick={() => setProductToDelete(product)}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete Product
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          </Card>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-4 text-xs font-bold text-slate-600">${product.selling_price}</TableCell>
+                      <TableCell className="py-4 text-xs font-black text-emerald-600">
+                        {product.discount_percentage && product.discount_percentage > 0 ? (
+                          <span>${product.sale_price}</span>
+                        ) : "-"}
+                      </TableCell>
+                      <TableCell className="py-4">
+                        <Badge variant={product.is_active ? "default" : "secondary"} className={cn(
+                          "border-none font-black text-[9px] uppercase tracking-widest",
+                          product.is_active ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"
+                        )}>
+                          {product.is_active ? "Active" : "Inactive"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="py-4">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleToggleOnlineAssignment(product)}
+                          className={cn(
+                            "h-7 px-2 rounded-lg font-black text-[8px] uppercase tracking-widest transition-all",
+                            product.assign_to_online 
+                              ? "bg-indigo-50 text-indigo-600 hover:bg-indigo-100" 
+                              : "bg-slate-50 text-slate-400 hover:bg-slate-100"
+                          )}
+                        >
+                          {product.assign_to_online ? <Globe className="h-2.5 w-2.5 mr-1" /> : <Globe2 className="h-2.5 w-2.5 mr-1" />}
+                          {product.assign_to_online ? "Online" : "Offline"}
+                        </Button>
+                      </TableCell>
+                      <TableCell className="py-4 text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-900"><MoreHorizontal className="h-4 w-4" /></Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48 rounded-xl border-slate-100 shadow-xl">
+                            <DropdownMenuItem asChild className="rounded-lg py-2 cursor-pointer">
+                              <Link href={`/inventory/products/${product.id}`}><Eye className="mr-2 h-4 w-4" /> View Details</Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild className="rounded-lg py-2 cursor-pointer">
+                              <Link href={`/inventory/edit-product/${product.id}`}><Edit3 className="mr-2 h-4 w-4" /> Edit Product</Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-slate-50" />
+                            <DropdownMenuItem className="rounded-lg py-2 text-rose-600 cursor-pointer" onClick={() => setProductToDelete(product)}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete Product
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         )}
 
-        {/* Infinite Scroll Loader and Info */}
-        <div className="flex flex-col items-center justify-center gap-4 py-4 bg-white/50 backdrop-blur-sm p-4 rounded-xl border border-white/20 shadow-sm">
-          <div className="text-sm text-muted-foreground">
-            Showing <span className="font-medium">{products.length}</span> of{" "}
-            <span className="font-medium">{totalCount}</span> products
+        <div className="flex flex-col items-center justify-center gap-4 py-8 mt-6">
+          <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+            Node Count: <span className="text-slate-900">{products.length}</span> of {totalCount} SKUs
           </div>
           {isFetchingNextPage && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-              Loading more products...
+            <div className="w-full space-y-4 py-8">
+              <div className="h-12 bg-slate-50 animate-pulse rounded-2xl w-full" />
+              <div className="h-12 bg-slate-50 animate-pulse rounded-2xl w-full" />
             </div>
           )}
           {!hasNextPage && products.length > 0 && (
-            <div className="text-sm text-muted-foreground">
-              All products loaded
-            </div>
+            <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">Catalog fully synchronized</div>
           )}
-          {/* Intersection observer target */}
           <div ref={observerTarget} className="h-1 w-full" />
         </div>
+      </DataPanel>
 
-        {/* Delete Confirmation Dialog */}
-        <AlertDialog
-          open={!!productToDelete}
-          onOpenChange={() => setProductToDelete(null)}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the
-                product and remove it from our servers.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDeleteProduct}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
-    </div>
+      <AlertDialog open={!!productToDelete} onOpenChange={() => setProductToDelete(null)}>
+        <AlertDialogContent className="rounded-[32px] border-none shadow-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-black text-slate-900">Decommission SKU?</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-500 font-medium">
+              This will permanently remove the product node from the global matrix. This action cannot be reverted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl font-bold uppercase text-[10px] tracking-widest border-slate-100">Abort</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteProduct} className="bg-rose-600 hover:bg-rose-700 rounded-xl font-bold uppercase text-[10px] tracking-widest">Confirm Deletion</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </motion.div>
   );
 }

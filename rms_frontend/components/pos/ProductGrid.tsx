@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { GridSkeleton } from "@/components/ui/professional";
 import { AlertCircle, ShoppingBag, History, Plus, Barcode } from "lucide-react";
 import { useProducts, useInfiniteProducts } from "@/hooks/queries/useInventory";
 import { Product } from "@/types/inventory";
@@ -214,11 +215,7 @@ export default function ProductGrid({
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-      </div>
-    );
+    return <GridSkeleton cols={2} rows={3} />;
   }
 
   if (isError) {
@@ -464,12 +461,19 @@ export default function ProductGrid({
       {hasNextPage && (
         <div
           ref={observerTarget}
-          className="w-full flex justify-center py-4"
+          className="w-full flex justify-center py-8"
         >
           {isFetchingNextPage ? (
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+            <div className="w-full">
+              <GridSkeleton count={4} />
+            </div>
           ) : (
-            <span className="text-xs text-muted-foreground">Load more...</span>
+            <Button 
+              variant="ghost" 
+              className="text-[10px] font-black uppercase tracking-widest text-slate-300 hover:text-brand-primary"
+            >
+              Load more items
+            </Button>
           )}
         </div>
       )}

@@ -3,14 +3,14 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
-  Building2,
-  Globe2,
+  LayoutGrid,
   Loader2,
   MapPin,
   Package,
   Receipt,
   Users,
   Wallet,
+  Store,
 } from "lucide-react";
 
 import { branchesApi, type BranchSummary } from "@/lib/api/branches";
@@ -134,7 +134,7 @@ export function BranchCard({
     retry: 0,
   });
 
-  const Icon = variant === "all" ? Globe2 : Building2;
+  const Icon = variant === "all" ? LayoutGrid : Store;
   const gradient =
     variant === "all" ? ALL_BRANCHES_GRADIENT : BRANCH_GRADIENT;
 
@@ -144,17 +144,15 @@ export function BranchCard({
       onClick={onSelect}
       aria-pressed={selected}
       className={cn(
-        "group relative w-full text-left overflow-hidden rounded-[24px]",
-        "transition-all duration-500 ease-out",
-        "hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2",
+        "group relative w-full text-left overflow-hidden rounded-[24px] transition-all duration-500",
         selected 
-          ? "bg-white ring-2 ring-brand-primary shadow-[0_20px_40px_-12px_rgba(22,54,37,0.1)] z-10" 
-          : "bg-slate-50/80 border border-slate-200 hover:bg-white hover:border-brand-primary/30 hover:shadow-lg"
+          ? "bg-brand-secondary/40 border-2 border-brand-primary shadow-[0_32px_64px_-16px_rgba(22,54,37,0.3)] z-10 scale-[1.03]" 
+          : "bg-white/80 border border-slate-300/60 hover:border-brand-primary/40 hover:shadow-xl hover:-translate-y-1"
       )}
     >
       {/* subtle decorative background */}
-      <div className="absolute top-0 right-0 p-6 opacity-[0.02] group-hover:opacity-[0.04] transition-opacity pointer-events-none">
-        <Icon className="w-24 h-24 rotate-12" />
+      <div className="absolute top-0 right-0 p-5 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity pointer-events-none">
+        <Icon className="w-20 h-20 rotate-12" />
       </div>
 
       <div className="relative p-4">
@@ -193,9 +191,9 @@ export function BranchCard({
           <KpiStrip data={data} loading={isLoading} variant={variant} />
         )}
 
-        <div className="mt-4 pt-3 border-t border-slate-200/50 flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-slate-400">
+        <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-between text-[8px] font-black uppercase tracking-widest text-slate-400">
           <span className="group-hover:text-brand-primary transition-colors">
-            {variant === "all" ? "Organization" : "Branch"}
+            {variant === "all" ? "Organization" : "Branch Workspace"}
           </span>
           <span className="inline-flex items-center gap-1 text-brand-primary group-hover:translate-x-0.5 transition-transform">
             {isLoading && !hideKpis ? (

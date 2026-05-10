@@ -3,16 +3,10 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { Building2, Plus } from "lucide-react";
+import { Building2, Plus, MapPin, Store } from "lucide-react";
 
 import { branchesApi } from "@/lib/api/branches";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { DataPanel } from "@/components/ui/professional";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -20,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BranchCard } from "@/components/branch/branch-card";
 import { useToast } from "@/components/ui/use-toast";
+import { cn } from "@/lib/utils";
 
 export function BranchManagement() {
   const qc = useQueryClient();
@@ -44,16 +39,16 @@ export function BranchManagement() {
       setAddress("");
       qc.invalidateQueries({ queryKey: ["branches"] });
       toast({
-        title: "Branch created",
-        description: "The new branch is now available across the app.",
+        title: "Node Initialized",
+        description: "The organizational branch has been successfully mapped to the grid.",
       });
     },
     onError: (e: unknown) => {
       const message =
         (e as { response?: { data?: { detail?: string } } })?.response?.data
-          ?.detail ?? "Failed to create branch.";
+          ?.detail ?? "Failed to initialize node.";
       toast({
-        title: "Couldn't create branch",
+        title: "Initialization Fault",
         description: message,
         variant: "destructive",
       });
@@ -61,96 +56,88 @@ export function BranchManagement() {
   });
 
   return (
-    <div className="space-y-6">
-      <Card className="border-slate-200/80 shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Building2 className="h-4 w-4 text-indigo-500" />
-            Add a new branch
-          </CardTitle>
-          <CardDescription>
-            Branches isolate stock, sales, expenses and staff records. Catalog
-            data (categories, products, brands) stays shared.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="branch-name">Branch name</Label>
-            <Input
-              id="branch-name"
-              placeholder="e.g. Sylhet Branch"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
+    <div className="space-y-8">
+      <DataPanel
+        title="Node Initialization"
+        description="Expand the organizational grid by provisioning a new branch node."
+      >
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Node Identifier (Name)</Label>
+            <div className="relative">
+              <Store className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="e.g. Dhaka Central Hub"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="pl-10 h-11 bg-slate-50 border-none rounded-xl font-bold text-sm"
+              />
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="branch-address">Address</Label>
-            <Textarea
-              id="branch-address"
-              placeholder="Branch address"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-            />
+          <div className="space-y-1.5">
+            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Geographic Coordinates (Address)</Label>
+            <div className="relative">
+              <MapPin className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+              <Textarea
+                placeholder="Detailed physical address..."
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                className="pl-10 min-h-[44px] bg-slate-50 border-none rounded-xl font-bold text-sm py-3"
+              />
+            </div>
           </div>
           <div className="md:col-span-2">
             <Button
               onClick={() => createBranch.mutate()}
               disabled={!name.trim() || createBranch.isPending}
-              className="gap-1.5"
+              className="h-12 px-8 rounded-xl font-bold bg-brand-primary text-brand-secondary hover:bg-emerald-900 shadow-lg shadow-brand-primary/20 transition-all active:scale-95"
             >
-              <Plus className="h-4 w-4" />
-              {createBranch.isPending ? "Creating..." : "Create branch"}
+              {createBranch.isPending ? "Provisioning Node..." : "Initialize Branch"}
+              <Plus className="ml-2 h-4 w-4" />
             </Button>
           </div>
-        </CardContent>
-      </Card>
-
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h2 className="text-base font-semibold text-slate-800">
-              Existing branches
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              Click a card to drill into staff, sales and KPIs.
-            </p>
-          </div>
         </div>
+      </DataPanel>
 
-        {isLoading ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {[...Array(3)].map((_, i) => (
-              <Skeleton key={i} className="h-[210px] rounded-2xl" />
-            ))}
-          </div>
-        ) : !branches || branches.length === 0 ? (
-          <div className="rounded-xl border border-dashed bg-white p-10 text-center">
-            <Building2 className="mx-auto h-8 w-8 text-muted-foreground" />
-            <p className="mt-2 text-sm font-medium text-foreground">
-              No branches yet
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Use the form above to add your first branch.
-            </p>
-          </div>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {branches.map((branch) => (
-              <BranchCard
-                key={branch.id}
-                variant="branch"
-                branchId={branch.id}
-                name={branch.name}
-                address={branch.address}
-                active={branch.is_active}
-                onSelect={() =>
-                  router.push(`/admin/branches/${branch.id}`)
-                }
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      <DataPanel
+        title="Active Grid Nodes"
+        description="Drill into specific branch infrastructure for staff and inventory auditing."
+      >
+        <div className="space-y-6">
+          {isLoading ? (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {[...Array(3)].map((_, i) => (
+                <Skeleton key={i} className="h-[210px] rounded-[32px]" />
+              ))}
+            </div>
+          ) : !branches || branches.length === 0 ? (
+            <div className="rounded-[40px] border-2 border-dashed border-brand-primary/5 bg-slate-50/50 p-20 text-center flex flex-col items-center">
+              <div className="h-16 w-16 rounded-3xl bg-white shadow-premium flex items-center justify-center mb-6">
+                <Building2 className="h-8 w-8 text-slate-200" />
+              </div>
+              <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Null Node Set</p>
+              <p className="text-xs text-slate-300 mt-2">Initialize your first organizational node using the form above.</p>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {branches.map((branch) => (
+                <div key={branch.id} className="transition-transform duration-300 hover:scale-[1.02] active:scale-98">
+                  <BranchCard
+                    variant="branch"
+                    branchId={branch.id}
+                    name={branch.name}
+                    address={branch.address}
+                    active={branch.is_active}
+                    onSelect={() =>
+                      router.push(`/admin/branches/${branch.id}`)
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </DataPanel>
     </div>
   );
 }

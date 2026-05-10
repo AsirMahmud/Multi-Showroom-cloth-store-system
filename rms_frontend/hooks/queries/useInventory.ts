@@ -11,6 +11,7 @@ import {
 } from '@/lib/api/inventory';
 import { supplierApi } from '@/lib/api/supplier';
 import { useBranch } from '@/contexts/branch-context';
+import { useToast } from '../use-toast';
 import {
     Category,
     Product,
@@ -91,31 +92,37 @@ export const useOnlineCategories = (filters?: string) => {
 
 export const useCreateOnlineCategory = () => {
     const queryClient = useQueryClient();
+    const { toast } = useToast();
     return useMutation({
         mutationFn: onlineCategoriesApi.create,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['online-categories'] });
+            toast({ title: 'Success', description: 'Online category created' });
         },
     });
 };
 
 export const useUpdateOnlineCategory = () => {
     const queryClient = useQueryClient();
+    const { toast } = useToast();
     return useMutation({
         mutationFn: onlineCategoriesApi.update,
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['online-categories'] });
             queryClient.invalidateQueries({ queryKey: ['online-categories', data.id] });
+            toast({ title: 'Success', description: 'Online category updated' });
         },
     });
 };
 
 export const useDeleteOnlineCategory = () => {
     const queryClient = useQueryClient();
+    const { toast } = useToast();
     return useMutation({
         mutationFn: onlineCategoriesApi.delete,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['online-categories'] });
+            toast({ title: 'Success', description: 'Online category deleted' });
         },
     });
 };
@@ -141,32 +148,38 @@ export const useCategory = (id: number) => {
 
 export const useCreateCategory = () => {
     const queryClient = useQueryClient();
+    const { toast } = useToast();
     return useMutation({
         mutationFn: categoriesApi.create,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: inventoryKeys.categories.lists() });
+            toast({ title: 'Success', description: 'Category created' });
         },
     });
 };
 
 export const useUpdateCategory = () => {
     const queryClient = useQueryClient();
+    const { toast } = useToast();
     return useMutation({
         mutationFn: categoriesApi.update,
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: inventoryKeys.categories.lists() });
             queryClient.invalidateQueries({ queryKey: inventoryKeys.categories.detail(data.id) });
+            toast({ title: 'Success', description: 'Category updated' });
         },
     });
 };
 
 export const useDeleteCategory = () => {
     const queryClient = useQueryClient();
+    const { toast } = useToast();
     return useMutation({
         mutationFn: categoriesApi.delete,
         onSuccess: (_, id) => {
             queryClient.invalidateQueries({ queryKey: inventoryKeys.categories.lists() });
             queryClient.invalidateQueries({ queryKey: inventoryKeys.categories.detail(id) });
+            toast({ title: 'Success', description: 'Category deleted' });
         },
     });
 };
@@ -266,37 +279,44 @@ export const useProduct = (id: number) => {
 
 export const useCreateProduct = () => {
     const queryClient = useQueryClient();
+    const { toast } = useToast();
     return useMutation({
         mutationFn: productsApi.create,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: inventoryKeys.products.lists() });
+            toast({ title: 'Success', description: 'Product created' });
         },
     });
 };
 
 export const useUpdateProduct = () => {
     const queryClient = useQueryClient();
+    const { toast } = useToast();
     return useMutation({
         mutationFn: productsApi.update,
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: inventoryKeys.products.lists() });
             queryClient.invalidateQueries({ queryKey: inventoryKeys.products.detail(data.id) });
+            toast({ title: 'Success', description: 'Product updated' });
         },
     });
 };
 
 export const useDeleteProduct = () => {
     const queryClient = useQueryClient();
+    const { toast } = useToast();
     return useMutation({
         mutationFn: productsApi.delete,
         onSuccess: (_, id) => {
             queryClient.invalidateQueries({ queryKey: inventoryKeys.products.lists() });
             queryClient.invalidateQueries({ queryKey: inventoryKeys.products.detail(id) });
+            toast({ title: 'Success', description: 'Product deleted' });
         },
         onError: (error: any) => {
             // Only log actual errors, not successful 204/200 responses
             if (error?.response?.status !== 204 && error?.response?.status !== 200) {
                 console.error('Delete product failed:', error.response?.data || error.message);
+                toast({ title: 'Error', description: 'Failed to delete product', variant: 'destructive' });
             }
         },
     });
@@ -479,6 +499,7 @@ export const useProductSalesHistory = (productId: number, days?: number) => {
 // Add Stock Hook
 export const useAddStock = (productId: number) => {
     const queryClient = useQueryClient();
+    const { toast } = useToast();
     return useMutation({
         mutationFn: ({ variationId, quantity, notes }: { variationId: number; quantity: number; notes?: string }) =>
             productsApi.addStock(productId, variationId, quantity, notes),
@@ -490,6 +511,7 @@ export const useAddStock = (productId: number) => {
             queryClient.invalidateQueries({ queryKey: inventoryKeys.products.stockHistory(productId, 90) });
             queryClient.invalidateQueries({ queryKey: inventoryKeys.dashboard.stockAlerts() });
             queryClient.invalidateQueries({ queryKey: inventoryKeys.dashboard.stockMovementAnalysis('month') });
+            toast({ title: 'Success', description: 'Stock added successfully' });
         },
     });
 }; 

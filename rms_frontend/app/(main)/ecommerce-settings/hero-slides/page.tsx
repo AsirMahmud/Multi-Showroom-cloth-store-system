@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { PageHeader, DataPanel, TableSkeleton } from "@/components/ui/professional"
+import { motion, AnimatePresence } from "framer-motion"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Dialog,
@@ -16,10 +18,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
+import { Badge } from "@/components/ui/badge"
 import {
-  ImageIcon,
+  Image as ImageIcon,
   Plus,
   Edit,
   Trash2,
@@ -32,11 +34,13 @@ import {
   Smartphone,
   Maximize2,
   X,
+  Upload,
 } from "lucide-react"
 
 import { useToast } from "@/hooks/use-toast"
 import { useHeroSlides, useCreateHeroSlide, useUpdateHeroSlide, useDeleteHeroSlide } from "@/hooks/queries/useEcommerce"
 import type { HeroSlide, CreateHeroSlideDTO } from "@/lib/api/ecommerce"
+import { cn } from "@/lib/utils"
 
 const LAYOUT_OPTIONS = [
   { value: "clean-left", label: "Clean Left" },
@@ -45,6 +49,21 @@ const LAYOUT_OPTIONS = [
   { value: "image-showcase", label: "Image Showcase" },
   { value: "bold-left", label: "Bold Left" },
 ]
+
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+    },
+  },
+};
+
+const item = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0 },
+};
 
 const BG_COLOR_OPTIONS = [
   { value: "bg-slate-950", label: "Slate 950", color: "#020617" },
@@ -1178,174 +1197,154 @@ export default function HeroSlidesPage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading hero slides...</p>
-        </div>
-      </div>
-    )
+    return <TableSkeleton cols={6} rows={5} />;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      <div className="max-w-7xl mx-auto p-6">
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                <ImageIcon className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-                  Hero Slides Management
-                </h1>
-                <p className="text-gray-600 mt-1">Manage your hero section slides</p>
-              </div>
-            </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button
-                  onClick={() => handleOpenDialog()}
-                  className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white shadow-lg"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Slide
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-[95vw] w-full h-[90vh] p-0 overflow-hidden flex flex-col bg-white">
-                <DialogHeader className="p-4">
-                  <DialogTitle>{editingSlide ? "Edit Hero Slide" : "Create New Hero Slide"}</DialogTitle>
-                  <DialogDescription>
-                    Configure the slide content, image, and styling. See live preview on the right.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="flex-1 overflow-hidden h-full">
-                  <div className="flex w-full h-full">
-                    {/* Preview Section */}
-                    <div className="flex-1 lg:sticky lg:top-0 h-full overflow-hidden p-4 bg-gray-50/50">
-                      <div className="rounded-lg h-full flex flex-col gap-4 overflow-hidden">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Eye className="h-4 w-4" />
-                            <Label className="text-base font-semibold">Live Preview</Label>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <Tabs
-                              value={previewMode}
-                              onValueChange={(v) => setPreviewMode(v as any)}
-                              className="w-auto"
-                            >
-                              <TabsList className="grid w-full grid-cols-2 h-8">
-                                <TabsTrigger value="desktop" className="px-3">
-                                  <Monitor className="h-4 w-4" />
-                                </TabsTrigger>
-                                <TabsTrigger value="mobile" className="px-3">
-                                  <Smartphone className="h-4 w-4" />
-                                </TabsTrigger>
-                              </TabsList>
-                            </Tabs>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="h-8 w-8 bg-transparent"
-                              onClick={() => setIsFullscreenPreviewOpen(true)}
-                              title="Fullscreen Preview"
-                            >
-                              <Maximize2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+    <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
+      <PageHeader
+        title="Cinematic Storytelling"
+        description="Craft high-impact hero transitions for the global storefront entry point."
+        icon={<ImageIcon className="h-6 w-6" />}
+        actions={
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                onClick={() => handleOpenDialog()}
+                className="h-10 px-4 bg-brand-primary text-brand-secondary hover:bg-emerald-900 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-brand-primary/20"
+              >
+                <Plus className="h-3.5 w-3.5 mr-2" />
+                New Sequence
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-[95vw] w-full h-[90vh] p-0 overflow-hidden flex flex-col bg-white rounded-[32px] border-brand-primary/5 shadow-2xl">
+              <DialogHeader className="p-6 bg-slate-50 border-b border-slate-100">
+                <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Hero Matrix Configuration</DialogTitle>
+                <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  Engineer content, motion assets, and architectural layout.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex-1 overflow-hidden h-full">
+                <div className="flex w-full h-full">
+                  {/* Preview Section */}
+                  <div className="flex-1 lg:sticky lg:top-0 h-full overflow-hidden p-8 bg-slate-100/50">
+                    <div className="rounded-[32px] h-full flex flex-col gap-6 overflow-hidden">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Eye className="h-4 w-4 text-brand-primary" />
+                          <Label className="text-xs font-black uppercase tracking-widest">Protocol Preview</Label>
                         </div>
 
-                        <div
-                          className={`flex-1 overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-white relative transition-all duration-300 ${previewMode === "mobile" ? "flex justify-center items-center p-4 bg-gray-100" : ""
-                            }`}
-                        >
-                          {previewMode === "mobile" ? (
-                            <div className="relative w-[375px] h-[667px] bg-black rounded-[3rem] shadow-xl overflow-hidden border-[8px] border-gray-900 ring-1 ring-gray-900/5">
-                              {/* Notch */}
-                              <div className="absolute top-0 inset-x-0 h-6 bg-gray-900 rounded-b-3xl z-50 w-32 mx-auto"></div>
-                              {/* Screen Content */}
-                              <div className="w-full h-full overflow-y-auto bg-white">
-                                <HeroSlidePreview
-                                  title={formData.title || "Your Title"}
-                                  subtitle={formData.subtitle || "Your subtitle text will appear here"}
-                                  buttonText={formData.button_text || "Shop Now"}
-                                  image={
-                                    imageFile
-                                      ? URL.createObjectURL(imageFile)
-                                      : editingSlide?.image_url || "/placeholder.svg?height=600&width=1200"
-                                  }
-                                  bgColor={formData.bg_color || "bg-slate-950"}
-                                  layout={formData.layout || "clean-left"}
-                                  titleClass={formData.title_class || ""}
-                                  subtitleClass={formData.subtitle_class || ""}
-                                  stats={stats.filter((s) => s.value && s.label)}
-                                />
-                              </div>
-                            </div>
-                          ) : (
-                            <div
-                              className="w-full h-full relative overflow-hidden bg-gray-900 flex items-center justify-center p-4"
-                              ref={setContainerEl}
-                            >
-                              <div
-                                className="origin-center shadow-2xl transition-transform duration-200 ease-out bg-white"
-                                style={{
-                                  width: "1920px",
-                                  height: "1080px",
-                                  transform: `scale(${scale})`,
-                                  // Optional: if scale is small, we might want to center differently, but origin-center works for flex center
-                                }}
-                              >
-                                <HeroSlidePreview
-                                  title={formData.title || "Your Title"}
-                                  subtitle={formData.subtitle || "Your subtitle text will appear here"}
-                                  buttonText={formData.button_text || "Shop Now"}
-                                  image={
-                                    imageFile
-                                      ? URL.createObjectURL(imageFile)
-                                      : editingSlide?.image_url || "/placeholder.svg?height=1080&width=1920"
-                                  }
-                                  bgColor={formData.bg_color || "bg-slate-950"}
-                                  layout={formData.layout || "clean-left"}
-                                  titleClass={formData.title_class || ""}
-                                  subtitleClass={formData.subtitle_class || ""}
-                                  stats={stats.filter((s) => s.value && s.label)}
-                                />
-                              </div>
-                            </div>
-                          )}
+                        <div className="flex items-center gap-2">
+                          <Tabs
+                            value={previewMode}
+                            onValueChange={(v) => setPreviewMode(v as any)}
+                            className="w-auto"
+                          >
+                            <TabsList className="bg-white p-1 rounded-xl h-10 border border-slate-200">
+                              <TabsTrigger value="desktop" className="px-4 rounded-lg data-[state=active]:bg-slate-100 data-[state=active]:shadow-none">
+                                <Monitor className="h-4 w-4" />
+                              </TabsTrigger>
+                              <TabsTrigger value="mobile" className="px-4 rounded-lg data-[state=active]:bg-slate-100 data-[state=active]:shadow-none">
+                                <Smartphone className="h-4 w-4" />
+                              </TabsTrigger>
+                            </TabsList>
+                          </Tabs>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-10 w-10 bg-white rounded-xl border-slate-200"
+                            onClick={() => setIsFullscreenPreviewOpen(true)}
+                          >
+                            <Maximize2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
+
+                      <div
+                        className={cn(
+                          "flex-1 overflow-hidden rounded-[40px] bg-slate-200/50 border-4 border-white shadow-inner relative transition-all duration-500",
+                          previewMode === "mobile" ? "flex justify-center items-center p-8" : ""
+                        )}
+                      >
+                        {previewMode === "mobile" ? (
+                          <div className="relative w-[375px] h-[667px] bg-black rounded-[3.5rem] shadow-[0_0_100px_rgba(0,0,0,0.2)] overflow-hidden border-[12px] border-slate-900 ring-1 ring-slate-900/5">
+                            <div className="absolute top-0 inset-x-0 h-6 bg-slate-900 rounded-b-3xl z-50 w-32 mx-auto"></div>
+                            <div className="w-full h-full overflow-y-auto bg-white">
+                              <HeroSlidePreview
+                                title={formData.title || "Your Title"}
+                                subtitle={formData.subtitle || "Your subtitle text will appear here"}
+                                buttonText={formData.button_text || "Shop Now"}
+                                image={
+                                  imageFile
+                                    ? URL.createObjectURL(imageFile)
+                                    : editingSlide?.image_url || "/placeholder.svg?height=600&width=1200"
+                                }
+                                bgColor={formData.bg_color || "bg-slate-950"}
+                                layout={formData.layout || "clean-left"}
+                                titleClass={formData.title_class || ""}
+                                subtitleClass={formData.subtitle_class || ""}
+                                stats={stats.filter((s) => s.value && s.label)}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div
+                            className="w-full h-full relative overflow-hidden flex items-center justify-center"
+                            ref={setContainerEl}
+                          >
+                            <div
+                              className="origin-center shadow-2xl transition-transform duration-300 ease-out bg-white overflow-hidden rounded-2xl"
+                              style={{
+                                width: "1920px",
+                                height: "1080px",
+                                transform: `scale(${scale})`,
+                              }}
+                            >
+                              <HeroSlidePreview
+                                title={formData.title || "Your Title"}
+                                subtitle={formData.subtitle || "Your subtitle text will appear here"}
+                                buttonText={formData.button_text || "Shop Now"}
+                                image={
+                                  imageFile
+                                    ? URL.createObjectURL(imageFile)
+                                    : editingSlide?.image_url || "/placeholder.svg?height=1080&width=1920"
+                                }
+                                bgColor={formData.bg_color || "bg-slate-950"}
+                                layout={formData.layout || "clean-left"}
+                                titleClass={formData.title_class || ""}
+                                subtitleClass={formData.subtitle_class || ""}
+                                stats={stats.filter((s) => s.value && s.label)}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    {/* Form Section */}
-                    <div className="w-[20%] border-l bg-white h-full flex flex-col overflow-hidden">
-                      {/* Presets Section - Scrollable */}
-                      <div className="p-4 border-b space-y-3 flex-none max-h-[40%] overflow-y-auto pr-2 hover:pr-4 transition-all [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-primary/50 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-primary">
-                        <div className="flex items-center justify-between sticky top-0 bg-white z-10 py-1">
-                          <Label className="text-base font-semibold">Presets</Label>
-                          <p className="text-[10px] text-muted-foreground">Apply ready-made hero layouts</p>
-                        </div>
-                        <div className="grid grid-cols-1 gap-2">
+                  </div>
+
+                  {/* Form Section */}
+                  <div className="w-[30%] border-l bg-white h-full flex flex-col overflow-hidden">
+                    <div className="flex-1 overflow-y-auto p-8 space-y-10 custom-scrollbar">
+                      <div className="space-y-6">
+                        <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 block border-b border-slate-100 pb-2">Predefined Archetypes</Label>
+                        <div className="grid grid-cols-1 gap-3">
                           {HERO_PRESETS.map((preset) => (
                             <button
                               key={preset.key}
                               type="button"
                               onClick={() => applyPreset(preset)}
-                              className="group border rounded-lg p-2 text-left hover:border-primary transition-colors bg-white shadow-sm"
+                              className="group border border-slate-100 rounded-2xl p-4 text-left hover:border-brand-primary/20 hover:bg-slate-50 transition-all bg-white shadow-sm hover:shadow-md"
                             >
                               <div className="flex items-center justify-between">
-                                <div className="space-y-0.5">
-                                  <div className="text-xs font-semibold">{preset.name}</div>
-                                  <div className="text-[10px] text-muted-foreground line-clamp-1">
+                                <div className="space-y-1">
+                                  <div className="text-xs font-black uppercase tracking-tight text-brand-primary">{preset.name}</div>
+                                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter line-clamp-1">
                                     {preset.description}
                                   </div>
                                 </div>
                                 <div
-                                  className="w-6 h-6 rounded-md border shrink-0"
+                                  className="w-10 h-10 rounded-xl border-2 border-white shadow-sm shrink-0"
                                   style={{
                                     backgroundColor:
                                       BG_COLOR_OPTIONS.find((c) => c.value === preset.bg_color)?.color || "#0f172a",
@@ -1357,82 +1356,54 @@ export default function HeroSlidesPage() {
                         </div>
                       </div>
 
-                      {/* Inputs Section - Scrollable */}
-                      <div className="p-4 flex-1 overflow-y-auto space-y-6 pr-2 hover:pr-4 transition-all [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-primary/50 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-primary">
-                        <div className="space-y-4">
-                          <Label className="text-base font-semibold sticky top-0 bg-white z-10 py-1 block">
-                            Settings
-                          </Label>
-                          <div className="space-y-2">
-                            <Label htmlFor="title">Title *</Label>
-                            <Input
-                              id="title"
-                              value={formData.title}
-                              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                              placeholder="FIND YOUR\nSTYLE"
-                              className="h-8 text-sm"
-                            />
-                            <p className="text-[10px] text-gray-500">Use \n for line breaks</p>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="button_text">Button Text</Label>
-                            <Input
-                              id="button_text"
-                              value={formData.button_text}
-                              onChange={(e) => setFormData({ ...formData, button_text: e.target.value })}
-                              placeholder="Shop Now"
-                              className="h-8 text-sm"
-                            />
-                          </div>
-                        </div>
-
+                      <div className="space-y-8">
+                        <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 block border-b border-slate-100 pb-2">Content Matrix</Label>
+                        
                         <div className="space-y-2">
-                          <Label htmlFor="subtitle">Subtitle</Label>
-                          <Textarea
-                            id="subtitle"
-                            value={formData.subtitle}
-                            onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
-                            placeholder="Discover meticulously crafted garments..."
-                            rows={3}
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Headline Designation</Label>
+                          <Input
+                            value={formData.title}
+                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                            placeholder="e.g. CORE\nESSENTIALS"
+                            className="h-12 rounded-xl bg-slate-50 border-none font-bold"
                           />
                         </div>
 
-                        <div className="grid grid-cols-1 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Narrative Deck</Label>
+                          <Textarea
+                            value={formData.subtitle}
+                            onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
+                            placeholder="Primary description text..."
+                            className="rounded-xl bg-slate-50 border-none font-medium min-h-[100px]"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label htmlFor="layout">Layout</Label>
-                            <Select
-                              value={formData.layout}
-                              onValueChange={(value: any) => setFormData({ ...formData, layout: value })}
-                            >
-                              <SelectTrigger className="h-8 text-sm">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Structural Layout</Label>
+                            <Select value={formData.layout} onValueChange={(value: any) => setFormData({ ...formData, layout: value })}>
+                              <SelectTrigger className="h-10 bg-slate-50 border-none rounded-xl font-bold text-[10px] uppercase">
                                 <SelectValue />
                               </SelectTrigger>
-                              <SelectContent>
+                              <SelectContent className="rounded-xl">
                                 {LAYOUT_OPTIONS.map((opt) => (
-                                  <SelectItem key={opt.value} value={opt.value}>
-                                    {opt.label}
-                                  </SelectItem>
+                                  <SelectItem key={opt.value} value={opt.value} className="text-[10px] font-black uppercase">{opt.label}</SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="bg_color">Background Color</Label>
-                            <Select
-                              value={formData.bg_color}
-                              onValueChange={(value) => setFormData({ ...formData, bg_color: value })}
-                            >
-                              <SelectTrigger className="h-8 text-sm">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Chroma Key</Label>
+                            <Select value={formData.bg_color} onValueChange={(value) => setFormData({ ...formData, bg_color: value })}>
+                              <SelectTrigger className="h-10 bg-slate-50 border-none rounded-xl font-bold text-[10px] uppercase">
                                 <SelectValue />
                               </SelectTrigger>
-                              <SelectContent>
+                              <SelectContent className="rounded-xl">
                                 {BG_COLOR_OPTIONS.map((opt) => (
                                   <SelectItem key={opt.value} value={opt.value}>
-                                    <div className="flex items-center gap-2">
-                                      <div
-                                        className="w-3 h-3 rounded border border-gray-300"
-                                        style={{ backgroundColor: opt.color }}
-                                      />
+                                    <div className="flex items-center gap-2 text-[10px] font-black uppercase">
+                                      <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: opt.color }} />
                                       {opt.label}
                                     </div>
                                   </SelectItem>
@@ -1443,270 +1414,134 @@ export default function HeroSlidesPage() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="image">Image *</Label>
-                          {editingSlide?.image_url && !imageFile && (
-                            <img
-                              src={editingSlide.image_url || "/placeholder.svg"}
-                              alt="Current"
-                              className="w-full h-48 object-cover mb-2 border rounded"
-                            />
-                          )}
-                          {imageFile && (
-                            <img
-                              src={URL.createObjectURL(imageFile) || "/placeholder.svg"}
-                              alt="Preview"
-                              className="w-full h-48 object-cover mb-2 border rounded"
-                            />
-                          )}
-                          <Input
-                            id="image"
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-                          />
-                        </div>
-
-                        {/* Title Styling Options */}
-                        <div className="space-y-4 border rounded-lg p-4 bg-gray-50">
-                          <Label className="text-base font-semibold">Title Styling</Label>
-                          <div className="grid grid-cols-1 gap-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="title_size">Title Size</Label>
-                              <Select value={titleSize} onValueChange={setTitleSize}>
-                                <SelectTrigger id="title_size">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {TITLE_SIZE_OPTIONS.map((opt) => (
-                                    <SelectItem key={opt.value} value={opt.value}>
-                                      {opt.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="title_weight">Title Weight</Label>
-                              <Select value={titleWeight} onValueChange={setTitleWeight}>
-                                <SelectTrigger id="title_weight">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {TITLE_WEIGHT_OPTIONS.map((opt) => (
-                                    <SelectItem key={opt.value} value={opt.value}>
-                                      {opt.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="title_leading">Title Line Height</Label>
-                              <Select value={titleLeading} onValueChange={setTitleLeading}>
-                                <SelectTrigger id="title_leading">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {TITLE_LEADING_OPTIONS.map((opt) => (
-                                    <SelectItem key={opt.value} value={opt.value}>
-                                      {opt.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Subtitle Styling Options */}
-                        <div className="space-y-4 border rounded-lg p-4 bg-gray-50">
-                          <Label className="text-base font-semibold">Subtitle Styling</Label>
-                          <div className="space-y-2">
-                            <Label htmlFor="subtitle_size">Subtitle Size</Label>
-                            <Select value={subtitleSize} onValueChange={setSubtitleSize}>
-                              <SelectTrigger id="subtitle_size">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {SUBTITLE_SIZE_OPTIONS.map((opt) => (
-                                  <SelectItem key={opt.value} value={opt.value}>
-                                    {opt.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <Label>Stats</Label>
-                            <Button type="button" variant="outline" size="sm" onClick={handleAddStat}>
-                              <Plus className="h-4 w-4 mr-1" />
-                              Add Stat
-                            </Button>
-                          </div>
-                          {stats.map((stat, index) => (
-                            <div key={index} className="flex gap-2">
-                              <Input
-                                placeholder="Value (e.g., 200+)"
-                                value={stat.value}
-                                onChange={(e) => handleStatChange(index, "value", e.target.value)}
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Visual Asset</Label>
+                          <div className="relative group rounded-[24px] overflow-hidden border-2 border-dashed border-slate-200 hover:border-brand-primary/20 hover:bg-slate-50 transition-all aspect-video flex flex-col items-center justify-center cursor-pointer">
+                            {(imageFile || editingSlide?.image_url) ? (
+                              <img
+                                src={imageFile ? URL.createObjectURL(imageFile) : editingSlide?.image_url || ""}
+                                alt=""
+                                className="absolute inset-0 w-full h-full object-cover"
                               />
-                              <Input
-                                placeholder="Label (e.g., Brands)"
-                                value={stat.label}
-                                onChange={(e) => handleStatChange(index, "label", e.target.value)}
-                              />
-                              <Button type="button" variant="outline" size="sm" onClick={() => handleRemoveStat(index)}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="display_order">Display Order</Label>
+                            ) : (
+                              <div className="flex flex-col items-center">
+                                <Upload className="h-8 w-8 text-slate-300 mb-2" />
+                                <span className="text-[9px] font-black uppercase text-slate-400">Initialize Media</span>
+                              </div>
+                            )}
                             <Input
-                              id="display_order"
-                              type="number"
-                              value={formData.display_order}
-                              onChange={(e) =>
-                                setFormData({
-                                  ...formData,
-                                  display_order: Number.parseInt(e.target.value) || 0,
-                                })
-                              }
-                              className="h-8 text-sm"
-                            />
-                          </div>
-                          <div className="flex items-center justify-between pt-2">
-                            <Label htmlFor="is_active">Active Status</Label>
-                            <Switch
-                              id="is_active"
-                              checked={formData.is_active}
-                              onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                              className="absolute inset-0 opacity-0 cursor-pointer"
                             />
                           </div>
                         </div>
 
-                        <div className="flex justify-end gap-2 pt-4 border-t">
-                          <Button variant="outline" onClick={handleCloseDialog}>
-                            Cancel
-                          </Button>
-                          <Button onClick={handleSubmit}>
-                            <Save className="mr-2 h-4 w-4" />
-                            {editingSlide ? "Update" : "Create"}
-                          </Button>
+                        <div className="space-y-6 pt-4 border-t border-slate-100">
+                          <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 block">Status & Logistics</Label>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Sequence Order</Label>
+                              <Input
+                                type="number"
+                                value={formData.display_order}
+                                onChange={(e) => setFormData({ ...formData, display_order: parseInt(e.target.value) || 0 })}
+                                className="h-10 rounded-xl bg-slate-50 border-none font-black"
+                              />
+                            </div>
+                            <div className="flex items-center justify-between px-4 bg-slate-50 rounded-xl">
+                              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Live</span>
+                              <Switch checked={formData.is_active} onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })} />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
+                    <div className="p-8 bg-slate-50 border-t border-slate-100 flex gap-3">
+                      <Button variant="ghost" onClick={handleCloseDialog} className="flex-1 font-black text-[10px] uppercase tracking-widest h-12">Discard</Button>
+                      <Button onClick={handleSubmit} className="flex-[2] bg-brand-primary text-brand-secondary font-black text-[10px] uppercase tracking-widest h-12 rounded-xl shadow-lg">
+                        {editingSlide ? "Sync Sequence" : "Execute Creation"}
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        }
+      />
 
-        <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold text-gray-900">Hero Slides</CardTitle>
-            <CardDescription>Manage all hero section slides. Drag to reorder or click edit to modify.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {slides && slides.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Order</TableHead>
-                    <TableHead>Image</TableHead>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Layout</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+      <motion.div variants={item}>
+        <DataPanel title="Active Sequence Matrix" description="Manage the sequential flow of high-impact visuals on the global storefront.">
+          {slides && slides.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-100">
+                    <th className="text-left py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 px-2">Flow</th>
+                    <th className="text-left py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Visual Asset</th>
+                    <th className="text-left py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Heading & Narrative</th>
+                    <th className="text-left py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Architecture</th>
+                    <th className="text-left py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
+                    <th className="text-right py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Control</th>
+                  </tr>
+                </thead>
+                <tbody>
                   {slides.map((slide, index) => (
-                    <TableRow key={slide.id}>
-                      <TableCell>
-                        <div className="flex flex-col gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleMoveOrder(slide, "up")}
-                            disabled={index === 0}
-                          >
-                            <ArrowUp className="h-4 w-4" />
-                          </Button>
-                          <span className="text-center">{slide.display_order}</span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleMoveOrder(slide, "down")}
-                            disabled={index === slides.length - 1}
-                          >
-                            <ArrowDown className="h-4 w-4" />
-                          </Button>
+                    <tr key={slide.id} className="group border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                      <td className="py-4 px-2">
+                        <div className="flex flex-col items-center gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => handleMoveOrder(slide, "up")} disabled={index === 0} className="h-6 w-6 rounded-md hover:bg-white"><ArrowUp className="h-3 w-3" /></Button>
+                          <span className="text-xs font-black text-brand-primary">{slide.display_order}</span>
+                          <Button variant="ghost" size="icon" onClick={() => handleMoveOrder(slide, "down")} disabled={index === slides.length - 1} className="h-6 w-6 rounded-md hover:bg-white"><ArrowDown className="h-3 w-3" /></Button>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        {slide.image_url ? (
-                          <img
-                            src={slide.image_url || "/placeholder.svg"}
-                            alt={slide.title}
-                            className="w-20 h-20 object-cover rounded"
-                          />
-                        ) : (
-                          <div className="w-20 h-20 bg-gray-200 rounded flex items-center justify-center">
-                            <ImageIcon className="h-6 w-6 text-gray-400" />
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{slide.title}</div>
-                          {slide.subtitle && (
-                            <div className="text-sm text-gray-500 truncate max-w-xs">{slide.subtitle}</div>
+                      </td>
+                      <td className="py-4">
+                        <div className="w-24 h-16 rounded-xl overflow-hidden border border-slate-100 shadow-sm">
+                          {slide.image_url ? (
+                            <img src={slide.image_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full bg-slate-100 flex items-center justify-center"><ImageIcon className="h-4 w-4 text-slate-300" /></div>
                           )}
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm">
-                          {LAYOUT_OPTIONS.find((o) => o.value === slide.layout)?.label || slide.layout}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Switch checked={slide.is_active} onCheckedChange={() => handleToggleActive(slide)} />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="outline" size="sm" onClick={() => handleOpenDialog(slide)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => handleDelete(slide.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                      </td>
+                      <td className="py-4">
+                        <div className="flex flex-col">
+                          <span className="text-xs font-black text-brand-primary uppercase tracking-tighter">{slide.title.replace('\\n', ' ')}</span>
+                          <span className="text-[10px] font-bold text-slate-400 line-clamp-1 max-w-[200px]">{slide.subtitle}</span>
                         </div>
-                      </TableCell>
-                    </TableRow>
+                      </td>
+                      <td className="py-4">
+                        <Badge className="bg-slate-100 text-slate-600 border-none text-[9px] font-black uppercase tracking-widest">
+                          {LAYOUT_OPTIONS.find((o) => o.value === slide.layout)?.label || slide.layout}
+                        </Badge>
+                      </td>
+                      <td className="py-4">
+                        <Switch checked={slide.is_active} onCheckedChange={() => handleToggleActive(slide)} />
+                      </td>
+                      <td className="py-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(slide)} className="h-8 w-8 rounded-lg hover:bg-white border border-transparent hover:border-slate-100 shadow-sm"><Edit className="h-3.5 w-3.5 text-slate-400" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(slide.id)} className="h-8 w-8 rounded-lg hover:bg-rose-50 border border-transparent hover:border-rose-100 shadow-sm"><Trash2 className="h-3.5 w-3.5 text-rose-400" /></Button>
+                        </div>
+                      </td>
+                    </tr>
                   ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <div className="text-center py-12">
-                <ImageIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">No hero slides yet</p>
-                <Button className="mt-4" onClick={() => handleOpenDialog()}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create First Slide
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="py-24 text-center border-2 border-dashed border-slate-100 rounded-[32px] bg-slate-50/50">
+              <ImageIcon className="h-12 w-12 text-slate-200 mx-auto mb-4" />
+              <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Sequence Null</h3>
+              <p className="text-xs text-slate-300 font-bold mt-1 uppercase tracking-tighter">Initialize your first hero transition to begin the visual stream.</p>
+              <Button onClick={() => handleOpenDialog()} className="mt-8 bg-brand-primary text-brand-secondary font-black text-[10px] uppercase tracking-widest h-10 px-8 rounded-xl shadow-lg">
+                Initialize Sequence
+              </Button>
+            </div>
+          )}
+        </DataPanel>
+      </motion.div>
 
       {/* Fullscreen Preview Modal */}
       <Dialog open={isFullscreenPreviewOpen} onOpenChange={setIsFullscreenPreviewOpen}>
@@ -1715,29 +1550,21 @@ export default function HeroSlidesPage() {
             <Button
               variant="secondary"
               size="icon"
-              className="absolute top-4 right-4 z-50 rounded-full shadow-lg bg-white/20 hover:bg-white/40 text-white border-none"
+              className="absolute top-8 right-8 z-50 rounded-full shadow-2xl bg-white/10 hover:bg-white/20 text-white backdrop-blur-md border-white/20"
               onClick={() => setIsFullscreenPreviewOpen(false)}
             >
               <X className="h-6 w-6" />
             </Button>
-            <div
-              className={`w-full h-full overflow-y-auto ${previewMode === "mobile" ? "flex justify-center items-center bg-gray-900" : ""}`}
-            >
+            <div className={cn("w-full h-full overflow-y-auto", previewMode === "mobile" ? "flex justify-center items-center bg-slate-900" : "")}>
               {previewMode === "mobile" ? (
-                <div className="relative w-[375px] h-[667px] bg-black rounded-[3rem] shadow-xl overflow-hidden border-[8px] border-gray-800 ring-1 ring-gray-700/50 scale-125">
-                  {/* Notch */}
-                  <div className="absolute top-0 inset-x-0 h-6 bg-gray-800 rounded-b-3xl z-50 w-32 mx-auto"></div>
-                  {/* Screen Content */}
+                <div className="relative w-[375px] h-[667px] bg-black rounded-[4rem] shadow-[0_0_150px_rgba(0,0,0,0.5)] overflow-hidden border-[12px] border-slate-800 ring-1 ring-slate-700/50 scale-125">
+                  <div className="absolute top-0 inset-x-0 h-6 bg-slate-800 rounded-b-3xl z-50 w-32 mx-auto"></div>
                   <div className="w-full h-full overflow-y-auto bg-white">
                     <HeroSlidePreview
                       title={formData.title || "Your Title"}
                       subtitle={formData.subtitle || "Your subtitle text will appear here"}
                       buttonText={formData.button_text || "Shop Now"}
-                      image={
-                        imageFile
-                          ? URL.createObjectURL(imageFile)
-                          : editingSlide?.image_url || "/placeholder.svg?height=1080&width=1920"
-                      }
+                      image={imageFile ? URL.createObjectURL(imageFile) : editingSlide?.image_url || "/placeholder.svg"}
                       bgColor={formData.bg_color || "bg-slate-950"}
                       layout={formData.layout || "clean-left"}
                       titleClass={formData.title_class || ""}
@@ -1751,11 +1578,7 @@ export default function HeroSlidesPage() {
                   title={formData.title || "Your Title"}
                   subtitle={formData.subtitle || "Your subtitle text will appear here"}
                   buttonText={formData.button_text || "Shop Now"}
-                  image={
-                    imageFile
-                      ? URL.createObjectURL(imageFile)
-                      : editingSlide?.image_url || "/placeholder.svg?height=1080&width=1920"
-                  }
+                  image={imageFile ? URL.createObjectURL(imageFile) : editingSlide?.image_url || "/placeholder.svg"}
                   bgColor={formData.bg_color || "bg-slate-950"}
                   layout={formData.layout || "clean-left"}
                   titleClass={formData.title_class || ""}
@@ -1764,21 +1587,14 @@ export default function HeroSlidesPage() {
                 />
               )}
             </div>
-
-            {/* Control Bar for Fullscreen */}
-            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md rounded-full px-6 py-3 flex gap-4 z-50">
+            
+            <div className="absolute bottom-12 left-1/2 -translate-x-1/2 bg-black/40 backdrop-blur-2xl rounded-[32px] p-2 flex gap-2 z-50 border border-white/10">
               <Tabs value={previewMode} onValueChange={(v) => setPreviewMode(v as any)} className="w-auto">
-                <TabsList className="bg-white/10 text-white">
-                  <TabsTrigger
-                    value="desktop"
-                    className="px-4 data-[state=active]:bg-white data-[state=active]:text-black"
-                  >
+                <TabsList className="bg-transparent h-12 gap-1 p-0">
+                  <TabsTrigger value="desktop" className="h-10 px-8 rounded-full data-[state=active]:bg-white data-[state=active]:text-black text-white/60 font-black text-[10px] uppercase tracking-widest transition-all">
                     <Monitor className="h-4 w-4 mr-2" /> Desktop
                   </TabsTrigger>
-                  <TabsTrigger
-                    value="mobile"
-                    className="px-4 data-[state=active]:bg-white data-[state=active]:text-black"
-                  >
+                  <TabsTrigger value="mobile" className="h-10 px-8 rounded-full data-[state=active]:bg-white data-[state=active]:text-black text-white/60 font-black text-[10px] uppercase tracking-widest transition-all">
                     <Smartphone className="h-4 w-4 mr-2" /> Mobile
                   </TabsTrigger>
                 </TabsList>
@@ -1787,6 +1603,6 @@ export default function HeroSlidesPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
-  )
+    </motion.div>
+  );
 }

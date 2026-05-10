@@ -1,11 +1,25 @@
+"use client";
+
 import { RoleGuard } from "@/components/auth/role-guard";
 import { BranchManagement } from "@/components/admin/branch-management";
 import { FinancialOverview } from "@/components/admin/financial-overview";
 import { AccountCreateForm } from "@/components/admin/account-create-form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRightLeft, Building2, ShieldCheck, Users, Activity, BarChart3 } from "lucide-react";
+import { PageHeader, DataPanel } from "@/components/ui/professional";
+import { 
+  ArrowRightLeft, 
+  Building2, 
+  ShieldCheck, 
+  Users, 
+  Activity, 
+  BarChart3,
+  LayoutDashboard,
+  Store,
+  UserPlus
+} from "lucide-react";
 import Link from "next/link";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 const adminModules = [
   {
@@ -13,7 +27,7 @@ const adminModules = [
     description: "Manage multiple branches, their inventory, and staff.",
     icon: Building2,
     href: "/admin/branches",
-    color: "text-blue-500",
+    color: "text-blue-600",
     bg: "bg-blue-50",
   },
   {
@@ -21,7 +35,7 @@ const adminModules = [
     description: "Move stock seamlessly between different branches.",
     icon: ArrowRightLeft,
     href: "/admin/transfers",
-    color: "text-emerald-500",
+    color: "text-emerald-600",
     bg: "bg-emerald-50",
   },
   {
@@ -29,7 +43,7 @@ const adminModules = [
     description: "Configure granular access control for your organization.",
     icon: ShieldCheck,
     href: "/admin/roles",
-    color: "text-indigo-500",
+    color: "text-indigo-600",
     bg: "bg-indigo-50",
   },
   {
@@ -37,7 +51,7 @@ const adminModules = [
     description: "Create and manage system users and assign roles.",
     icon: Users,
     href: "/admin/accounts",
-    color: "text-violet-500",
+    color: "text-violet-600",
     bg: "bg-violet-50",
   },
   {
@@ -45,7 +59,7 @@ const adminModules = [
     description: "Track system activities and monitor security events.",
     icon: Activity,
     href: "/admin/audit-log",
-    color: "text-amber-500",
+    color: "text-amber-600",
     bg: "bg-amber-50",
   },
   {
@@ -53,69 +67,132 @@ const adminModules = [
     description: "Global overview of multi-branch revenue and expenses.",
     icon: BarChart3,
     href: "/admin/financial-overview",
-    color: "text-rose-500",
+    color: "text-rose-600",
     bg: "bg-rose-50",
   },
 ];
 
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+    },
+  },
+};
+
+const item = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0 },
+};
+
 export default function AdminPage() {
   return (
     <RoleGuard allow={["admin"]}>
-      <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Admin Control Panel</h1>
-          <p className="text-muted-foreground mt-2">
-            Centralized management for your multi-branch retail system.
-          </p>
-        </div>
+      <motion.div
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="space-y-8"
+      >
+        <PageHeader
+          title="Organization Control"
+          description="Centralized command center for multi-branch retail orchestration and infrastructure management."
+          icon={<LayoutDashboard className="h-6 w-6" />}
+        />
 
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="bg-slate-100/50 p-1">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="branches">Branches</TabsTrigger>
-            <TabsTrigger value="accounts">Create Account</TabsTrigger>
+        <Tabs defaultValue="overview" className="space-y-8">
+          <TabsList className="bg-white/50 backdrop-blur-xl border border-brand-primary/5 shadow-premium rounded-2xl p-1 h-auto overflow-x-auto no-scrollbar">
+            <TabsTrigger 
+              value="overview"
+              className={cn(
+                "flex-1 py-2.5 rounded-xl transition-all duration-300 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap",
+                "data-[state=active]:bg-brand-primary data-[state=active]:text-brand-secondary data-[state=active]:shadow-lg data-[state=active]:shadow-brand-primary/20",
+                "text-slate-400 hover:text-slate-600"
+              )}
+            >
+              <Activity className="h-3.5 w-3.5 mr-2" />
+              Executive Overview
+            </TabsTrigger>
+            <TabsTrigger 
+              value="branches"
+              className={cn(
+                "flex-1 py-2.5 rounded-xl transition-all duration-300 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap",
+                "data-[state=active]:bg-brand-primary data-[state=active]:text-brand-secondary data-[state=active]:shadow-lg data-[state=active]:shadow-brand-primary/20",
+                "text-slate-400 hover:text-slate-600"
+              )}
+            >
+              <Store className="h-3.5 w-3.5 mr-2" />
+              Branch Matrix
+            </TabsTrigger>
+            <TabsTrigger 
+              value="accounts"
+              className={cn(
+                "flex-1 py-2.5 rounded-xl transition-all duration-300 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap",
+                "data-[state=active]:bg-brand-primary data-[state=active]:text-brand-secondary data-[state=active]:shadow-lg data-[state=active]:shadow-brand-primary/20",
+                "text-slate-400 hover:text-slate-600"
+              )}
+            >
+              <UserPlus className="h-3.5 w-3.5 mr-2" />
+              Infrastructure Access
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-8">
-            <FinancialOverview />
+          <TabsContent value="overview" className="space-y-8 focus-visible:outline-none">
+            <motion.div variants={item}>
+              <FinancialOverview />
+            </motion.div>
             
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900 mb-4">Multi-Branch Features</h2>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {adminModules.map((module) => (
-                  <Link key={module.href} href={module.href}>
-                    <Card className="hover:border-slate-300 transition-colors cursor-pointer h-full border-slate-200/80 shadow-sm hover:shadow-md">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg ${module.bg}`}>
-                            <module.icon className={`h-5 w-5 ${module.color}`} />
-                          </div>
-                          <CardTitle className="text-base">{module.title}</CardTitle>
+            <motion.div variants={item}>
+              <DataPanel
+                title="Management Nodes"
+                description="Specialized sub-systems for granular organization control."
+              >
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {adminModules.map((module) => (
+                    <Link key={module.href} href={module.href}>
+                      <div className="group relative p-6 bg-slate-50 rounded-3xl border border-slate-100 hover:bg-white hover:shadow-2xl hover:shadow-brand-primary/5 transition-all duration-500 cursor-pointer overflow-hidden">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                          <module.icon className="h-20 w-20 text-brand-primary" />
                         </div>
-                      </CardHeader>
-                      <CardContent>
-                        <CardDescription className="text-sm">
-                          {module.description}
-                        </CardDescription>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
-              </div>
-            </div>
+                        <div className="relative z-10">
+                          <div className={cn("p-3 rounded-2xl w-fit mb-4 transition-transform duration-500 group-hover:scale-110 shadow-sm", module.bg)}>
+                            <module.icon className={cn("h-6 w-6", module.color)} />
+                          </div>
+                          <h3 className="text-sm font-black text-brand-primary mb-2 uppercase tracking-tight group-hover:text-emerald-700 transition-colors">
+                            {module.title}
+                          </h3>
+                          <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                            {module.description}
+                          </p>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </DataPanel>
+            </motion.div>
           </TabsContent>
 
-          <TabsContent value="branches">
-            <BranchManagement />
+          <TabsContent value="branches" className="focus-visible:outline-none">
+            <motion.div variants={item}>
+              <BranchManagement />
+            </motion.div>
           </TabsContent>
 
-          <TabsContent value="accounts">
-            <div className="max-w-2xl">
-              <AccountCreateForm />
-            </div>
+          <TabsContent value="accounts" className="focus-visible:outline-none">
+            <motion.div variants={item} className="max-w-3xl mx-auto">
+              <DataPanel
+                title="Security Onboarding"
+                description="Initialize high-privilege access accounts for system operators."
+              >
+                <AccountCreateForm />
+              </DataPanel>
+            </motion.div>
           </TabsContent>
         </Tabs>
-      </div>
+      </motion.div>
     </RoleGuard>
   );
 }

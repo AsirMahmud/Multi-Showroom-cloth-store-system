@@ -11,15 +11,30 @@ import {
   DollarSign, 
   Building2,
   FileText,
-  Clock
+  Clock,
+  Activity,
+  CheckCircle2,
+  Banknote,
+  AlertCircle
 } from "lucide-react";
 
 import { hrApi } from "@/lib/api/hr";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAttendance } from "@/hooks/queries/use-hr";
+import { useAttendance, usePayroll } from "@/hooks/queries/use-hr";
+import { MetricCard, DataPanel, PageHeader } from "@/components/ui/professional";
+import { formatCurrency, cn } from "@/lib/utils";
+import { motion } from "framer-motion";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+
+const item = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0 },
+};
 
 export function EmployeeDashboard({ employeeId }: { employeeId: string }) {
   const { data: employee, isLoading: isEmployeeLoading } = useQuery({
@@ -35,177 +50,164 @@ export function EmployeeDashboard({ employeeId }: { employeeId: string }) {
 
   if (isEmployeeLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-16 w-16 rounded-full" />
-          <div className="space-y-2">
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-4 w-32" />
-          </div>
+      <div className="space-y-8">
+        <Skeleton className="h-40 rounded-[32px]" />
+        <div className="grid gap-4 md:grid-cols-2">
+          <Skeleton className="h-64 rounded-[32px]" />
+          <Skeleton className="h-64 rounded-[32px]" />
         </div>
-        <Skeleton className="h-96 w-full" />
       </div>
     );
   }
 
   if (!employee) {
     return (
-      <div className="text-center py-12">
-        <h2 className="text-xl font-semibold text-slate-800">Employee not found</h2>
-        <p className="text-slate-500">The employee record does not exist or you don't have access.</p>
-      </div>
+      <DataPanel title="System Conflict" description="Protocol failure while retrieving personnel node.">
+        <div className="text-center py-12">
+          <AlertCircle className="h-12 w-12 text-rose-500 mx-auto mb-4" />
+          <p className="text-slate-600 font-bold">Employee record not found.</p>
+        </div>
+      </DataPanel>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row gap-6 items-start">
-        <div className="flex items-center gap-4 bg-white p-6 rounded-xl border shadow-sm flex-1 w-full">
-          <div className="h-20 w-20 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-700">
-            <User className="h-10 w-10" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-[#163625]">{employee.full_name}</h1>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge className="bg-[#E4FCD5] text-[#163625] hover:bg-[#E4FCD5]">
-                {employee.designation || "Employee"}
-              </Badge>
-              <Badge variant={employee.is_active ? "default" : "secondary"} className={employee.is_active ? "bg-emerald-500" : ""}>
-                {employee.is_active ? "Active" : "Inactive"}
-              </Badge>
-            </div>
+    <div className="space-y-8">
+      <motion.div variants={item} className="bg-white/50 backdrop-blur-md border border-slate-100 p-8 rounded-[32px] shadow-sm flex flex-col md:flex-row gap-8 items-center">
+        <Avatar className="h-24 w-24 border-4 border-white shadow-xl ring-1 ring-slate-100">
+          <AvatarFallback className="bg-brand-secondary text-brand-primary text-3xl font-black">
+            {employee.full_name.charAt(0).toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1 text-center md:text-left space-y-2">
+          <h1 className="text-3xl font-black text-brand-primary tracking-tight">{employee.full_name}</h1>
+          <div className="flex items-center justify-center md:justify-start gap-2">
+            <Badge className="bg-brand-secondary text-brand-primary border-none font-black text-[10px] uppercase tracking-widest px-3 py-1">
+              {employee.designation || "Personnel"}
+            </Badge>
+            <Badge variant={employee.is_active ? "default" : "secondary"} className={cn(
+              "border-none font-black text-[10px] uppercase tracking-widest px-3 py-1",
+              employee.is_active ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-400"
+            )}>
+              {employee.is_active ? "Active Duty" : "Inactive"}
+            </Badge>
           </div>
         </div>
-        
-        <div className="grid grid-cols-2 gap-4 w-full md:w-auto flex-1">
-          <Card className="bg-white shadow-sm">
-            <CardContent className="p-4 flex items-center gap-3">
-              <Building2 className="h-5 w-5 text-slate-400" />
-              <div>
-                <p className="text-xs text-slate-500">Branch</p>
-                <p className="font-medium text-slate-800">{employee.branch_name || employee.branch}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-white shadow-sm">
-            <CardContent className="p-4 flex items-center gap-3">
-              <DollarSign className="h-5 w-5 text-slate-400" />
-              <div>
-                <p className="text-xs text-slate-500">Base Salary</p>
-                <p className="font-medium text-slate-800">
-                  ${parseFloat(employee.base_salary).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-2 gap-4 w-full md:w-auto">
+          <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
+            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Branch</div>
+            <div className="text-xs font-black text-slate-700">{employee.branch_name || employee.branch}</div>
+          </div>
+          <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
+            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Base Salary</div>
+            <div className="text-xs font-black text-emerald-600">{formatCurrency(parseFloat(employee.base_salary))}</div>
+          </div>
         </div>
-      </div>
+      </motion.div>
 
-      <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="bg-white border mb-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="attendance">Attendance Record</TabsTrigger>
-          <TabsTrigger value="payroll">Payroll</TabsTrigger>
-          <TabsTrigger value="documents" disabled>Documents</TabsTrigger>
+      <Tabs defaultValue="overview" className="space-y-8">
+        <TabsList className="bg-slate-50 border-none p-1 h-12 shadow-inner rounded-2xl flex justify-start gap-1 w-fit">
+          <TabsTrigger value="overview" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-brand-primary data-[state=active]:shadow-sm px-6 font-black text-[10px] uppercase tracking-widest transition-all">
+            Profile
+          </TabsTrigger>
+          <TabsTrigger value="attendance" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-brand-primary data-[state=active]:shadow-sm px-6 font-black text-[10px] uppercase tracking-widest transition-all">
+            Presence
+          </TabsTrigger>
+          <TabsTrigger value="payroll" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-brand-primary data-[state=active]:shadow-sm px-6 font-black text-[10px] uppercase tracking-widest transition-all">
+            Payroll
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Personal Information</CardTitle>
-            </CardHeader>
-            <CardContent className="grid md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <Mail className="h-4 w-4 text-slate-400" />
+        <TabsContent value="overview" className="m-0 space-y-8 focus-visible:outline-none">
+          <DataPanel title="Personal Information" description="Granular log of identity and contact protocols.">
+            <div className="grid md:grid-cols-2 gap-8 pt-4">
+              <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
+                    <Mail className="h-5 w-5" />
+                  </div>
                   <div>
-                    <p className="text-sm text-slate-500">Email Address</p>
-                    <p className="font-medium">{employee.email || "Not provided"}</p>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Communication Node</div>
+                    <div className="text-xs font-black text-slate-700">{employee.email || "Encrypted"}</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Phone className="h-4 w-4 text-slate-400" />
-                  <div>
-                    <p className="text-sm text-slate-500">Phone Number</p>
-                    <p className="font-medium">{employee.phone || "Not provided"}</p>
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
+                    <Phone className="h-5 w-5" />
                   </div>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <Briefcase className="h-4 w-4 text-slate-400" />
                   <div>
-                    <p className="text-sm text-slate-500">Designation</p>
-                    <p className="font-medium">{employee.designation || "Not specified"}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <CalendarDays className="h-4 w-4 text-slate-400" />
-                  <div>
-                    <p className="text-sm text-slate-500">Hire Date</p>
-                    <p className="font-medium">
-                      {employee.hire_date ? format(new Date(employee.hire_date), "MMMM d, yyyy") : "Not recorded"}
-                    </p>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Mobile Uplink</div>
+                    <div className="text-xs font-black text-slate-700">{employee.phone || "Unregistered"}</div>
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="attendance">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Recent Attendance</CardTitle>
-              <CardDescription>A history of recent check-ins and statuses.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isAttendanceLoading ? (
-                <div className="text-center py-4 text-muted-foreground">Loading attendance...</div>
-              ) : employeeAttendance.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground border rounded-lg bg-slate-50 border-dashed">
-                  <Clock className="h-8 w-8 mx-auto mb-2 text-slate-400" />
-                  <p>No attendance records found for this employee.</p>
+              <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
+                    <Briefcase className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Operational Role</div>
+                    <div className="text-xs font-black text-slate-700">{employee.designation || "Generalist"}</div>
+                  </div>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {employeeAttendance.slice(0, 15).map((record) => (
-                    <div key={record.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border">
-                      <div className="flex items-center gap-3">
-                        <CalendarDays className="h-4 w-4 text-slate-500" />
-                        <span className="font-medium">{format(new Date(record.date), "MMMM d, yyyy")}</span>
-                      </div>
-                      <Badge 
-                        variant={record.status === 'present' ? 'default' : record.status === 'absent' ? 'destructive' : 'secondary'}
-                        className={
-                          record.status === 'present' ? 'bg-emerald-500 hover:bg-emerald-600' :
-                          record.status === 'late' ? 'bg-amber-500 hover:bg-amber-600 text-white' :
-                          record.status === 'leave' ? 'bg-blue-500 hover:bg-blue-600 text-white' : ''
-                        }
-                      >
-                        {record.status.toUpperCase()}
-                      </Badge>
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
+                    <CalendarDays className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Onboarding Timestamp</div>
+                    <div className="text-xs font-black text-slate-700">
+                      {employee.hire_date ? format(new Date(employee.hire_date), "MMMM d, yyyy") : "Archive Missing"}
                     </div>
-                  ))}
+                  </div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </div>
+            </div>
+          </DataPanel>
         </TabsContent>
 
-        <TabsContent value="payroll">
+        <TabsContent value="attendance" className="m-0 space-y-8 focus-visible:outline-none">
+          <DataPanel title="Recent Presence" description="Temporal log of daily check-ins and deployment status.">
+            {isAttendanceLoading ? (
+              <div className="text-center py-8 text-slate-400 font-bold uppercase tracking-widest text-[10px]">Synchronizing...</div>
+            ) : employeeAttendance.length === 0 ? (
+              <div className="text-center py-12 text-slate-300">
+                <Clock className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                <p className="font-black text-[10px] uppercase tracking-widest">No presence records found.</p>
+              </div>
+            ) : (
+              <div className="space-y-3 pt-4">
+                {employeeAttendance.slice(0, 15).map((record) => (
+                  <div key={record.id} className="flex items-center justify-between p-4 bg-white/50 backdrop-blur-sm border border-slate-100 rounded-2xl hover:border-brand-primary/10 transition-all">
+                    <div className="flex items-center gap-3">
+                      <CalendarDays className="h-4 w-4 text-slate-400" />
+                      <span className="text-xs font-black text-slate-700">{format(new Date(record.date), "MMMM d, yyyy")}</span>
+                    </div>
+                    <Badge 
+                      className={cn(
+                        "border-none font-black text-[9px] uppercase tracking-widest",
+                        record.status === 'present' ? 'bg-emerald-50 text-emerald-600' :
+                        record.status === 'absent' ? 'bg-rose-50 text-rose-600' :
+                        record.status === 'late' ? 'bg-amber-50 text-amber-600' : 'bg-indigo-50 text-indigo-600'
+                      )}
+                    >
+                      {record.status}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </DataPanel>
+        </TabsContent>
+
+        <TabsContent value="payroll" className="m-0 space-y-8 focus-visible:outline-none">
           <EmployeePayrollTab employeeId={employeeId} />
         </TabsContent>
       </Tabs>
     </div>
   );
 }
-
-import { usePayroll } from "@/hooks/queries/use-hr";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
-import { Banknote, CheckCircle2 } from "lucide-react";
 
 function EmployeePayrollTab({ employeeId }: { employeeId: string }) {
   const { data: payrollData, isLoading } = usePayroll();
@@ -235,55 +237,49 @@ function EmployeePayrollTab({ employeeId }: { employeeId: string }) {
   });
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Payroll Records</CardTitle>
-        <CardDescription>Manage and pay monthly salaries.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <div className="text-center py-4 text-muted-foreground">Loading payroll...</div>
-        ) : employeePayroll.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground border rounded-lg bg-slate-50 border-dashed">
-            <Banknote className="h-8 w-8 mx-auto mb-2 text-slate-400" />
-            <p>No payroll records found for this employee.</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {employeePayroll.map((record) => (
-              <div key={record.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-slate-50 rounded-lg border gap-4">
-                <div>
-                  <p className="font-semibold text-slate-800">
-                    {format(new Date(record.period_start), "MMMM yyyy")}
-                  </p>
-                  <p className="text-sm text-slate-500">
-                    Gross: ${record.gross_amount} | Deductions: ${record.deductions}
-                  </p>
-                </div>
-                <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
-                  <div className="text-lg font-bold text-[#163625]">
-                    ${record.net_amount}
-                  </div>
-                  {record.is_paid ? (
-                    <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 flex items-center gap-1">
-                      <CheckCircle2 className="h-3 w-3" /> Paid
-                    </Badge>
-                  ) : (
-                    <Button 
-                      size="sm" 
-                      className="bg-[#163625] hover:bg-[#1a402d]"
-                      onClick={() => payMutation.mutate(record.id)}
-                      disabled={payMutation.isPending}
-                    >
-                      {payMutation.isPending ? "Processing..." : "Mark as Paid"}
-                    </Button>
-                  )}
-                </div>
+    <DataPanel title="Fiscal Records" description="Management and audit log of monthly salary settlements.">
+      {isLoading ? (
+        <div className="text-center py-8 text-slate-400 font-bold uppercase tracking-widest text-[10px]">Processing matrix...</div>
+      ) : employeePayroll.length === 0 ? (
+        <div className="text-center py-12 text-slate-300">
+          <Banknote className="h-12 w-12 mx-auto mb-2 opacity-20" />
+          <p className="font-black text-[10px] uppercase tracking-widest">No fiscal records found.</p>
+        </div>
+      ) : (
+        <div className="space-y-4 pt-4">
+          {employeePayroll.map((record) => (
+            <div key={record.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 bg-white/50 backdrop-blur-sm border border-slate-100 rounded-[24px] gap-6 group hover:border-brand-primary/10 transition-all">
+              <div>
+                <p className="text-xs font-black text-slate-700">
+                  {format(new Date(record.period_start), "MMMM yyyy")}
+                </p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                  Gross: {formatCurrency(record.gross_amount)} | Delta: {formatCurrency(record.deductions)}
+                </p>
               </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+              <div className="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-end">
+                <div className="text-xl font-black text-brand-primary">
+                  {formatCurrency(record.net_amount)}
+                </div>
+                {record.is_paid ? (
+                  <Badge className="bg-emerald-50 text-emerald-600 border-none font-black text-[9px] uppercase tracking-widest flex items-center gap-1.5 px-3 py-1.5">
+                    <CheckCircle2 className="h-3 w-3" /> Settled
+                  </Badge>
+                ) : (
+                  <Button 
+                    size="sm" 
+                    className="bg-brand-primary text-white hover:bg-brand-primary/90 rounded-xl px-6 h-10 font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand-primary/20 transition-all"
+                    onClick={() => payMutation.mutate(record.id)}
+                    disabled={payMutation.isPending}
+                  >
+                    {payMutation.isPending ? "Syncing..." : "Settle Balance"}
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </DataPanel>
   );
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   LineChart,
@@ -15,6 +14,8 @@ import {
   PieChart,
   Pie,
   Cell,
+  Area,
+  AreaChart
 } from "recharts";
 import {
   Table,
@@ -24,18 +25,36 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { MetricCard, DataPanel, TableSkeleton, ChartSkeleton } from "@/components/ui/professional";
 import { useSalesReport } from "@/hooks/queries/use-reports";
-import { DateRange } from "react-day-picker";
-import { Skeleton } from "@/components/ui/skeleton";
+import { motion } from "framer-motion";
+import { cn, formatCurrency } from "@/lib/utils";
+import { 
+  TrendingUp, 
+  ShoppingCart, 
+  DollarSign, 
+  Package, 
+  CreditCard,
+  Target,
+  Zap,
+  BarChart3,
+  PieChart as PieChartIcon
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 const COLORS = [
-  "#0088FE",
-  "#00C49F",
-  "#FFBB28",
-  "#FF8042",
-  "#8884D8",
-  "#82CA9D",
+  "#163625", // Brand Primary
+  "#34d399", // Emerald
+  "#818cf8", // Indigo
+  "#fbbf24", // Amber
+  "#f472b6", // Pink
+  "#2dd4bf", // Teal
 ];
+
+const item = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0 },
+};
 
 export function SalesReport({
   dateRange,
@@ -46,31 +65,14 @@ export function SalesReport({
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <Card
-              key={i}
-              className="bg-gradient-to-br from-blue-50 to-indigo-100 border-0 shadow-xl"
-            >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <Skeleton className="h-4 w-[100px]" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-8 w-[60px]" />
-                <Skeleton className="h-4 w-[80px] mt-2" />
-              </CardContent>
-            </Card>
+      <div className="space-y-8">
+        <div className="grid gap-6 md:grid-cols-3">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-28 rounded-[24px] bg-slate-100 animate-pulse" />
           ))}
         </div>
-        <Card className="border-0 shadow-lg overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 border-b">
-            <Skeleton className="h-6 w-[200px]" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-[300px] w-full" />
-          </CardContent>
-        </Card>
+        <ChartSkeleton />
+        <TableSkeleton cols={5} rows={5} />
       </div>
     );
   }
@@ -78,257 +80,255 @@ export function SalesReport({
   if (!salesData) return null;
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${parseFloat(salesData.total_sales).toFixed(2)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {salesData.total_orders} orders
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Average Order Value
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${parseFloat(salesData.average_order_value).toFixed(2)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {salesData.total_items_sold} items sold
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Average Item Price
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${parseFloat(salesData.average_item_price).toFixed(2)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {salesData.total_items_sold} items sold
-            </p>
-          </CardContent>
-        </Card>
+    <div className="space-y-8">
+      <div className="grid gap-4 md:grid-cols-3">
+        <motion.div variants={item}>
+          <MetricCard
+            label="Gross Inflow"
+            value={formatCurrency(parseFloat(salesData.total_sales))}
+            icon={<DollarSign className="h-5 w-5" />}
+            tone="brand"
+            helper={`${salesData.total_orders} total transactions`}
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Volume Dispatched"
+            value={salesData.total_items_sold.toString()}
+            icon={<Package className="h-5 w-5" />}
+            tone="emerald"
+            helper="Total units sold"
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Transaction Delta"
+            value={formatCurrency(parseFloat(salesData.average_order_value))}
+            icon={<Zap className="h-5 w-5" />}
+            tone="indigo"
+            helper="Average yield per order"
+          />
+        </motion.div>
       </div>
 
-      <Tabs defaultValue="trend" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="trend">Sales Trend</TabsTrigger>
-          <TabsTrigger value="categories">By Category</TabsTrigger>
-          <TabsTrigger value="products">Top Products</TabsTrigger>
-          <TabsTrigger value="payments">Payment Methods</TabsTrigger>
+      <Tabs defaultValue="trend" className="space-y-8">
+        <TabsList className="bg-slate-50 border-none p-1 h-12 shadow-inner rounded-2xl flex justify-start gap-1 w-fit">
+          <TabsTrigger value="trend" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-brand-primary data-[state=active]:shadow-sm px-6 font-black text-[10px] uppercase tracking-widest transition-all">
+            <BarChart3 className="w-3.5 h-3.5 mr-2" /> Revenue Trend
+          </TabsTrigger>
+          <TabsTrigger value="categories" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-brand-primary data-[state=active]:shadow-sm px-6 font-black text-[10px] uppercase tracking-widest transition-all">
+            <PieChartIcon className="w-3.5 h-3.5 mr-2" /> Category Delta
+          </TabsTrigger>
+          <TabsTrigger value="products" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-brand-primary data-[state=active]:shadow-sm px-6 font-black text-[10px] uppercase tracking-widest transition-all">
+            <Package className="w-3.5 h-3.5 mr-2" /> SKU Performance
+          </TabsTrigger>
+          <TabsTrigger value="payments" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-brand-primary data-[state=active]:shadow-sm px-6 font-black text-[10px] uppercase tracking-widest transition-all">
+            <CreditCard className="w-3.5 h-3.5 mr-2" /> Settlement Nodes
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="trend">
-          <Card>
-            <CardHeader>
-              <CardTitle>Sales Trend</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={salesData.sales_by_date}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <Tooltip />
-                    <Line
-                      type="monotone"
-                      dataKey={(data) => parseFloat(data.total)}
-                      stroke="#8884d8"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="trend" className="m-0 focus-visible:outline-none">
+          <DataPanel title="Revenue Trajectory" description="Temporal analysis of sales inflow across the selected cycle.">
+            <div className="h-[400px] w-full pt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={salesData.sales_by_date}>
+                  <defs>
+                    <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#163625" stopOpacity={0.1}/>
+                      <stop offset="95%" stopColor="#163625" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis 
+                    dataKey="date" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
+                  />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
+                    tickFormatter={(val) => `$${val}`}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      borderRadius: '16px', 
+                      border: 'none', 
+                      boxShadow: '0 20px 50px rgba(0,0,0,0.1)',
+                      fontSize: '12px',
+                      fontWeight: 700
+                    }}
+                  />
+                  <Area type="monotone" dataKey={(data) => parseFloat(data.total)} stroke="#163625" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" name="Gross Sales" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </DataPanel>
         </TabsContent>
 
-        <TabsContent value="categories">
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Sales by Category</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={salesData.sales_by_category}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey={(data) => parseFloat(data.total)}
-                        label={({ category_name, percent }) =>
-                          `${category_name} ${(percent * 100).toFixed(0)}%`
-                        }
-                      >
-                        {salesData.sales_by_category.map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={COLORS[index % COLORS.length]}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
+        <TabsContent value="categories" className="m-0 focus-visible:outline-none">
+          <div className="grid gap-8 md:grid-cols-2">
+            <DataPanel title="Departmental Split" description="Revenue distribution across inventory categories.">
+              <div className="h-[350px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={salesData.sales_by_category}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={5}
+                      dataKey={(data) => parseFloat(data.total)}
+                      nameKey="category_name"
+                    >
+                      {salesData.sales_by_category.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={COLORS[index % COLORS.length]}
+                          className="stroke-white stroke-2"
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </DataPanel>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Category Details</CardTitle>
-              </CardHeader>
-              <CardContent>
+            <DataPanel title="Category Ledger" description="Granular performance metrics per department.">
+              <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Category</TableHead>
-                      <TableHead className="text-right">Sales</TableHead>
-                      <TableHead className="text-right">Items</TableHead>
-                      <TableHead className="text-right">Quantity</TableHead>
+                    <TableRow className="border-b border-slate-100 hover:bg-transparent">
+                      <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4">Department</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4 text-right">Revenue</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4 text-right">Units</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {salesData.sales_by_category.map((category) => (
-                      <TableRow key={category.category_name}>
-                        <TableCell>{category.category_name}</TableCell>
-                        <TableCell className="text-right">
-                          ${parseFloat(category.total).toFixed(2)}
+                      <TableRow key={category.category_name} className="border-b border-slate-50 group hover:bg-slate-50/50 transition-colors">
+                        <TableCell className="py-4">
+                          <span className="text-xs font-bold text-slate-600">{category.category_name}</span>
                         </TableCell>
-                        <TableCell className="text-right">
-                          {category.items_count}
+                        <TableCell className="py-4 text-right font-black text-brand-primary text-xs">
+                          {formatCurrency(parseFloat(category.total))}
                         </TableCell>
-                        <TableCell className="text-right">
-                          {category.quantity_sold}
+                        <TableCell className="py-4 text-right">
+                          <span className="text-xs font-bold text-slate-500">{category.quantity_sold}</span>
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-              </CardContent>
-            </Card>
+              </div>
+            </DataPanel>
           </div>
         </TabsContent>
 
-        <TabsContent value="products">
-          <Card>
-            <CardHeader>
-              <CardTitle>Top Selling Products</CardTitle>
-            </CardHeader>
-            <CardContent>
+        <TabsContent value="products" className="m-0 focus-visible:outline-none">
+          <DataPanel title="High-Velocity Assets" description="Top performing inventory units by revenue yield and profit margin.">
+            <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead className="text-right">Sales</TableHead>
-                    <TableHead className="text-right">Quantity</TableHead>
-                    <TableHead className="text-right">Avg. Price</TableHead>
-                    <TableHead className="text-right">Profit</TableHead>
+                  <TableRow className="border-b border-slate-100 hover:bg-transparent">
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">SKU Identifier</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">Department</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Revenue Yield</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Volume</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Net Margin</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {salesData.top_products.map((product) => (
-                    <TableRow key={product.product_name}>
-                      <TableCell>{product.product_name}</TableCell>
-                      <TableCell>{product.category_name}</TableCell>
-                      <TableCell className="text-right">
-                        ${parseFloat(product.total_sales).toFixed(2)}
+                    <TableRow key={product.product_name} className="border-b border-slate-50 group hover:bg-slate-50/50 transition-colors">
+                      <TableCell className="py-5">
+                        <span className="text-xs font-black text-slate-700">{product.product_name}</span>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="py-5">
+                        <Badge variant="secondary" className="bg-slate-100 text-slate-500 border-none font-bold text-[9px] uppercase tracking-widest">
+                          {product.category_name}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="py-5 text-right font-black text-brand-primary text-xs">
+                        {formatCurrency(parseFloat(product.total_sales))}
+                      </TableCell>
+                      <TableCell className="py-5 text-right font-bold text-slate-500 text-xs">
                         {product.quantity_sold}
                       </TableCell>
-                      <TableCell className="text-right">
-                        ${parseFloat(product.average_price).toFixed(2)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        ${parseFloat(product.profit).toFixed(2)}
+                      <TableCell className="py-5 text-right font-black text-emerald-600 text-xs">
+                        {formatCurrency(parseFloat(product.profit))}
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
+            </div>
+          </DataPanel>
         </TabsContent>
 
-        <TabsContent value="payments">
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Payment Methods</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={salesData.payment_methods}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="payment_method" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar
-                        dataKey={(data) => parseFloat(data.total)}
-                        fill="#8884d8"
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
+        <TabsContent value="payments" className="m-0 focus-visible:outline-none">
+          <div className="grid gap-8 md:grid-cols-2">
+            <DataPanel title="Settlement Distribution" description="Primary channels used for transaction clearing.">
+              <div className="h-[350px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={salesData.payment_methods}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis 
+                      dataKey="payment_method" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
+                    />
+                    <YAxis 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
+                    />
+                    <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }} />
+                    <Bar
+                      dataKey={(data) => parseFloat(data.total)}
+                      fill="#163625"
+                      radius={[8, 8, 0, 0]}
+                      name="Total Settled"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </DataPanel>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Payment Details</CardTitle>
-              </CardHeader>
-              <CardContent>
+            <DataPanel title="Liquidity Nodes" description="Detailed breakdown of payment provider performance.">
+              <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Method</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead className="text-right">Orders</TableHead>
-                      <TableHead className="text-right">Items</TableHead>
+                    <TableRow className="border-b border-slate-100 hover:bg-transparent">
+                      <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4">Method</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4 text-right">Total Settled</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4 text-right">Orders</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {salesData.payment_methods.map((method) => (
-                      <TableRow key={method.payment_method}>
-                        <TableCell>{method.payment_method}</TableCell>
-                        <TableCell className="text-right">
-                          ${parseFloat(method.total).toFixed(2)}
+                      <TableRow key={method.payment_method} className="border-b border-slate-50 group hover:bg-slate-50/50 transition-colors">
+                        <TableCell className="py-4">
+                          <Badge variant="secondary" className="bg-indigo-50 text-indigo-700 border-none font-black text-[9px] uppercase tracking-widest">
+                            {method.payment_method}
+                          </Badge>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="py-4 text-right font-black text-brand-primary text-xs">
+                          {formatCurrency(parseFloat(method.total))}
+                        </TableCell>
+                        <TableCell className="py-4 text-right font-bold text-slate-500 text-xs">
                           {method.orders_count}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {method.items_count}
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-              </CardContent>
-            </Card>
+              </div>
+            </DataPanel>
           </div>
         </TabsContent>
       </Tabs>

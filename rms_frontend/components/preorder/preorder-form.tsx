@@ -44,6 +44,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { GridSkeleton } from "@/components/ui/professional";
 
 const formSchema = z.object({
   customer_name: z.string().min(1, "Customer name is required"),
@@ -384,11 +385,7 @@ export function PreorderForm({
   }
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <GridSkeleton cols={2} rows={4} />;
   }
 
   return (

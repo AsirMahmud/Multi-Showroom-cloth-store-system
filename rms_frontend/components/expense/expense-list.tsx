@@ -58,6 +58,7 @@ import { useCategories } from "@/hooks/queries/use-expenses";
 import { Expense, ExpenseCategory } from "@/lib/api/expenses";
 import { formatCurrency } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { TableSkeleton } from "@/components/ui/professional";
 
 export function ExpenseList() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -74,14 +75,7 @@ export function ExpenseList() {
   const rejectExpense = useRejectExpense();
 
   if (isLoadingExpenses || isLoadingCategories) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-          <p className="text-muted-foreground">Loading expenses...</p>
-        </div>
-      </div>
-    );
+    return <TableSkeleton cols={6} />;
   }
 
   const filteredExpenses =

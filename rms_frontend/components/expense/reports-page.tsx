@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 import { useDashboardStats } from "@/hooks/queries/use-expenses";
 import { formatCurrency } from "@/lib/utils";
+import { ChartSkeleton } from "@/components/ui/professional";
 
 const COLORS = [
   "#0088FE",
@@ -58,11 +59,9 @@ export function ReportsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-          <p className="text-muted-foreground">Loading reports...</p>
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <ChartSkeleton />
+        <ChartSkeleton />
       </div>
     );
   }
