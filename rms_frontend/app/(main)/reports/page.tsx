@@ -17,6 +17,7 @@ import { DateRange } from "react-day-picker";
 import { useOverviewReport } from "@/hooks/queries/use-reports";
 import { PreorderReport } from "@/components/reports/preorder-report";
 import { OnlinePreorderAnalytics } from "@/components/reports/online-preorder-analytics";
+import { IntegrityReport } from "@/components/reports/integrity-report";
 import {
   LineChart,
   Line,
@@ -77,7 +78,7 @@ export default function ReportsPage() {
     switch (selectedFilter) {
       case "all-time":
         return {
-          from: new Date(2020, 0, 1), // Start from 2020 or adjust as needed
+          from: new Date(0),
           to: now,
         };
       case "today":
@@ -136,30 +137,31 @@ export default function ReportsPage() {
   const { data: overviewData, isLoading: isLoadingOverview } =
     useOverviewReport(dateRange);
 
-  const combinedChartData = overviewData
-    ? overviewData.sales_by_date.map((sale) => {
-        const expense = overviewData.expenses_by_date.find(
-          (exp) => exp.date === sale.date
-        );
-        return {
-          date: sale.date,
-          sales: parseFloat(sale.total),
-          expenses: expense ? parseFloat(expense.total) : 0,
-        };
-      })
-    : [];
+  const combinedChartData = useMemo(() => {
+    if (!overviewData) {
+      return [];
+    }
+
+    const salesMap = Object.fromEntries(
+      overviewData.sales_by_date.map((sale) => [sale.date, parseFloat(sale.total)])
+    );
+    const expenseMap = Object.fromEntries(
+      overviewData.expenses_by_date.map((expense) => [expense.date, parseFloat(expense.total)])
+    );
+    const allDates = Array.from(
+      new Set([...Object.keys(salesMap), ...Object.keys(expenseMap)])
+    ).sort();
+
+    return allDates.map((date) => ({
+      date,
+      sales: salesMap[date] || 0,
+      expenses: expenseMap[date] || 0,
+    }));
+  }, [overviewData]);
 
   const formattedDateRange = {
     from: dateRange?.from,
     to: dateRange?.to,
-  };
-
-  // Format date range for display
-  const formatDateRangeDisplay = (range: DateRange) => {
-    if (!range.from) return "Select dates";
-    const fromDate = range.from.toLocaleDateString();
-    const toDate = range.to ? range.to.toLocaleDateString() : fromDate;
-    return fromDate === toDate ? fromDate : `${fromDate} - ${toDate}`;
   };
 
   return (
@@ -253,7 +255,8 @@ export default function ReportsPage() {
             { id: "profit-loss", label: "P&L Analysis" },
             { id: "product-performance", label: "Asset Velocity" },
             { id: "preorder", label: "Preorder Engine" },
-            { id: "online-preorder", label: "Online Stream" }
+            { id: "online-preorder", label: "Online Stream" },
+            { id: "integrity", label: "Integrity Scan" }
           ].map((tab) => (
             <TabsTrigger
               key={tab.id}
@@ -280,7 +283,7 @@ export default function ReportsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <motion.div variants={item}>
                 <MetricCard
-                  label="Total Inflow"
+                  label="Gross Revenue"
                   value={`$${parseFloat(overviewData.total_sales).toLocaleString()}`}
                   icon={<DollarSign className="h-5 w-5" />}
                   tone="brand"
@@ -289,7 +292,16 @@ export default function ReportsPage() {
               </motion.div>
               <motion.div variants={item}>
                 <MetricCard
-                  label="System Outflow"
+                  label="Gross Profit"
+                  value={`$${parseFloat(overviewData.gross_profit).toLocaleString()}`}
+                  icon={<Target className="h-5 w-5" />}
+                  tone="emerald"
+                  helper="Before operating expenses"
+                />
+              </motion.div>
+              <motion.div variants={item}>
+                <MetricCard
+                  label="Operating Expense"
                   value={`$${parseFloat(overviewData.total_expenses).toLocaleString()}`}
                   icon={<TrendingDown className="h-5 w-5" />}
                   tone="rose"
@@ -298,11 +310,11 @@ export default function ReportsPage() {
               </motion.div>
               <motion.div variants={item}>
                 <MetricCard
-                  label="Net Extraction"
+                  label="Net Profit"
                   value={`$${parseFloat(overviewData.net_profit).toLocaleString()}`}
                   icon={<TrendingUp className="h-5 w-5" />}
                   tone="emerald"
-                  helper="Total liquidity gain"
+                  helper="Gross profit minus operating expenses"
                 />
               </motion.div>
               <motion.div variants={item}>
@@ -311,7 +323,7 @@ export default function ReportsPage() {
                   value={`${parseFloat(overviewData.profit_margin).toFixed(1)}%`}
                   icon={<Zap className="h-5 w-5" />}
                   tone="indigo"
-                  helper="Efficiency coefficient"
+                  helper={overviewData.profit_margin_basis === "net_revenue" ? "Based on net revenue" : "Based on reported revenue"}
                 />
               </motion.div>
             </div>
@@ -393,6 +405,9 @@ export default function ReportsPage() {
         </TabsContent>
         <TabsContent value="online-preorder" className="focus-visible:outline-none">
           <OnlinePreorderAnalytics dateRange={dateRange} />
+        </TabsContent>
+        <TabsContent value="integrity" className="focus-visible:outline-none">
+          <IntegrityReport />
         </TabsContent>
       </Tabs>
     </motion.div>

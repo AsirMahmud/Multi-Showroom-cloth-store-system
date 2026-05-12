@@ -52,23 +52,30 @@ export function SalesSummaryCards({
 
   if (!stats) return null;
 
+  const calculateChange = (current: number, previous: number) => {
+    if (previous === 0) {
+      return current === 0 ? 0 : 100;
+    }
+    return ((current - previous) / previous) * 100;
+  };
+
   // Calculate percentage changes
-  const revenueChange =
-    ((stats.total_revenue - stats.previous_period.total_revenue) /
-      stats.previous_period.total_revenue) *
-    100;
-  const salesChange =
-    ((stats.total_sales - stats.previous_period.total_sales) /
-      stats.previous_period.total_sales) *
-    100;
-  const avgOrderChange =
-    ((stats.average_order_value - stats.previous_period.average_order_value) /
-      stats.previous_period.average_order_value) *
-    100;
-  const customersChange =
-    ((stats.unique_customers - stats.previous_period.unique_customers) /
-      stats.previous_period.unique_customers) *
-    100;
+  const revenueChange = calculateChange(
+    stats.total_revenue,
+    stats.previous_period.total_revenue
+  );
+  const salesChange = calculateChange(
+    stats.total_sales,
+    stats.previous_period.total_sales
+  );
+  const avgOrderChange = calculateChange(
+    stats.average_order_value,
+    stats.previous_period.average_order_value
+  );
+  const customersChange = calculateChange(
+    stats.unique_customers,
+    stats.previous_period.unique_customers
+  );
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

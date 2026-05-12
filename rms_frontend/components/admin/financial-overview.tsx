@@ -16,27 +16,27 @@ export function FinancialOverview() {
   return (
     <div className="grid gap-4 md:grid-cols-3">
       <MetricCard
-        label="Organization Inflow"
+        label="Total Revenue"
         value={`$${parseFloat(data?.total_sales ?? "0").toLocaleString()}`}
         icon={<DollarSign className="h-5 w-5" />}
         tone="brand"
-        helper="Gross revenue across active nodes"
+        helper="Total sales across all branches"
         isLoading={isLoading}
       />
       <MetricCard
-        label="Operational Outflow"
+        label="Total Expenses"
         value={`$${parseFloat(data?.total_expenses ?? "0").toLocaleString()}`}
         icon={<TrendingDown className="h-5 w-5" />}
         tone="rose"
-        helper="Cumulative liabilities and overhead"
+        helper="Total business costs and expenses"
         isLoading={isLoading}
       />
       <MetricCard
-        label="Net Extraction"
+        label="Net Profit"
         value={`$${parseFloat(data?.net_profit ?? "0").toLocaleString()}`}
         icon={<TrendingUp className="h-5 w-5" />}
         tone="emerald"
-        helper="Total liquidity gain (after deductions)"
+        helper="Profit after operating expenses"
         isLoading={isLoading}
       />
     </div>

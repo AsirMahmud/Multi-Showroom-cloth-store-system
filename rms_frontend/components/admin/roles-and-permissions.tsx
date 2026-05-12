@@ -29,15 +29,15 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 const CATEGORY_TITLE: Record<PermissionCatalogItem["category"], string> = {
-  global: "Global Intelligence",
-  branch: "Local Operations",
-  system: "Core Protocol & Admin",
+  global: "Global Features",
+  branch: "Branch Operations",
+  system: "System Admin",
 };
 
 const ROLE_LABEL: Record<string, string> = {
-  admin: "Root Admin",
-  branch_manager: "Node Manager",
-  hr: "Operator",
+  admin: "Administrator",
+  branch_manager: "Branch Manager",
+  hr: "HR / Staff",
 };
 
 export function RolesAndPermissions() {
@@ -52,7 +52,7 @@ export function RolesAndPermissions() {
             "text-slate-400 hover:text-slate-600"
           )}
         >
-          <UserCheck className="mr-2 h-3.5 w-3.5" /> Identity Overrides
+          <UserCheck className="mr-2 h-3.5 w-3.5" /> User Permissions
         </TabsTrigger>
         <TabsTrigger 
           value="cheatsheet"
@@ -62,7 +62,7 @@ export function RolesAndPermissions() {
             "text-slate-400 hover:text-slate-600"
           )}
         >
-          <Sparkles className="mr-2 h-3.5 w-3.5" /> Hierarchy Matrix
+          <Sparkles className="mr-2 h-3.5 w-3.5" /> Role Overview
         </TabsTrigger>
       </TabsList>
       <TabsContent value="grants" className="focus-visible:outline-none">
@@ -146,8 +146,8 @@ function PerUserGrants() {
 
   return (
     <DataPanel
-      title="Identity Overrides"
-      description="Inject specific capability overrides into a persona's default hierarchy profile."
+      title="User Permissions"
+      description="Customize and override permissions for individual users."
     >
       <div className="space-y-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-center">
@@ -159,13 +159,13 @@ function PerUserGrants() {
               <SelectTrigger className="h-11 bg-slate-50 border-none rounded-xl font-bold text-sm text-brand-primary">
                 <div className="flex items-center gap-2">
                   <Search className="h-3.5 w-3.5 text-slate-400" />
-                  <SelectValue placeholder="Target Persona" />
+                  <SelectValue placeholder="Select User" />
                 </div>
               </SelectTrigger>
               <SelectContent className="rounded-xl border-brand-primary/5">
                 {accountsLoading ? (
                   <SelectItem value="loading" disabled>
-                    Loading Personnel Directory...
+                    Loading User Directory...
                   </SelectItem>
                 ) : (
                   (accounts ?? []).map((u) => (
@@ -180,16 +180,16 @@ function PerUserGrants() {
           {selectedAccount ? (
             <div className="flex flex-wrap items-center gap-2">
               <Badge className="bg-slate-50 text-slate-500 border-slate-100 rounded-lg px-2 py-0.5 text-[10px] font-black uppercase tracking-widest">
-                Tier: {ROLE_LABEL[selectedAccount.role] ?? selectedAccount.role}
+                Role: {ROLE_LABEL[selectedAccount.role] ?? selectedAccount.role}
               </Badge>
               {selectedAccount.managed_branch_name && (
                 <Badge className="bg-indigo-50 text-indigo-600 border-indigo-100 rounded-lg px-2 py-0.5 text-[10px] font-black uppercase tracking-widest">
-                  Node: {selectedAccount.managed_branch_name}
+                  Branch: {selectedAccount.managed_branch_name}
                 </Badge>
               )}
               {selectedAccount.role === "admin" ? (
                 <Badge className="bg-amber-100 text-amber-800 border-none rounded-lg px-2 py-0.5 text-[10px] font-black uppercase tracking-widest shadow-sm shadow-amber-500/20">
-                  ROOT_OMNISCIENCE
+                  ADMIN_FULL_ACCESS
                 </Badge>
               ) : null}
             </div>
@@ -197,7 +197,7 @@ function PerUserGrants() {
         </div>
 
         {!selectedUserId ? (
-          <EmptyState message="Select an identity node from the selector above to manage overrides." />
+          <EmptyState message="Select a user from the selector above to manage permissions." />
         ) : userPermsLoading ? (
           <div className="grid gap-6 lg:grid-cols-3">
             {[...Array(3)].map((_, i) => (
@@ -245,7 +245,7 @@ function PerUserGrants() {
                             </span>
                             {isDefault && (
                               <Badge className="bg-emerald-50 text-emerald-600 border-none rounded-md px-1.5 h-4 text-[8px] font-black uppercase tracking-tighter">
-                                ROLE_DEF
+                                DEFAULT
                               </Badge>
                             )}
                           </div>
@@ -288,15 +288,15 @@ function RoleCheatsheet() {
 
   return (
     <DataPanel
-      title="Hierarchy Matrix"
-      description="Core capability blueprints defined for standard organizational tiers."
+      title="Role Overview"
+      description="View the default permissions defined for each user role."
     >
       <div className="overflow-x-auto -mx-6 px-6">
         <table className="w-full">
           <thead>
             <tr className="border-b border-brand-primary/5">
               <th className="py-5 pr-6 text-left">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Core Capability</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Permission Name</span>
               </th>
               {roles.map((r) => (
                 <th key={r} className="px-6 py-5 text-center">

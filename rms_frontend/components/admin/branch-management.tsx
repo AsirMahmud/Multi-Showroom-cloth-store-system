@@ -39,8 +39,8 @@ export function BranchManagement() {
       setAddress("");
       qc.invalidateQueries({ queryKey: ["branches"] });
       toast({
-        title: "Node Initialized",
-        description: "The organizational branch has been successfully mapped to the grid.",
+        title: "Branch Added",
+        description: "The new branch has been successfully added to your business.",
       });
     },
     onError: (e: unknown) => {
@@ -48,7 +48,7 @@ export function BranchManagement() {
         (e as { response?: { data?: { detail?: string } } })?.response?.data
           ?.detail ?? "Failed to initialize node.";
       toast({
-        title: "Initialization Fault",
+        title: "Error Adding Branch",
         description: message,
         variant: "destructive",
       });
@@ -58,12 +58,12 @@ export function BranchManagement() {
   return (
     <div className="space-y-8">
       <DataPanel
-        title="Node Initialization"
-        description="Expand the organizational grid by provisioning a new branch node."
+        title="Add New Branch"
+        description="Add a new branch location to your business network."
       >
         <div className="grid gap-6 md:grid-cols-2">
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Node Identifier (Name)</Label>
+            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Branch Name</Label>
             <div className="relative">
               <Store className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
@@ -75,7 +75,7 @@ export function BranchManagement() {
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Geographic Coordinates (Address)</Label>
+            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Branch Address</Label>
             <div className="relative">
               <MapPin className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
               <Textarea
@@ -92,7 +92,7 @@ export function BranchManagement() {
               disabled={!name.trim() || createBranch.isPending}
               className="h-12 px-8 rounded-xl font-bold bg-brand-primary text-brand-secondary hover:bg-emerald-900 shadow-lg shadow-brand-primary/20 transition-all active:scale-95"
             >
-              {createBranch.isPending ? "Provisioning Node..." : "Initialize Branch"}
+              {createBranch.isPending ? "Adding Branch..." : "Add Branch"}
               <Plus className="ml-2 h-4 w-4" />
             </Button>
           </div>
@@ -100,8 +100,8 @@ export function BranchManagement() {
       </DataPanel>
 
       <DataPanel
-        title="Active Grid Nodes"
-        description="Drill into specific branch infrastructure for staff and inventory auditing."
+        title="Our Branches"
+        description="Manage and view all your active branch locations."
       >
         <div className="space-y-6">
           {isLoading ? (
@@ -115,8 +115,8 @@ export function BranchManagement() {
               <div className="h-16 w-16 rounded-3xl bg-white shadow-premium flex items-center justify-center mb-6">
                 <Building2 className="h-8 w-8 text-slate-200" />
               </div>
-              <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Null Node Set</p>
-              <p className="text-xs text-slate-300 mt-2">Initialize your first organizational node using the form above.</p>
+              <p className="text-sm font-black text-slate-400 uppercase tracking-widest">No Branches Found</p>
+              <p className="text-xs text-slate-300 mt-2">Add your first branch location using the form above.</p>
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

@@ -99,10 +99,10 @@ export function ProductPerformanceReport({ dateRange }: ProductPerformanceReport
 
   if (error || !productData) {
     return (
-      <DataPanel title="System Conflict" description="Protocol failure while retrieving performance metrics.">
+      <DataPanel title="System Error" description="Unable to retrieve performance data at this time.">
         <div className="text-center py-12">
           <AlertTriangle className="h-12 w-12 text-rose-500 mx-auto mb-4" />
-          <p className="text-slate-600 font-bold">Failed to load performance delta.</p>
+          <p className="text-slate-600 font-bold">Failed to load performance data.</p>
           <p className="text-xs text-slate-400 mt-2 uppercase tracking-widest">
             {error instanceof Error ? error.message : "Unknown error occurred"}
           </p>
@@ -120,38 +120,38 @@ export function ProductPerformanceReport({ dateRange }: ProductPerformanceReport
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <motion.div variants={item}>
           <MetricCard
-            label="Inventory Nodes"
+            label="Total Products"
             value={productData.total_products.toString()}
             icon={<Package className="h-5 w-5" />}
             tone="brand"
-            helper={`${productData.top_performing_products.length} High-Velocity SKUs`}
+            helper={`${productData.top_performing_products.length} Top-Selling Items`}
           />
         </motion.div>
         <motion.div variants={item}>
           <MetricCard
-            label="Yield Efficiency"
+            label="Avg Profit Margin"
             value={`${averageProfitMargin.toFixed(1)}%`}
             icon={<Percent className="h-5 w-5" />}
             tone={averageProfitMargin > 20 ? "emerald" : "indigo"}
-            helper="Aggregate profit margin"
+            helper="Overall profit percentage"
           />
         </motion.div>
         <motion.div variants={item}>
           <MetricCard
-            label="Unit Velocity"
+            label="Profit per Unit"
             value={formatCurrency(averageProfit)}
             icon={<TrendingUp className="h-5 w-5" />}
             tone="emerald"
-            helper="Net profit per unit sold"
+            helper="Avg profit on each item"
           />
         </motion.div>
         <motion.div variants={item}>
           <MetricCard
-            label="Settlement Mean"
+            label="Avg Selling Price"
             value={formatCurrency(averageSellingPriceWithDiscount)}
             icon={<DollarSign className="h-5 w-5" />}
             tone="indigo"
-            helper="Avg price after discounts"
+            helper="Price after all discounts"
           />
         </motion.div>
       </div>
@@ -159,29 +159,29 @@ export function ProductPerformanceReport({ dateRange }: ProductPerformanceReport
       <Tabs defaultValue="overview" className="space-y-8" value={viewType} onValueChange={setViewType}>
         <TabsList className="bg-slate-50 border-none p-1 h-12 shadow-inner rounded-2xl flex justify-start gap-1 w-fit">
           <TabsTrigger value="overview" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-brand-primary data-[state=active]:shadow-sm px-6 font-black text-[10px] uppercase tracking-widest transition-all">
-            Dashboard
+            Overview
           </TabsTrigger>
           <TabsTrigger value="top" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-brand-primary data-[state=active]:shadow-sm px-6 font-black text-[10px] uppercase tracking-widest transition-all">
-            Top Yield
+            Top Earners
           </TabsTrigger>
           <TabsTrigger value="low" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-brand-primary data-[state=active]:shadow-sm px-6 font-black text-[10px] uppercase tracking-widest transition-all">
-            Critical Watch
+            Low Performance
           </TabsTrigger>
           <TabsTrigger value="details" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-brand-primary data-[state=active]:shadow-sm px-6 font-black text-[10px] uppercase tracking-widest transition-all">
-            Full Matrix
+            All Products
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="m-0 space-y-8 focus-visible:outline-none">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <motion.div variants={item}>
-              <DataPanel title="Performance Delta" description="Segmentation of inventory assets by operational health.">
+              <DataPanel title="Performance Summary" description="Overview of products by sales performance.">
                 <div className="h-[300px] pt-4">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={[
                       { name: 'Top Performers', value: productData.top_performing_products.length, color: '#10b981' },
-                      { name: 'Critical Stock', value: productData.low_performing_products.length, color: '#ef4444' },
-                      { name: 'Active SKUs', value: productData.sales_by_product.length, color: '#6366f1' }
+                      { name: 'Low Performers', value: productData.low_performing_products.length, color: '#ef4444' },
+                      { name: 'Total Selling', value: productData.sales_by_product.length, color: '#6366f1' }
                     ]}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} />
@@ -199,11 +199,11 @@ export function ProductPerformanceReport({ dateRange }: ProductPerformanceReport
             </motion.div>
 
             <motion.div variants={item}>
-              <DataPanel title="Fiscal Resilience" description="Profit margin stability across the active catalog.">
+              <DataPanel title="Profit Stability" description="Consistency of profit margins across all products.">
                 <div className="space-y-6 pt-4">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Mean Efficiency</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Average Margin</span>
                       <span className="text-xs font-black text-brand-primary">{averageProfitMargin.toFixed(1)}%</span>
                     </div>
                     <Progress value={averageProfitMargin} className="h-2 bg-slate-100" />
@@ -214,13 +214,13 @@ export function ProductPerformanceReport({ dateRange }: ProductPerformanceReport
                       <div className="text-xl font-black text-emerald-700">
                         {productData.profit_by_product.filter(p => parseFloat(p.profit_margin) > 20).length}
                       </div>
-                      <div className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mt-1">High Velocity Nodes</div>
+                      <div className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mt-1">High Profit Items</div>
                     </div>
                     <div className="p-4 bg-rose-50 rounded-2xl border border-rose-100">
                       <div className="text-xl font-black text-rose-700">
                         {productData.profit_by_product.filter(p => parseFloat(p.profit_margin) <= 10).length}
                       </div>
-                      <div className="text-[9px] font-black text-rose-600 uppercase tracking-widest mt-1">Stagnant Capital</div>
+                      <div className="text-[9px] font-black text-rose-600 uppercase tracking-widest mt-1">Low Profit Items</div>
                     </div>
                   </div>
                 </div>
@@ -230,16 +230,16 @@ export function ProductPerformanceReport({ dateRange }: ProductPerformanceReport
         </TabsContent>
 
         <TabsContent value="top" className="m-0 focus-visible:outline-none">
-          <DataPanel title="Elite Inventory" description="Top performing assets by revenue yield and profit conversion.">
+          <DataPanel title="Top Performing Products" description="Products generating the most revenue and profit.">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="border-b border-slate-100 hover:bg-transparent">
-                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">SKU Identifier</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">Volume</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">Product Name</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">Units Sold</TableHead>
                     <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Revenue</TableHead>
                     <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Net Profit</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Margin</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Profit %</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -279,15 +279,15 @@ export function ProductPerformanceReport({ dateRange }: ProductPerformanceReport
         </TabsContent>
 
         <TabsContent value="low" className="m-0 focus-visible:outline-none">
-          <DataPanel title="Risk Exposure" description="Inventory units with stagnant movement or negative profit delta.">
+          <DataPanel title="Low Movement Products" description="Products that are selling slowly or losing money.">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="border-b border-slate-100 hover:bg-transparent">
-                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">SKU Identifier</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">Volume</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">Product Name</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">Units Sold</TableHead>
                     <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Net Profit</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Yield Status</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -322,7 +322,7 @@ export function ProductPerformanceReport({ dateRange }: ProductPerformanceReport
         </TabsContent>
 
         <TabsContent value="details" className="m-0 focus-visible:outline-none">
-          <DataPanel title="Full Performance Matrix" description="Exhaustive log of every active SKU in the organizational catalog.">
+          <DataPanel title="All Products Performance" description="A complete list of every selling product and its performance.">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>

@@ -600,7 +600,7 @@ export function ModernPOS() {
       {/* Main POS Interface - Two Column Layout */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left Column - Product Selection - 30% Space */}
-        <div className="flex-[0.3] min-w-0 bg-gray-50 overflow-y-auto border-r border-slate-200">
+        <div className="flex-[0.3] min-w-0 bg-slate-50/50 backdrop-blur-xl overflow-y-auto border-r border-brand-primary/5">
           <div className="p-4">
             {/* Search & Filter Bar */}
             <div className="mb-4 space-y-2">
@@ -658,7 +658,7 @@ export function ModernPOS() {
 
               {/* Expanded Filters - Compact version for 30% column */}
               {isFilterOpen && (
-                <div className="bg-white p-3 rounded-2xl border shadow-premium space-y-4">
+                <div className="bg-white/80 backdrop-blur-md p-4 rounded-[24px] border border-brand-primary/5 shadow-premium space-y-4">
                   <div>
                     <h3 className="text-[10px] font-black uppercase tracking-widest mb-2 text-slate-400">Price</h3>
                     <Slider

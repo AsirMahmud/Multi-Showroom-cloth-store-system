@@ -57,7 +57,8 @@ import {
   CheckCircle2,
   TrendingDown,
   Loader2,
-  History
+  History,
+  FileText
 } from "lucide-react";
 import { useDueSales } from "@/hooks/queries/use-sales";
 import { addPayment } from "@/lib/api/sales";
@@ -107,10 +108,8 @@ export default function DueSalesPage() {
     if (!salesData) return [];
     
     return salesData.filter((sale: Sale) => {
-      const isUnpaid = sale.amount_due && sale.amount_due > 0;
-      const isPending = sale.status === 'pending';
-      
-      if (!isUnpaid && !isPending) return false;
+      const amountDue = parseFloat(sale.amount_due?.toString() || "0") || 0;
+      if (amountDue <= 0) return false;
       
       if (searchTerm) {
         const searchLower = searchTerm.toLowerCase();
@@ -200,6 +199,14 @@ export default function DueSalesPage() {
       totalDue,
       totalSales,
       uniqueCustomers,
+      oldestDueDays: dueSales.reduce((maxDays, sale) => {
+        const saleDate = new Date((sale.date ?? sale.created_at) || '');
+        const diffDays = Math.max(
+          0,
+          Math.ceil((Date.now() - saleDate.getTime()) / (1000 * 60 * 60 * 24))
+        );
+        return Math.max(maxDays, Number.isFinite(diffDays) ? diffDays : 0);
+      }, 0),
       monthlyData: Object.values(monthlyData).sort((a, b) => a.month.localeCompare(b.month)),
       ageAnalysis: Object.values(ageAnalysis)
     };
@@ -318,31 +325,32 @@ export default function DueSalesPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
-          title="Total Receivables"
+          label="Total Receivables"
           value={formatCurrency(analytics.totalDue)}
           icon={<DollarSign className="h-5 w-5" />}
-          trend={{ value: 8, isPositive: false }}
-          description={`Across ${analytics.totalSales} pending units`}
-          variant="destructive"
+          helper={`Across ${analytics.totalSales} outstanding invoices`}
+          tone="rose"
         />
         <MetricCard
-          title="Debtor Network"
+          label="Debtor Network"
           value={analytics.uniqueCustomers.toString()}
           icon={<Users className="h-5 w-5" />}
-          description="Unique customer entities"
+          helper="Unique customer entities"
+          tone="brand"
         />
         <MetricCard
-          title="Avg. Transaction"
+          label="Avg. Transaction"
           value={formatCurrency(analytics.totalSales > 0 ? analytics.totalDue / analytics.totalSales : 0)}
           icon={<TrendingUp className="h-5 w-5" />}
-          description="Average debt per invoice"
+          helper="Average debt per invoice"
+          tone="indigo"
         />
         <MetricCard
-          title="Recovery Ratio"
-          value="84%"
+          label="Oldest Due Age"
+          value={`${analytics.oldestDueDays}d`}
           icon={<History className="h-5 w-5" />}
-          description="Last 30 days recovery"
-          variant="success"
+          helper="Age of the oldest outstanding invoice"
+          tone="amber"
         />
       </div>
 

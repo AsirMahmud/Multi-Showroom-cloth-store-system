@@ -85,7 +85,7 @@ export function ExpenseReport({
       <div className="grid gap-4 md:grid-cols-3">
         <motion.div variants={item}>
           <MetricCard
-            label="Total Outflow"
+            label="Total Expenses"
             value={formatCurrency(parseFloat(expenseData.total_expenses))}
             icon={<TrendingDown className="h-5 w-5" />}
             tone="rose"
@@ -94,16 +94,16 @@ export function ExpenseReport({
         </motion.div>
         <motion.div variants={item}>
           <MetricCard
-            label="Primary Drain"
+            label="Largest Expense"
             value={formatCurrency(parseFloat(largestExpense.total))}
             icon={<AlertCircle className="h-5 w-5" />}
             tone="brand"
-            helper={`${largestExpense.category_name} department`}
+            helper={`${largestExpense.category_name} category`}
           />
         </motion.div>
         <motion.div variants={item}>
           <MetricCard
-            label="Liability Nodes"
+            label="Expense Categories"
             value={expenseData.expenses_by_category.length.toString()}
             icon={<PieChartIcon className="h-5 w-5" />}
             tone="indigo"
@@ -114,7 +114,7 @@ export function ExpenseReport({
 
       <div className="grid gap-8 lg:grid-cols-2">
         <motion.div variants={item}>
-          <DataPanel title="Capital Distribution" description="Comparative analysis of liabilities across departments.">
+          <DataPanel title="Expense Distribution" description="How your expenses are split across different categories.">
             <div className="h-[350px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -148,14 +148,14 @@ export function ExpenseReport({
         </motion.div>
 
         <motion.div variants={item}>
-          <DataPanel title="Temporal Outflow" description="Daily log of operational liability settlements.">
+          <DataPanel title="Daily Expenses" description="A day-by-day record of your business expenses.">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="border-b border-slate-100 hover:bg-transparent">
-                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4">Timestamp</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4 text-center">Nodes</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4 text-right">Settled Amount</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4">Date</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4 text-center">Entries</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4 text-right">Total Amount</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -185,7 +185,7 @@ export function ExpenseReport({
       </div>
 
       <motion.div variants={item}>
-        <DataPanel title="Departmental Audit" description="Detailed breakdown of expenses per cost center.">
+        <DataPanel title="Expenses by Category" description="Detailed breakdown of expenses for each category.">
           <div className="h-[300px] w-full pt-4">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={expenseData.expenses_by_category}>

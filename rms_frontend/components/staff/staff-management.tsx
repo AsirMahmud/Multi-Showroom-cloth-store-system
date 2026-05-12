@@ -189,8 +189,8 @@ export function StaffManagement() {
       className="space-y-8"
     >
       <PageHeader
-        title="Staff Force"
-        description="Global talent management, scheduling, and performance auditing system."
+        title="Team Management"
+        description="Manage your team, weekly schedules, and staff performance."
         icon={<Users className="h-6 w-6" />}
         actions={
           <div className="flex gap-2">
@@ -202,22 +202,22 @@ export function StaffManagement() {
               </DialogTrigger>
               <DialogContent className="rounded-[32px] border-brand-primary/5 shadow-2xl">
                 <DialogHeader>
-                  <DialogTitle className="text-xl font-black text-brand-primary uppercase tracking-tight">Recruit New Talent</DialogTitle>
-                  <DialogDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest">Onboard a new associate to the organizational grid.</DialogDescription>
+                  <DialogTitle className="text-xl font-black text-brand-primary uppercase tracking-tight">Add New Staff</DialogTitle>
+                  <DialogDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest">Add a new member to your team roster.</DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Full Identity</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Staff Name</label>
                     <Input className="h-12 rounded-xl bg-slate-50 border-brand-primary/5 focus:ring-brand-primary" placeholder="Enter full name" />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Core Position</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Job Title</label>
                     <Input className="h-12 rounded-xl bg-slate-50 border-brand-primary/5 focus:ring-brand-primary" placeholder="Designation" />
                   </div>
                 </div>
                 <DialogFooter>
                   <Button className="w-full h-12 bg-brand-primary text-brand-secondary hover:bg-emerald-900 rounded-xl font-bold text-xs uppercase tracking-widest">
-                    Confirm Recruitment
+                    Add Staff Member
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -262,9 +262,9 @@ export function StaffManagement() {
       <Tabs defaultValue="staff" className="space-y-8">
         <TabsList className="flex w-full bg-white/50 backdrop-blur-xl border border-brand-primary/5 shadow-premium rounded-2xl p-1 h-auto overflow-x-auto no-scrollbar">
           {[
-            { id: "staff", label: "Personnel Grid" },
-            { id: "schedule", label: "Shift Planner" },
-            { id: "performance", label: "Audit Reports" }
+            { id: "staff", label: "Team Members" },
+            { id: "schedule", label: "Weekly Schedule" },
+            { id: "performance", label: "Staff Performance" }
           ].map((tab) => (
             <TabsTrigger
               key={tab.id}
@@ -283,13 +283,13 @@ export function StaffManagement() {
         <TabsContent value="staff" className="space-y-6 focus-visible:outline-none">
           <motion.div variants={item}>
             <DataPanel 
-              title="Personnel Directory" 
-              description="A centralized grid of all active and inactive associates."
+              title="Staff List" 
+              description="A centralized list of all active and inactive team members."
               actions={
                 <div className="relative w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                   <Input
-                    placeholder="IDENTIFIER SEARCH..."
+                    placeholder="SEARCH STAFF..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="h-9 pl-9 bg-slate-50 border-none rounded-lg text-[10px] font-black uppercase tracking-widest focus:ring-brand-primary placeholder:text-slate-300"
@@ -301,11 +301,11 @@ export function StaffManagement() {
                 <Table>
                   <TableHeader>
                     <TableRow className="border-slate-50 hover:bg-transparent">
-                      <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">Associate</TableHead>
-                      <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 hidden md:table-cell">Core Role</TableHead>
-                      <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 hidden md:table-cell">Comm Channels</TableHead>
-                      <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">Security Status</TableHead>
-                      <TableHead className="text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Context</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">Name</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 hidden md:table-cell">Position</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 hidden md:table-cell">Contact Info</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status</TableHead>
+                      <TableHead className="text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -351,20 +351,20 @@ export function StaffManagement() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="rounded-xl border-brand-primary/5 shadow-xl">
-                              <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-slate-400">Contextual Actions</DropdownMenuLabel>
+                              <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-slate-400">Staff Actions</DropdownMenuLabel>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem className="text-[11px] font-bold py-2.5 cursor-pointer">
-                                <PenLine className="mr-2 h-3.5 w-3.5" /> Modify Profile
+                                <PenLine className="mr-2 h-3.5 w-3.5" /> Edit Profile
                               </DropdownMenuItem>
                               <DropdownMenuItem className="text-[11px] font-bold py-2.5 cursor-pointer">
-                                <Clock className="mr-2 h-3.5 w-3.5" /> Adjust Shift
+                                <Clock className="mr-2 h-3.5 w-3.5" /> Change Schedule
                               </DropdownMenuItem>
                               <DropdownMenuItem className="text-[11px] font-bold py-2.5 cursor-pointer">
-                                <TrendingUp className="mr-2 h-3.5 w-3.5" /> Analysis
+                                <TrendingUp className="mr-2 h-3.5 w-3.5" /> View Performance
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem className="text-rose-600 text-[11px] font-black py-2.5 cursor-pointer">
-                                <Trash className="mr-2 h-3.5 w-3.5" /> Terminate Access
+                                <Trash className="mr-2 h-3.5 w-3.5" /> Remove Staff Member
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -383,13 +383,13 @@ export function StaffManagement() {
             <motion.div variants={item} className="flex-1">
               <DataPanel 
                 title="Shift Planner" 
-                description="Coordinate personnel coverage across operational cycles."
+                description="Manage shifts and team availability for the week."
                 actions={
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant="outline" className="h-9 px-3 bg-slate-50 border-none rounded-lg font-bold text-[10px] uppercase tracking-widest text-slate-600">
                         <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                        {date ? format(date, "PPP") : "Select Cycle"}
+                        {date ? format(date, "PPP") : "Select Date"}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0 rounded-2xl border-brand-primary/5 shadow-2xl" align="end">
@@ -402,7 +402,7 @@ export function StaffManagement() {
                   <table className="w-full border-collapse">
                     <thead>
                       <tr>
-                        <th className="px-4 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-50/50 rounded-tl-2xl">Associate</th>
+                        <th className="px-4 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-50/50 rounded-tl-2xl">Staff Name</th>
                         {dayNames.map((day) => (
                           <th key={day} className="px-4 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-50/50">
                             {day.slice(0, 3)}
@@ -442,20 +442,20 @@ export function StaffManagement() {
 
             <div className="w-full lg:w-[320px] space-y-6">
               <motion.div variants={item}>
-                <DataPanel title="Orchestrator" description="Automation & Bulk Controls.">
+                <DataPanel title="Schedule Tools" description="Quick actions for scheduling.">
                   <div className="space-y-2">
                     <Button className="w-full h-12 bg-brand-primary text-brand-secondary hover:bg-emerald-900 rounded-xl font-bold text-xs uppercase tracking-widest">
                       <Clock className="mr-2 h-3.5 w-3.5" /> Auto-Generate
                     </Button>
                     <Button variant="outline" className="w-full h-12 bg-white border-brand-primary/5 shadow-sm rounded-xl font-bold text-xs uppercase tracking-widest text-brand-primary hover:bg-slate-50">
-                      <Users className="mr-2 h-3.5 w-3.5" /> Handle Leaves
+                      <Users className="mr-2 h-3.5 w-3.5" /> Manage Time Off
                     </Button>
                   </div>
                 </DataPanel>
               </motion.div>
 
               <motion.div variants={item}>
-                <DataPanel title="Shift Atlas" description="Color coding for grid nodes.">
+                <DataPanel title="Shift Legend" description="Colors used in the schedule.">
                   <div className="space-y-4">
                     <LegendItem color="bg-emerald-400" label="Morning Core" />
                     <LegendItem color="bg-brand-primary" label="Mid-Day Peak" />
@@ -470,15 +470,15 @@ export function StaffManagement() {
 
         <TabsContent value="performance" className="space-y-6 focus-visible:outline-none">
           <motion.div variants={item}>
-            <DataPanel title="Efficiency Audits" description="Algorithmic performance monitoring and sales delta analysis.">
+            <DataPanel title="Staff Performance" description="Monitor sales performance and efficiency.">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="border-slate-50 hover:bg-transparent">
-                      <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">Associate</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">Name</TableHead>
                       <TableHead className="text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Sales (MTD)</TableHead>
-                      <TableHead className="text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Throughput</TableHead>
-                      <TableHead className="text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Average GTV</TableHead>
+                      <TableHead className="text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Units Sold</TableHead>
+                      <TableHead className="text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Avg Sale Value</TableHead>
                       <TableHead className="text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Conv. Rate</TableHead>
                       <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">Rating</TableHead>
                     </TableRow>

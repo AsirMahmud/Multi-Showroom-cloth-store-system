@@ -71,7 +71,7 @@ export function CustomerReport({
       <div className="grid gap-4 md:grid-cols-3">
         <motion.div variants={item}>
           <MetricCard
-            label="Global Audience"
+            label="Total Customers"
             value={customerData.total_customers.toString()}
             icon={<Users className="h-5 w-5" />}
             tone="brand"
@@ -80,26 +80,26 @@ export function CustomerReport({
         </motion.div>
         <motion.div variants={item}>
           <MetricCard
-            label="Gross Yield"
+            label="Total Sales"
             value={formatCurrency(parseFloat(customerData.total_sales))}
             icon={<DollarSign className="h-5 w-5" />}
             tone="emerald"
-            helper="Cumulative revenue from base"
+            helper="Revenue from all customers"
           />
         </motion.div>
         <motion.div variants={item}>
           <MetricCard
-            label="LTV Average"
+            label="Avg Customer Value"
             value={formatCurrency(parseFloat(customerData.average_customer_value))}
             icon={<TrendingUp className="h-5 w-5" />}
             tone="indigo"
-            helper="Lifetime value per customer"
+            helper="Average spend per customer"
           />
         </motion.div>
       </div>
 
       <motion.div variants={item}>
-        <DataPanel title="Onboarding Velocity" description="Temporal analysis of new customer acquisition and registration delta.">
+        <DataPanel title="Customer Acquisition" description="Tracking new customer registrations over time.">
           <div className="h-[350px] w-full pt-4">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={customerData.customer_acquisition}>
@@ -137,7 +137,7 @@ export function CustomerReport({
                   strokeWidth={3} 
                   fillOpacity={1} 
                   fill="url(#colorAcquisition)" 
-                  name="New Entities" 
+                  name="New Customers" 
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -146,16 +146,16 @@ export function CustomerReport({
       </motion.div>
 
       <motion.div variants={item}>
-        <DataPanel title="VIP Segments" description="Top performing client nodes by total order volume and engagement frequency.">
+        <DataPanel title="Top Customers" description="Your most loyal customers based on total spend and order frequency.">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="border-b border-slate-100 hover:bg-transparent">
-                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">Associate Identity</TableHead>
-                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">Engagement</TableHead>
-                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">Volume</TableHead>
-                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Revenue Yield</TableHead>
-                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Last Interaction</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">Customer Name</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">Products Bought</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">Units Bought</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Total Spend</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Last Purchase</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -176,7 +176,7 @@ export function CustomerReport({
                     </TableCell>
                     <TableCell className="py-5">
                       <Badge variant="secondary" className="bg-indigo-50 text-indigo-600 border-none font-black text-[9px] uppercase tracking-widest">
-                        {customer.unique_products} Unique SKUs
+                        {customer.unique_products} Items
                       </Badge>
                     </TableCell>
                     <TableCell className="py-5">

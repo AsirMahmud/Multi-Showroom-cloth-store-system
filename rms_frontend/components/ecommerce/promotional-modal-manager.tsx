@@ -116,7 +116,7 @@ export function PromotionalModalManager() {
             const data = await promotionalModalsApi.getAll();
             setModals(data);
         } catch (error) {
-            toast({ title: "Error", description: "Failed to fetch engagement protocols.", variant: "destructive" });
+            toast({ title: "Error", description: "Failed to fetch promotions.", variant: "destructive" });
         } finally {
             setIsLoading(false);
         }
@@ -183,17 +183,17 @@ export function PromotionalModalManager() {
     const handleDelete = async (id: number) => {
         try {
             await promotionalModalsApi.delete(id);
-            toast({ title: "Success", description: "Protocol terminated successfully." });
+            toast({ title: "Success", description: "Promotion deleted successfully." });
             fetchModals();
         } catch (error) {
-            toast({ title: "Error", description: "Termination failed.", variant: "destructive" });
+            toast({ title: "Error", description: "Delete failed.", variant: "destructive" });
         }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.title || !formData.start_date || !formData.end_date) {
-            toast({ title: "Warning", description: "Title and temporal bounds are required.", variant: "destructive" });
+            toast({ title: "Warning", description: "Title and dates are required.", variant: "destructive" });
             return;
         }
 
@@ -222,10 +222,10 @@ export function PromotionalModalManager() {
         try {
             if (editingId) {
                 await promotionalModalsApi.update({ id: editingId, ...modalData });
-                toast({ title: "Updated", description: "Engagement protocol modified." });
+                toast({ title: "Updated", description: "Promotion updated successfully." });
             } else {
                 await promotionalModalsApi.create(modalData);
-                toast({ title: "Created", description: "New engagement protocol initialized." });
+                toast({ title: "Created", description: "New promotion created." });
             }
             setIsDialogOpen(false);
             resetForm();
@@ -240,47 +240,47 @@ export function PromotionalModalManager() {
     return (
         <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
             <PageHeader
-                title="Conversion Optimization"
-                description="Engineered popup protocols designed to maximize user engagement and seasonal conversion."
+                title="Promotions"
+                description="Create and manage popups to boost sales and engage customers."
                 icon={<Target className="h-6 w-6" />}
                 actions={
                     <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
                         <DialogTrigger asChild>
                             <Button className="h-10 px-4 bg-brand-primary text-brand-secondary hover:bg-emerald-900 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-brand-primary/20">
                                 <Plus className="h-3.5 w-3.5 mr-2" />
-                                New Protocol
+                                Add Popup
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="max-w-2xl rounded-[32px] border-brand-primary/5 shadow-2xl p-0 overflow-hidden">
                             <DialogHeader className="p-8 bg-slate-50 border-b border-slate-100">
                                 <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-brand-primary">
-                                    {editingId ? "Modify Protocol" : "Initialize Protocol"}
+                                    {editingId ? "Edit Popup" : "Create New Popup"}
                                 </DialogTitle>
                                 <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                    Define behavioral triggers and visual assets.
+                                    Set how and when your popup appears.
                                 </DialogDescription>
                             </DialogHeader>
 
                             <form onSubmit={handleSubmit} className="p-8 space-y-8 max-h-[70vh] overflow-y-auto">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Campaign Header</Label>
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Popup Title</Label>
                                         <Input value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="e.g. FLASH SALE" className="h-12 rounded-xl bg-slate-50 border-none font-bold" required />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Discount Vector (Code)</Label>
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Discount Code</Label>
                                         <Input value={formData.discount_code} onChange={(e) => setFormData({ ...formData, discount_code: e.target.value })} placeholder="e.g. SAVE20" className="h-12 rounded-xl bg-slate-50 border-none font-black text-emerald-600" />
                                     </div>
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Marketing Copy</Label>
-                                    <Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Enter conversion-optimized copy..." className="rounded-xl bg-slate-50 border-none font-medium min-h-[100px]" />
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Description</Label>
+                                    <Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Enter the text for your popup..." className="rounded-xl bg-slate-50 border-none font-medium min-h-[100px]" />
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Action Designation (CTA)</Label>
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Button Text</Label>
                                         <Input value={formData.cta_text} onChange={(e) => setFormData({ ...formData, cta_text: e.target.value })} className="h-12 rounded-xl bg-slate-50 border-none font-bold" />
                                     </div>
                                     <div className="space-y-2">
@@ -291,7 +291,7 @@ export function PromotionalModalManager() {
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-slate-50 rounded-2xl border border-slate-100">
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2"><Layout className="h-3 w-3"/> Layout Schema</Label>
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2"><Layout className="h-3 w-3"/> Layout Style</Label>
                                         <Select value={formData.layout} onValueChange={(val) => setFormData({ ...formData, layout: val })}>
                                             <SelectTrigger className="h-10 bg-white border-none rounded-xl font-bold text-[10px] uppercase tracking-widest">
                                                 <SelectValue />
@@ -305,7 +305,7 @@ export function PromotionalModalManager() {
                                         </Select>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2"><Palette className="h-3 w-3"/> Chroma Protocol</Label>
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2"><Palette className="h-3 w-3"/> Color Theme</Label>
                                         <Select value={formData.color_theme} onValueChange={(val) => setFormData({ ...formData, color_theme: val })}>
                                             <SelectTrigger className="h-10 bg-white border-none rounded-xl font-bold text-[10px] uppercase tracking-widest">
                                                 <SelectValue />
@@ -313,25 +313,25 @@ export function PromotionalModalManager() {
                                             <SelectContent className="rounded-xl border-brand-primary/5">
                                                 <SelectItem value="light" className="font-bold text-[10px] uppercase">Luminous (Light)</SelectItem>
                                                 <SelectItem value="dark" className="font-bold text-[10px] uppercase">Shadow (Dark)</SelectItem>
-                                                <SelectItem value="brand" className="font-bold text-[10px] uppercase">Brand Matrix</SelectItem>
+                                                <SelectItem value="brand" className="font-bold text-[10px] uppercase">Brand Style</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
                                 </div>
 
                                 <div className="space-y-4">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Behavioral Logic</Label>
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Display Rules</Label>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <div className="space-y-2">
-                                            <Label className="text-[9px] font-bold text-slate-400 uppercase">Trigger Mode</Label>
+                                            <Label className="text-[9px] font-bold text-slate-400 uppercase">When to show</Label>
                                             <Select value={formData.trigger} onValueChange={(val) => setFormData({ ...formData, trigger: val })}>
                                                 <SelectTrigger className="h-10 bg-slate-50 border-none rounded-xl font-bold text-[10px] uppercase">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent className="rounded-xl border-brand-primary/5">
-                                                    <SelectItem value="timer">Temporal Delay</SelectItem>
-                                                    <SelectItem value="exit_intent">Exit Intent</SelectItem>
-                                                    <SelectItem value="first_visit">First Contact</SelectItem>
+                                                    <SelectItem value="timer">After a few seconds</SelectItem>
+                                                    <SelectItem value="exit_intent">When leaving page</SelectItem>
+                                                    <SelectItem value="first_visit">On first visit</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
@@ -348,9 +348,9 @@ export function PromotionalModalManager() {
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent className="rounded-xl border-brand-primary/5">
-                                                    <SelectItem value="once_per_session">Session Bound</SelectItem>
-                                                    <SelectItem value="once_ever">Permanent Single</SelectItem>
-                                                    <SelectItem value="always">Persistent</SelectItem>
+                                                    <SelectItem value="once_per_session">Once per session</SelectItem>
+                                                    <SelectItem value="once_ever">Only once ever</SelectItem>
+                                                    <SelectItem value="always">Show every time</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
@@ -359,12 +359,12 @@ export function PromotionalModalManager() {
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Temporal Start</Label>
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Start Date</Label>
                                         <Popover>
                                             <PopoverTrigger asChild>
                                                 <Button variant="outline" className="w-full h-12 justify-start rounded-xl border-none bg-slate-50 font-bold text-xs">
                                                     <CalendarIcon className="mr-2 h-4 w-4 text-brand-primary" />
-                                                    {formData.start_date ? format(formData.start_date, "PPP") : <span>Select Bound</span>}
+                                                    {formData.start_date ? format(formData.start_date, "PPP") : <span>Select Date</span>}
                                                 </Button>
                                             </PopoverTrigger>
                                             <PopoverContent className="w-auto p-0 rounded-2xl border-brand-primary/5 shadow-2xl">
@@ -373,12 +373,12 @@ export function PromotionalModalManager() {
                                         </Popover>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Temporal End</Label>
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">End Date</Label>
                                         <Popover>
                                             <PopoverTrigger asChild>
                                                 <Button variant="outline" className="w-full h-12 justify-start rounded-xl border-none bg-slate-50 font-bold text-xs">
                                                     <CalendarIcon className="mr-2 h-4 w-4 text-brand-primary" />
-                                                    {formData.end_date ? format(formData.end_date, "PPP") : <span>Select Bound</span>}
+                                                    {formData.end_date ? format(formData.end_date, "PPP") : <span>Select Date</span>}
                                                 </Button>
                                             </PopoverTrigger>
                                             <PopoverContent className="w-auto p-0 rounded-2xl border-brand-primary/5 shadow-2xl">
@@ -390,18 +390,18 @@ export function PromotionalModalManager() {
 
                                 <div className="flex items-center justify-between p-6 bg-emerald-50 rounded-2xl border border-emerald-100">
                                     <div className="space-y-1">
-                                        <Label className="text-xs font-black uppercase tracking-tight text-emerald-900">Protocol Status</Label>
-                                        <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Toggle active engagement</p>
+                                        <Label className="text-xs font-black uppercase tracking-tight text-emerald-900">Active Status</Label>
+                                        <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Turn this promotion on or off</p>
                                     </div>
                                     <Switch checked={formData.is_active} onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })} />
                                 </div>
                             </form>
 
                             <DialogFooter className="p-8 bg-slate-50 border-t border-slate-100">
-                                <Button variant="ghost" type="button" onClick={() => setIsDialogOpen(false)} className="font-black text-[10px] uppercase tracking-widest">Abort</Button>
+                                <Button variant="ghost" type="button" onClick={() => setIsDialogOpen(false)} className="font-black text-[10px] uppercase tracking-widest">Cancel</Button>
                                 <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-brand-primary text-brand-secondary font-black text-[10px] uppercase tracking-widest h-12 px-8 rounded-xl shadow-lg">
                                     {isSubmitting && <Loader2 className="animate-spin h-4 w-4 mr-2" />}
-                                    Sync Protocol
+                                    Save Promotion
                                 </Button>
                             </DialogFooter>
                         </DialogContent>
@@ -410,7 +410,7 @@ export function PromotionalModalManager() {
             />
 
             <motion.div variants={item}>
-                <DataPanel title="Engagement Matrix" description="Active and historical conversion protocols currently in the stream.">
+                <DataPanel title="Our Promotions" description="List of all active and past promotional popups.">
                     {isLoading ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-64 rounded-[32px]" />)}
@@ -438,7 +438,7 @@ export function PromotionalModalManager() {
                                                 <div>
                                                     <h3 className="text-lg font-black tracking-tighter text-brand-primary uppercase">{modal.title}</h3>
                                                     <Badge className={cn("text-[9px] font-black uppercase tracking-widest mt-1 border-none", modal.is_active ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-400")}>
-                                                        {modal.is_active ? "Protocol Active" : "Deactivated"}
+                                                        {modal.is_active ? "Active" : "Inactive"}
                                                     </Badge>
                                                 </div>
                                                 <div className="flex gap-1">
@@ -459,7 +459,7 @@ export function PromotionalModalManager() {
                                                         </div>
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-300">Cadence</span>
+                                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-300">Frequency</span>
                                                         <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
                                                             <Clock className="h-3 w-3 text-brand-primary" />
                                                             {modal.display_rules.frequency.split('_').join(' ')}
@@ -469,7 +469,7 @@ export function PromotionalModalManager() {
 
                                                 <div className="flex items-center justify-between pt-4 border-t border-slate-50">
                                                     <div className="flex flex-col">
-                                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-300">Temporal Span</span>
+                                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-300">Active Dates</span>
                                                         <span className="text-[10px] font-black text-slate-500 uppercase">
                                                             {format(new Date(modal.start_date), "MMM d")} — {format(new Date(modal.end_date), "MMM d, yyyy")}
                                                         </span>
@@ -486,8 +486,8 @@ export function PromotionalModalManager() {
                             {modals.length === 0 && (
                                 <div className="col-span-full py-24 text-center border-2 border-dashed border-slate-100 rounded-[32px] bg-slate-50/50">
                                     <Target className="h-12 w-12 text-slate-200 mx-auto mb-4" />
-                                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">No Conversion Protocols Detected</h3>
-                                    <p className="text-xs text-slate-300 font-bold mt-1 uppercase tracking-tighter">Initialize your first campaign to begin targeting.</p>
+                                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">No Promotions Found</h3>
+                                    <p className="text-xs text-slate-300 font-bold mt-1 uppercase tracking-tighter">Create your first promotional popup to start.</p>
                                 </div>
                             )}
                         </div>

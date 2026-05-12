@@ -68,7 +68,7 @@ export function PreorderReport({
             value={overviewData.preorder_total_orders || 0}
             icon={<ShoppingCart className="h-5 w-5" />}
             tone="brand"
-            helper="Total preorders in system"
+            helper="Completed preorder records tracked separately from sales"
           />
         </motion.div>
         <motion.div variants={item}>
@@ -77,7 +77,7 @@ export function PreorderReport({
             value={formatCurrency(parseFloat(overviewData.preorder_total_revenue || 0))}
             icon={<DollarSign className="h-5 w-5" />}
             tone="emerald"
-            helper="Gross value of all bookings"
+            helper="Do not add directly to finalized sales totals"
           />
         </motion.div>
         <motion.div variants={item}>
@@ -86,7 +86,7 @@ export function PreorderReport({
             value={formatCurrency(parseFloat(overviewData.preorder_profit || 0))}
             icon={<TrendingUp className="h-5 w-5" />}
             tone="indigo"
-            helper="Estimated net margin"
+            helper="Preorder profitability remains in its own reporting bucket"
           />
         </motion.div>
       </div>

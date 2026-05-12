@@ -98,44 +98,53 @@ export function ProfitLossReport({
       <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
         <motion.div variants={item}>
           <MetricCard
-            label="Gross Inflow"
+            label="Gross Revenue"
             value={formatCurrency(parseFloat(profitLossData.total_revenue))}
             icon={<DollarSign className="h-5 w-5" />}
             tone="brand"
-            helper="Total aggregate revenue"
+            helper="Top-line sales before tax adjustment"
           />
         </motion.div>
         <motion.div variants={item}>
           <MetricCard
-            label="Operational Outflow"
+            label="Gross Profit"
+            value={formatCurrency(parseFloat(profitLossData.gross_profit))}
+            icon={<Activity className="h-5 w-5" />}
+            tone="emerald"
+            helper="After COGS, before operating expenses"
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Operating Expense"
             value={formatCurrency(parseFloat(profitLossData.total_expenses))}
             icon={<TrendingDown className="h-5 w-5" />}
             tone="rose"
-            helper="Total aggregate expenses"
+            helper="Approved operating expenses"
           />
         </motion.div>
         <motion.div variants={item}>
           <MetricCard
-            label="Net Liquid Profit"
+            label="Net Profit"
             value={formatCurrency(parseFloat(profitLossData.net_profit))}
             icon={<TrendingUp className="h-5 w-5" />}
             tone="emerald"
-            helper="After all deductions"
+            helper="Gross profit minus operating expenses"
           />
         </motion.div>
-        <motion.div variants={item} className="hidden lg:block">
+        <motion.div variants={item} className="lg:col-span-4">
           <MetricCard
-            label="Yield Margin"
+            label="Profit Margin"
             value={`${parseFloat(profitLossData.profit_margin).toFixed(1)}%`}
             icon={<Percent className="h-5 w-5" />}
             tone="indigo"
-            helper="Efficiency of conversion"
+            helper={profitLossData.profit_margin_basis === "net_revenue" ? "Net profit as a share of net revenue" : "Net profit as a share of total revenue"}
           />
         </motion.div>
       </div>
 
       <motion.div variants={item}>
-        <DataPanel title="Fiscal Convergence" description="Comparative analysis of revenue generation vs operational liability.">
+        <DataPanel title="Revenue vs Expense" description="Comparison of money earned versus operational costs.">
           <div className="h-[400px] w-full pt-4">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={revenueVsExpenseData}>
@@ -162,9 +171,9 @@ export function ProfitLossReport({
                   }}
                 />
                 <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em' }} />
-                <Area type="monotone" dataKey="revenue" fill="#163625" fillOpacity={0.05} stroke="#163625" strokeWidth={3} name="Gross Revenue" />
+                <Area type="monotone" dataKey="revenue" fill="#163625" fillOpacity={0.05} stroke="#163625" strokeWidth={3} name="Total Revenue" />
                 <Area type="monotone" dataKey="expense" fill="#ef4444" fillOpacity={0.05} stroke="#ef4444" strokeWidth={3} name="Total Expense" />
-                <Bar dataKey="profit" fill="#10b981" radius={[4, 4, 0, 0]} name="Net Gain" />
+                <Bar dataKey="profit" fill="#10b981" radius={[4, 4, 0, 0]} name="Profit" />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -173,7 +182,7 @@ export function ProfitLossReport({
 
       <div className="grid gap-8 lg:grid-cols-2">
         <motion.div variants={item}>
-          <DataPanel title="Departmental Yield" description="Revenue vs Cost analysis across inventory nodes.">
+          <DataPanel title="Profit by Category" description="Analysis of revenue and costs for each business category.">
             <div className="h-[400px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={profitLossData.profit_by_category} layout="vertical">
@@ -190,19 +199,20 @@ export function ProfitLossReport({
         </motion.div>
 
         <motion.div variants={item}>
-          <DataPanel title="Performance Matrix" description="Granular profitability audit per department.">
+          <DataPanel title="Category Performance" description="Detailed profit analysis for each category.">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="border-b border-slate-100 hover:bg-transparent">
-                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4">Department</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4">Category</TableHead>
                     <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4 text-right">Net Profit</TableHead>
                     <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4 text-right">Margin</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {profitLossData.profit_by_category.map((item) => {
-                    const margin = (parseFloat(item.profit) / parseFloat(item.revenue)) * 100;
+                    const revenue = parseFloat(item.revenue);
+                    const margin = revenue > 0 ? (parseFloat(item.profit) / revenue) * 100 : 0;
                     return (
                       <TableRow key={item.category_name} className="border-b border-slate-50 group hover:bg-slate-50/50 transition-colors">
                         <TableCell className="py-4">

@@ -54,6 +54,8 @@ class ReportViewSet(viewsets.ModelViewSet):
         # Sales data
         sales = Sale.objects.filter(date__range=[date_from, date_to], status='completed')
         total_sales = sales.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+        total_tax = sales.aggregate(total=Sum('tax'))['total'] or Decimal('0.00')
+        net_revenue = total_sales - total_tax
         total_orders = sales.count()
         
         # Expense data
@@ -61,9 +63,9 @@ class ReportViewSet(viewsets.ModelViewSet):
         total_expenses = expenses.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
 
         # Profit & Loss data
-        total_profit = sales.aggregate(total=Sum('total_profit'))['total'] or Decimal('0.00')
-        net_profit = total_profit # Simplified for overview
-        profit_margin = (net_profit / total_sales * 100) if total_sales > 0 else Decimal('0.00')
+        gross_profit = sales.aggregate(total=Sum('total_profit'))['total'] or Decimal('0.00')
+        net_profit = gross_profit - total_expenses
+        profit_margin = (net_profit / net_revenue * 100) if net_revenue > 0 else Decimal('0.00')
 
         # Preorder analysis
         preorders = Preorder.objects.filter(created_at__range=[date_from, date_to])
@@ -83,8 +85,11 @@ class ReportViewSet(viewsets.ModelViewSet):
         data = {
             "total_sales": total_sales,
             "total_orders": total_orders,
+            "gross_profit": gross_profit,
             "total_expenses": total_expenses,
             "net_profit": net_profit,
+            "net_revenue": net_revenue,
+            "profit_margin_basis": "net_revenue",
             "profit_margin": profit_margin,
             "sales_by_date": list(sales_by_date),
             "expenses_by_date": list(expenses_by_date),
@@ -223,6 +228,9 @@ class ReportViewSet(viewsets.ModelViewSet):
         products = Product.objects.all()
         total_products = products.count()
         total_stock_value = products.aggregate(
+            total=Sum(F('stock_quantity') * F('cost_price'))
+        )['total'] or Decimal('0.00')
+        potential_revenue = products.aggregate(
             total=Sum(F('stock_quantity') * F('retail_price'))
         )['total'] or Decimal('0.00')
 
@@ -230,11 +238,11 @@ class ReportViewSet(viewsets.ModelViewSet):
         low_stock_items = products.filter(
             stock_quantity__lte=F('minimum_stock')
         ).values(
-            'name', 'stock_quantity', 'minimum_stock', 'retail_price'
+            'name', 'stock_quantity', 'minimum_stock', 'cost_price'
         ).annotate(
             stock=F('stock_quantity'),
             reorder_level=F('minimum_stock'),
-            price=F('retail_price')
+            price=F('cost_price')
         ).order_by('stock_quantity')
 
         # Stock by category
@@ -244,7 +252,7 @@ class ReportViewSet(viewsets.ModelViewSet):
             category_name=F('category__name'),
             total_products=Count('id'),
             total_stock=Sum('stock_quantity'),
-            total_value=Sum(F('stock_quantity') * F('retail_price'))
+            total_value=Sum(F('stock_quantity') * F('cost_price'))
         ).order_by('-total_value')
 
         # Stock movements
@@ -259,6 +267,7 @@ class ReportViewSet(viewsets.ModelViewSet):
         data = {
             'total_products': total_products,
             'total_stock_value': total_stock_value,
+            'potential_revenue': potential_revenue,
             'low_stock_items': list(low_stock_items),
             'stock_by_category': list(stock_by_category),
             'stock_movements': list(stock_movements)
@@ -391,7 +400,9 @@ class ReportViewSet(viewsets.ModelViewSet):
             status='completed'
         )
         total_revenue = sales.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
-        total_profit = sales.aggregate(total=Sum('total_profit'))['total'] or Decimal('0.00')
+        total_tax = sales.aggregate(total=Sum('tax'))['total'] or Decimal('0.00')
+        net_revenue = total_revenue - total_tax
+        gross_profit = sales.aggregate(total=Sum('total_profit'))['total'] or Decimal('0.00')
 
         # Expenses
         expenses = Expense.objects.filter(
@@ -400,8 +411,8 @@ class ReportViewSet(viewsets.ModelViewSet):
         )
         total_expenses = expenses.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
 
-        net_profit = total_revenue - total_expenses
-        profit_margin = (net_profit / total_revenue * 100) if total_revenue > 0 else Decimal('0.00')
+        net_profit = gross_profit - total_expenses
+        profit_margin = (net_profit / net_revenue * 100) if net_revenue > 0 else Decimal('0.00')
 
         # Preorder analysis
         preorders = Preorder.objects.filter(created_at__range=[date_from, date_to])
@@ -458,15 +469,18 @@ class ReportViewSet(viewsets.ModelViewSet):
         ).values('product__category__name').annotate(
             category_name=F('product__category__name'),
             revenue=Sum('total'),
-            cost=Sum('product__cost_price'),
+            cost=Sum(F('product__cost_price') * F('quantity')),
             profit=Sum('profit'),
             items_sold=Sum('quantity')
         ).order_by('-profit')
 
         data = {
             'total_revenue': total_revenue,
+            'gross_profit': gross_profit,
             'total_expenses': total_expenses,
             'net_profit': net_profit,
+            'net_revenue': net_revenue,
+            'profit_margin_basis': 'net_revenue',
             'profit_margin': profit_margin,
             'revenue_by_date': list(revenue_by_date),
             'expenses_by_date': list(expenses_by_date),
@@ -808,6 +822,101 @@ class ReportViewSet(viewsets.ModelViewSet):
         }
 
         return Response(data)
+
+    @action(detail=False, methods=['get'])
+    def integrity_check(self, request):
+        """Perform a comprehensive data integrity audit across the system."""
+        
+        # 1. Sale Total vs Items Sum Check
+        sales_with_mismatch = []
+        sales = Sale.objects.filter(status='completed').prefetch_related('items')
+        
+        for sale in sales:
+            item_sum = sale.items.aggregate(total_sum=Sum('total'))['total_sum'] or Decimal('0.00')
+            # total = subtotal - discount + tax. Since items already have discounts, 
+            # we need to account for GLOBAL discount and tax.
+            expected_total = (item_sum - sale.discount + sale.tax).quantize(Decimal('0.01'))
+            actual_total = sale.total.quantize(Decimal('0.01'))
+            
+            if abs(actual_total - expected_total) > Decimal('0.01'):
+                sales_with_mismatch.append({
+                    'id': sale.id,
+                    'invoice_number': sale.invoice_number,
+                    'actual_total': str(actual_total),
+                    'expected_total': str(expected_total),
+                    'difference': str(actual_total - expected_total),
+                    'type': 'SALE_ITEM_MISMATCH'
+                })
+
+        # 2. Sale Paid vs Payments Record Check
+        payment_mismatches = []
+        for sale in sales:
+            payment_sum = sale.sale_payments.filter(status='completed').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+            actual_paid = sale.amount_paid.quantize(Decimal('0.01'))
+            
+            if abs(actual_paid - payment_sum.quantize(Decimal('0.01'))) > Decimal('0.01'):
+                payment_mismatches.append({
+                    'id': sale.id,
+                    'invoice_number': sale.invoice_number,
+                    'reported_paid': str(actual_paid),
+                    'calculated_payments': str(payment_sum),
+                    'type': 'PAYMENT_MISMATCH'
+                })
+
+        # 3. Product Stock vs Variation Stock Check
+        stock_mismatches = []
+        products = Product.objects.all().prefetch_related('designs__colors')
+        for product in products:
+            variant_stock_sum = ProductVariation.objects.filter(design__product=product).aggregate(total=Sum('stock'))['total'] or 0
+            if product.stock_quantity != variant_stock_sum:
+                stock_mismatches.append({
+                    'id': product.id,
+                    'name': product.name,
+                    'sku': product.sku,
+                    'reported_stock': product.stock_quantity,
+                    'calculated_stock': variant_stock_sum,
+                    'type': 'STOCK_MISMATCH'
+                })
+
+        # 4. Profit Consistency Check
+        profit_mismatches = []
+        for sale in sales:
+            item_profit_sum = sale.items.aggregate(total_profit=Sum('profit'))['total_profit'] or Decimal('0.00')
+            reported_profit = sale.total_profit.quantize(Decimal('0.01'))
+            
+            if abs(reported_profit - item_profit_sum.quantize(Decimal('0.01'))) > Decimal('0.01'):
+                profit_mismatches.append({
+                    'id': sale.id,
+                    'invoice_number': sale.invoice_number,
+                    'reported_profit': str(reported_profit),
+                    'calculated_profit': str(item_profit_sum),
+                    'type': 'PROFIT_MISMATCH'
+                })
+
+        # 5. Category Coverage Check (Empty Categories)
+        empty_categories = Category.objects.annotate(product_count=Count('products')).filter(product_count=0).values('id', 'name')
+
+        data = {
+            'summary': {
+                'total_issues': len(sales_with_mismatch) + len(payment_mismatches) + len(stock_mismatches) + len(profit_mismatches),
+                'sale_mismatches': len(sales_with_mismatch),
+                'payment_mismatches': len(payment_mismatches),
+                'stock_mismatches': len(stock_mismatches),
+                'profit_mismatches': len(profit_mismatches),
+                'empty_categories': empty_categories.count()
+            },
+            'details': {
+                'sale_mismatches': sales_with_mismatch,
+                'payment_mismatches': payment_mismatches,
+                'stock_mismatches': stock_mismatches,
+                'profit_mismatches': profit_mismatches,
+                'empty_categories': list(empty_categories)
+            },
+            'timestamp': timezone.now().isoformat()
+        }
+
+        return Response(data)
+
 
 class SavedReportViewSet(viewsets.ModelViewSet):
     queryset = SavedReport.objects.all()

@@ -20,7 +20,7 @@ axiosInstance.interceptors.request.use(
         }
         if (typeof window !== "undefined") {
             const selectedBranchId = localStorage.getItem("selectedBranchId");
-            if (selectedBranchId) {
+            if (selectedBranchId && selectedBranchId !== "all") {
                 config.headers["X-Branch-Id"] = selectedBranchId;
             } else {
                 delete config.headers["X-Branch-Id"];

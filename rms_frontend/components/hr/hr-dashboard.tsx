@@ -19,6 +19,8 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { ManagerDirectory } from "@/components/hr/manager-directory";
 import { hrApi } from "@/lib/api/hr";
+import { useBranch } from "@/contexts/branch-context";
+import { toLocalDateString } from "@/lib/date";
 
 // Helper components that were likely defined in the file or need to be
 function ActivityItem({ icon, title, time, description, bg }: any) {
@@ -68,28 +70,54 @@ const item = {
 };
 
 export function HRDashboard() {
+  const { selectedBranchId } = useBranch();
   const { data: employees, isLoading: employeesLoading } = useQuery({
-    queryKey: ["hr", "employees"],
+    queryKey: ["hr", "employees", selectedBranchId ?? "all"],
     queryFn: hrApi.getEmployees,
   });
   const { data: attendance, isLoading: attendanceLoading } = useQuery({
-    queryKey: ["hr", "attendance"],
+    queryKey: ["hr", "attendance", selectedBranchId ?? "all"],
     queryFn: hrApi.getAttendance,
   });
   const { data: payroll, isLoading: payrollLoading } = useQuery({
-    queryKey: ["hr", "payroll"],
+    queryKey: ["hr", "payroll", selectedBranchId ?? "all"],
     queryFn: hrApi.getPayroll,
   });
   const { data: leaves, isLoading: leavesLoading } = useQuery({
-    queryKey: ["hr", "leave-requests"],
+    queryKey: ["hr", "leave-requests", selectedBranchId ?? "all"],
     queryFn: hrApi.getLeaveRequests,
   });
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toLocalDateString(new Date());
   const todayPresent = (attendance ?? []).filter((a) => a.date === today && a.status === "present").length;
   const totalEmployees = employees?.length ?? 0;
   const pendingPayroll = (payroll ?? []).filter((p) => !p.is_paid).length;
   const pendingLeaves = (leaves ?? []).filter((l) => l.status === "pending").length;
+  const openPayrollAmount = (payroll ?? [])
+    .filter((record) => !record.is_paid)
+    .reduce((sum, record) => sum + (parseFloat(record.net_amount || "0") || 0), 0);
+  const latestPayrollPeriod = (payroll ?? [])
+    .map((record) => new Date(record.period_start))
+    .filter((date) => !Number.isNaN(date.getTime()))
+    .sort((a, b) => b.getTime() - a.getTime())[0];
+  const payrollSummaryValue =
+    payroll && payroll.length > 0
+      ? `$${openPayrollAmount.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`
+      : "Unavailable";
+  const payrollSummaryHelper = payroll && payroll.length > 0
+    ? pendingPayroll > 0
+      ? `${pendingPayroll} unpaid record${pendingPayroll === 1 ? "" : "s"} awaiting settlement`
+      : "All generated payroll records are marked paid"
+    : "Generate payroll records to populate this card";
+  const payrollSummaryMeta = latestPayrollPeriod
+    ? `Latest cycle ${latestPayrollPeriod.toLocaleDateString("en-US", {
+      month: "short",
+      year: "numeric",
+    })}`
+    : "No payroll cycle available";
 
   if (employeesLoading || attendanceLoading || payrollLoading) {
     return (
@@ -237,12 +265,15 @@ export function HRDashboard() {
               </div>
               <div className="relative z-10 space-y-6">
                 <div>
-                  <h3 className="text-xs font-black uppercase tracking-widest opacity-60">Estimated Payroll</h3>
-                  <p className="text-3xl font-black mt-2 tracking-tight">$12,450.00</p>
+                  <h3 className="text-xs font-black uppercase tracking-widest opacity-60">Open Payroll</h3>
+                  <p className="text-3xl font-black mt-2 tracking-tight">{payrollSummaryValue}</p>
+                  <p className="mt-2 text-[11px] font-medium opacity-70">{payrollSummaryHelper}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge className="bg-emerald-500/20 text-emerald-400 border-none rounded-lg text-[10px] font-black uppercase tracking-widest">On Track</Badge>
-                  <span className="text-[10px] font-bold opacity-60">Next run in 12 days</span>
+                  <Badge className="bg-emerald-500/20 text-emerald-400 border-none rounded-lg text-[10px] font-black uppercase tracking-widest">
+                    {!payroll?.length ? "No Data" : pendingPayroll > 0 ? "Needs Review" : "Current"}
+                  </Badge>
+                  <span className="text-[10px] font-bold opacity-60">{payrollSummaryMeta}</span>
                 </div>
                 <Button asChild className="w-full bg-brand-secondary text-brand-primary hover:bg-white rounded-xl font-bold text-xs uppercase tracking-widest py-6">
                   <Link href="/hr/payroll">Review Engine</Link>

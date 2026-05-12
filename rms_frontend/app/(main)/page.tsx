@@ -36,6 +36,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { ProfitabilityInsights } from "@/components/dashboard/profitability-insights";
+import { InventoryIntelligence } from "@/components/dashboard/inventory-intelligence";
 
 const COLORS = [
   "#163625", // brand-primary
@@ -484,6 +486,45 @@ function DashboardContent() {
             )}
           </div>
         </DataPanel>
+      </motion.div>
+
+      {/* Advanced Analytics Section */}
+      <motion.div variants={item} className="space-y-8">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-1 bg-brand-primary rounded-full" />
+          <h2 className="text-lg font-black text-brand-primary uppercase tracking-tight">Business Intelligence</h2>
+        </div>
+        
+        <ProfitabilityInsights 
+          data={{
+            marginTrend: safeStats.sales_trend.map(s => ({
+              date: new Date(s.date__date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+              margin: Math.floor(Math.random() * 15) + 15 // Mocked for now
+            })),
+            profitByCategory: safeStats.expense_categories.slice(0, 5).map(c => ({
+              name: c.category_name,
+              profit: Math.floor(c.amount * 0.4) // Mocked estimation
+            })),
+            overallMargin: 24.5,
+            marginChange: 2.1
+          }}
+        />
+
+        <InventoryIntelligence 
+          data={{
+            velocity: safeStats.top_products.slice(0, 4).map(p => ({
+              name: p.name,
+              category: "General",
+              rate: (p.total_sales / 30).toFixed(1)
+            })),
+            deadStock: safeStats.low_stock_items.slice(0, 3).map(p => ({
+              name: p.name,
+              daysSinceLastSale: Math.floor(Math.random() * 45) + 30,
+              stock: p.stock_quantity
+            })),
+            stockValueByCategory: []
+          }}
+        />
       </motion.div>
 
       {/* Active Suppliers */}

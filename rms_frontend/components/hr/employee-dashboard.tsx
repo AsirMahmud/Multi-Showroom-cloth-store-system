@@ -62,7 +62,7 @@ export function EmployeeDashboard({ employeeId }: { employeeId: string }) {
 
   if (!employee) {
     return (
-      <DataPanel title="System Conflict" description="Protocol failure while retrieving personnel node.">
+      <DataPanel title="Error" description="There was an error loading the employee record.">
         <div className="text-center py-12">
           <AlertCircle className="h-12 w-12 text-rose-500 mx-auto mb-4" />
           <p className="text-slate-600 font-bold">Employee record not found.</p>
@@ -83,13 +83,13 @@ export function EmployeeDashboard({ employeeId }: { employeeId: string }) {
           <h1 className="text-3xl font-black text-brand-primary tracking-tight">{employee.full_name}</h1>
           <div className="flex items-center justify-center md:justify-start gap-2">
             <Badge className="bg-brand-secondary text-brand-primary border-none font-black text-[10px] uppercase tracking-widest px-3 py-1">
-              {employee.designation || "Personnel"}
+              {employee.designation || "Staff Member"}
             </Badge>
             <Badge variant={employee.is_active ? "default" : "secondary"} className={cn(
               "border-none font-black text-[10px] uppercase tracking-widest px-3 py-1",
               employee.is_active ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-400"
             )}>
-              {employee.is_active ? "Active Duty" : "Inactive"}
+              {employee.is_active ? "Active" : "Inactive"}
             </Badge>
           </div>
         </div>
@@ -111,7 +111,7 @@ export function EmployeeDashboard({ employeeId }: { employeeId: string }) {
             Profile
           </TabsTrigger>
           <TabsTrigger value="attendance" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-brand-primary data-[state=active]:shadow-sm px-6 font-black text-[10px] uppercase tracking-widest transition-all">
-            Presence
+            Attendance
           </TabsTrigger>
           <TabsTrigger value="payroll" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-brand-primary data-[state=active]:shadow-sm px-6 font-black text-[10px] uppercase tracking-widest transition-all">
             Payroll
@@ -119,7 +119,7 @@ export function EmployeeDashboard({ employeeId }: { employeeId: string }) {
         </TabsList>
 
         <TabsContent value="overview" className="m-0 space-y-8 focus-visible:outline-none">
-          <DataPanel title="Personal Information" description="Granular log of identity and contact protocols.">
+          <DataPanel title="Personal Information" description="Contact details and identification information.">
             <div className="grid md:grid-cols-2 gap-8 pt-4">
               <div className="space-y-6">
                 <div className="flex items-center gap-4">
@@ -127,8 +127,8 @@ export function EmployeeDashboard({ employeeId }: { employeeId: string }) {
                     <Mail className="h-5 w-5" />
                   </div>
                   <div>
-                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Communication Node</div>
-                    <div className="text-xs font-black text-slate-700">{employee.email || "Encrypted"}</div>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Email Address</div>
+                    <div className="text-xs font-black text-slate-700">{employee.email || "Not set"}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
@@ -136,8 +136,8 @@ export function EmployeeDashboard({ employeeId }: { employeeId: string }) {
                     <Phone className="h-5 w-5" />
                   </div>
                   <div>
-                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Mobile Uplink</div>
-                    <div className="text-xs font-black text-slate-700">{employee.phone || "Unregistered"}</div>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Phone Number</div>
+                    <div className="text-xs font-black text-slate-700">{employee.phone || "Not set"}</div>
                   </div>
                 </div>
               </div>
@@ -147,8 +147,8 @@ export function EmployeeDashboard({ employeeId }: { employeeId: string }) {
                     <Briefcase className="h-5 w-5" />
                   </div>
                   <div>
-                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Operational Role</div>
-                    <div className="text-xs font-black text-slate-700">{employee.designation || "Generalist"}</div>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Designation</div>
+                    <div className="text-xs font-black text-slate-700">{employee.designation || "Staff"}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
@@ -156,9 +156,9 @@ export function EmployeeDashboard({ employeeId }: { employeeId: string }) {
                     <CalendarDays className="h-5 w-5" />
                   </div>
                   <div>
-                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Onboarding Timestamp</div>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Date of Joining</div>
                     <div className="text-xs font-black text-slate-700">
-                      {employee.hire_date ? format(new Date(employee.hire_date), "MMMM d, yyyy") : "Archive Missing"}
+                      {employee.hire_date ? format(new Date(employee.hire_date), "MMMM d, yyyy") : "Date not set"}
                     </div>
                   </div>
                 </div>
@@ -168,13 +168,13 @@ export function EmployeeDashboard({ employeeId }: { employeeId: string }) {
         </TabsContent>
 
         <TabsContent value="attendance" className="m-0 space-y-8 focus-visible:outline-none">
-          <DataPanel title="Recent Presence" description="Temporal log of daily check-ins and deployment status.">
+          <DataPanel title="Recent Attendance" description="A record of the staff member's daily attendance.">
             {isAttendanceLoading ? (
-              <div className="text-center py-8 text-slate-400 font-bold uppercase tracking-widest text-[10px]">Synchronizing...</div>
+              <div className="text-center py-8 text-slate-400 font-bold uppercase tracking-widest text-[10px]">Loading...</div>
             ) : employeeAttendance.length === 0 ? (
               <div className="text-center py-12 text-slate-300">
                 <Clock className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                <p className="font-black text-[10px] uppercase tracking-widest">No presence records found.</p>
+                <p className="font-black text-[10px] uppercase tracking-widest">No attendance records found.</p>
               </div>
             ) : (
               <div className="space-y-3 pt-4">
@@ -237,13 +237,13 @@ function EmployeePayrollTab({ employeeId }: { employeeId: string }) {
   });
 
   return (
-    <DataPanel title="Fiscal Records" description="Management and audit log of monthly salary settlements.">
+    <DataPanel title="Payroll History" description="View and manage monthly salary payments.">
       {isLoading ? (
-        <div className="text-center py-8 text-slate-400 font-bold uppercase tracking-widest text-[10px]">Processing matrix...</div>
+        <div className="text-center py-8 text-slate-400 font-bold uppercase tracking-widest text-[10px]">Loading...</div>
       ) : employeePayroll.length === 0 ? (
         <div className="text-center py-12 text-slate-300">
           <Banknote className="h-12 w-12 mx-auto mb-2 opacity-20" />
-          <p className="font-black text-[10px] uppercase tracking-widest">No fiscal records found.</p>
+          <p className="font-black text-[10px] uppercase tracking-widest">No payroll records found.</p>
         </div>
       ) : (
         <div className="space-y-4 pt-4">
@@ -254,7 +254,7 @@ function EmployeePayrollTab({ employeeId }: { employeeId: string }) {
                   {format(new Date(record.period_start), "MMMM yyyy")}
                 </p>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                  Gross: {formatCurrency(record.gross_amount)} | Delta: {formatCurrency(record.deductions)}
+                  Gross: {formatCurrency(record.gross_amount)} | Deductions: {formatCurrency(record.deductions)}
                 </p>
               </div>
               <div className="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-end">
@@ -263,7 +263,7 @@ function EmployeePayrollTab({ employeeId }: { employeeId: string }) {
                 </div>
                 {record.is_paid ? (
                   <Badge className="bg-emerald-50 text-emerald-600 border-none font-black text-[9px] uppercase tracking-widest flex items-center gap-1.5 px-3 py-1.5">
-                    <CheckCircle2 className="h-3 w-3" /> Settled
+                    <CheckCircle2 className="h-3 w-3" /> Paid
                   </Badge>
                 ) : (
                   <Button 
@@ -272,7 +272,7 @@ function EmployeePayrollTab({ employeeId }: { employeeId: string }) {
                     onClick={() => payMutation.mutate(record.id)}
                     disabled={payMutation.isPending}
                   >
-                    {payMutation.isPending ? "Syncing..." : "Settle Balance"}
+                    {payMutation.isPending ? "Updating..." : "Pay Now"}
                   </Button>
                 )}
               </div>

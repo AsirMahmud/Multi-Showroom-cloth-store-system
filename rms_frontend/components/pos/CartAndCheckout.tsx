@@ -20,6 +20,7 @@ import { usePOSStore } from "@/store/pos-store";
 import type { PaymentMethod } from "@/types/sales";
 import { formatCurrency } from "@/lib/utils";
 import PaymentSection from "./PaymentSection";
+import { calculateCartTotals } from "@/lib/pos-calculations";
 
 type CartRow = ReturnType<typeof usePOSStore.getState>["cart"][number];
 
@@ -48,24 +49,11 @@ export default function CartAndCheckout() {
 
   const cartGroups = useMemo(() => groupCartItems(cart), [cart]);
 
-  const subtotal = cart.reduce((sum, item) => {
-    const itemTotal = item.price * item.quantity;
-    if (item.discount) {
-      return item.discount.type === "percentage"
-        ? sum + itemTotal * (1 - item.discount.value / 100)
-        : sum + itemTotal - item.discount.value;
-    }
-    return sum + itemTotal;
-  }, 0);
-
-  let discountedSubtotal = subtotal;
-
-  if (cartDiscount) {
-    discountedSubtotal =
-      cartDiscount.type === "percentage"
-        ? subtotal * (1 - cartDiscount.value / 100)
-        : subtotal - cartDiscount.value;
-  }
+  const cartTotals = useMemo(
+    () => calculateCartTotals(cart, cartDiscount),
+    [cart, cartDiscount]
+  );
+  const discountedSubtotal = cartTotals.total;
 
   const changeDue = cashAmount ? Number.parseFloat(cashAmount) - discountedSubtotal : 0;
 
@@ -104,7 +92,7 @@ export default function CartAndCheckout() {
   };
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden border-l bg-white shadow-premium transition-all duration-300">
+    <div className="flex h-full w-full flex-col overflow-hidden border-l border-brand-primary/5 bg-white/90 backdrop-blur-md shadow-premium transition-all duration-300">
       <div className="flex h-full flex-col overflow-hidden p-4">
         <div className="flex items-center justify-between border-b px-2 pb-3">
           <h2 className="flex items-center text-sm font-semibold text-slate-900">
@@ -151,7 +139,7 @@ export default function CartAndCheckout() {
                       key={group.productId}
                       className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
                     >
-                      <div className="border-b border-slate-100 bg-gradient-to-r from-slate-900 via-slate-900 to-slate-800 px-3 py-3 text-white">
+                      <div className="border-b border-brand-primary/5 bg-slate-900 px-4 py-4 text-white">
                         <div className="flex items-start gap-3">
                           <div className="h-14 w-14 overflow-hidden rounded-xl border border-white/10 bg-slate-200">
                             <img

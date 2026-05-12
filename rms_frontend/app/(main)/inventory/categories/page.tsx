@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCategories, useDeleteCategory } from "@/hooks/queries/useInventory";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { EmptyState } from "@/components/ui/professional";
 import {
   Card,
   CardContent,
@@ -267,19 +268,36 @@ export default function CategoriesPage() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search taxonomy..."
+              placeholder="SEARCH TAXONOMY..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-11 bg-white border border-slate-200 rounded-xl focus-visible:ring-brand-primary shadow-sm hover:border-slate-300 transition-all"
+              className="pl-9 h-11 bg-slate-50/50 border-none rounded-xl focus-visible:ring-brand-primary font-bold text-xs placeholder:text-slate-300 uppercase tracking-widest"
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCategories.map((category) => (
-            <CategoryCard key={category.id} category={category} />
-          ))}
-        </div>
+        {filteredCategories.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredCategories.map((category) => (
+              <CategoryCard key={category.id} category={category} />
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            title="Null Results Detected"
+            description="The current search manifest yielded no classification nodes. Try adjusting your parameters."
+            icon={<Tag className="h-10 w-10" />}
+            action={
+              <Button 
+                variant="outline" 
+                className="h-11 px-6 rounded-xl font-black text-[10px] uppercase tracking-widest border-brand-primary/10 text-brand-primary hover:bg-brand-primary/5"
+                onClick={() => setSearchQuery("")}
+              >
+                Clear Search Protocol
+              </Button>
+            }
+          />
+        )}
       </DataPanel>
 
       <AlertDialog open={!!categoryToDelete} onOpenChange={() => setCategoryToDelete(null)}>

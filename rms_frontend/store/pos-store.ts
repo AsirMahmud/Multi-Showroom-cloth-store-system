@@ -4,6 +4,7 @@ import { Product } from '@/types/inventory';
 import { PaymentMethod, Sale } from '@/types/sales';
 import { createSale } from '@/lib/api/sales';
 import { toast } from '@/hooks/use-toast';
+import { calculateCartTotals, sanitizeDiscount } from '@/lib/pos-calculations';
 
 export interface CartItem {
     id: number;
@@ -334,7 +335,10 @@ export const usePOSStore = create<POSState>((set, get) => ({
                 item.id === itemId
                     ? {
                         ...item,
-                        discount: { type: discountType, value: Number(discountValue) },
+                        discount: sanitizeDiscount(
+                            { type: discountType, value: Number(discountValue) },
+                            item.price * item.quantity
+                        ) || undefined,
                     }
                     : item
             )
@@ -386,33 +390,16 @@ export const usePOSStore = create<POSState>((set, get) => ({
         }
 
         try {
-            const itemsWithDiscounts = cart.map((item) => {
-                const itemTotal = item.price * item.quantity;
-                const itemDiscount = item.discount
-                    ? item.discount.type === 'percentage'
-                        ? itemTotal * (item.discount.value / 100)
-                        : item.discount.value
-                    : 0;
-                const discountedTotal = itemTotal - itemDiscount;
-                return {
-                    ...item,
-                    itemTotal,
-                    itemDiscount,
-                    discountedTotal,
-                };
-            });
-
-            const subtotalBeforeDiscount = itemsWithDiscounts.reduce((sum, item) => sum + item.itemTotal, 0);
-            const totalItemDiscounts = itemsWithDiscounts.reduce((sum, item) => sum + item.itemDiscount, 0);
-            const globalDiscount = cartDiscount
-                ? cartDiscount.type === 'percentage'
-                    ? subtotalBeforeDiscount * (cartDiscount.value / 100)
-                    : cartDiscount.value
-                : 0;
-
-            const subtotal = subtotalBeforeDiscount - totalItemDiscounts - globalDiscount;
-            const tax = 0;
-            const total = subtotal;
+            const {
+                itemsWithDiscounts,
+                subtotalBeforeDiscount,
+                discountedSubtotal,
+                totalItemDiscounts,
+                globalDiscount,
+                subtotal,
+                tax,
+                total,
+            } = calculateCartTotals(cart, cartDiscount);
 
             let paymentData: any[] = [];
             if (markAsDue) {
@@ -475,7 +462,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
                 date: new Date().toISOString(),
                 items: itemsWithDiscounts,
                 subtotal: subtotalBeforeDiscount,
-                discountedSubtotal: subtotalBeforeDiscount - totalItemDiscounts,
+                discountedSubtotal,
                 itemDiscounts: totalItemDiscounts,
                 globalDiscount,
                 discount: cartDiscount,

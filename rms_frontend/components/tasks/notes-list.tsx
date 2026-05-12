@@ -57,9 +57,9 @@ export function NotesList() {
         {sortedNotes.length === 0 ? (
           <div className="col-span-full py-20 bg-slate-50/50 border border-dashed border-slate-200 rounded-[32px] flex flex-col items-center justify-center text-slate-400">
             <StickyNote className="h-12 w-12 mb-4 opacity-20" />
-            <p className="font-black text-[10px] uppercase tracking-widest">No Intelligence nodes found.</p>
+            <p className="font-black text-[10px] uppercase tracking-widest">No business notes found.</p>
             <Button variant="ghost" className="mt-4 text-brand-primary font-black text-[10px] uppercase tracking-widest" onClick={() => setCreateDialogOpen(true)}>
-              Initialize First Log
+              Create First Note
             </Button>
           </div>
         ) : (
@@ -135,7 +135,7 @@ export function NotesList() {
                       className="h-8 rounded-xl px-4 text-brand-primary font-black text-[10px] uppercase tracking-widest hover:bg-brand-secondary/50" 
                       onClick={() => viewNoteDetails(note)}
                     >
-                      Access Log
+                      View Note
                     </Button>
                   </div>
                 </CardContent>

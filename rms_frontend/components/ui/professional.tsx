@@ -227,29 +227,59 @@ export function StatusBadge({
 
 export function TableSkeleton({ rows = 5, cols = 4 }: { rows?: number; cols?: number }) {
   return (
-    <div className="w-full space-y-4">
-      <div className="flex items-center justify-between py-2">
-        <Skeleton className="h-8 w-[200px] rounded-xl" />
-        <Skeleton className="h-8 w-[100px] rounded-xl" />
+    <div className="w-full space-y-4 animate-pulse">
+      <div className="flex items-center justify-between py-2 px-1">
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-[240px] rounded-lg" />
+          <Skeleton className="h-3 w-[160px] rounded-lg opacity-50" />
+        </div>
+        <Skeleton className="h-10 w-[120px] rounded-xl" />
       </div>
-      <div className="rounded-2xl border border-slate-100 overflow-hidden bg-white/50">
-        <div className="bg-slate-50/50 p-4 border-b border-slate-100">
-          <div className="flex gap-4">
+      <div className="rounded-[32px] border border-brand-primary/5 overflow-hidden bg-white shadow-premium">
+        <div className="bg-slate-50/50 p-6 border-b border-brand-primary/5">
+          <div className="flex gap-6">
             {Array.from({ length: cols }).map((_, i) => (
-              <Skeleton key={i} className="h-4 flex-1 rounded-lg" />
+              <Skeleton key={i} className="h-3 flex-1 rounded-full bg-slate-200" />
             ))}
           </div>
         </div>
         {Array.from({ length: rows }).map((_, index) => (
-          <div key={index} className="p-4 border-b border-slate-50 last:border-0">
-            <div className="flex gap-4 items-center">
+          <div key={index} className="p-6 border-b border-brand-primary/[0.02] last:border-0">
+            <div className="flex gap-6 items-center">
               {Array.from({ length: cols }).map((_, i) => (
-                <Skeleton key={i} className="h-4 flex-1 rounded-lg" />
+                <Skeleton key={i} className="h-4 flex-1 rounded-lg bg-slate-100" />
               ))}
             </div>
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+export function EmptyState({
+  title,
+  description,
+  icon,
+  action,
+  className,
+}: {
+  title: string;
+  description: string;
+  icon?: ReactNode;
+  action?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex flex-col items-center justify-center p-16 text-center border-2 border-dashed border-slate-100 rounded-[40px] bg-slate-50/40 backdrop-blur-sm", className)}>
+      {icon && (
+        <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-white text-brand-primary/20 shadow-premium ring-1 ring-brand-primary/5 animate-float">
+          {icon}
+        </div>
+      )}
+      <h3 className="text-xl font-black text-brand-primary uppercase tracking-tight">{title}</h3>
+      <p className="mt-3 text-sm font-bold text-slate-400 max-w-[320px] leading-relaxed uppercase tracking-wide">{description}</p>
+      {action && <div className="mt-8">{action}</div>}
     </div>
   );
 }

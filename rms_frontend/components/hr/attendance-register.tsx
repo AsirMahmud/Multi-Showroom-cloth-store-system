@@ -102,8 +102,8 @@ export function AttendanceRegister() {
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Personnel Presence"
-        description={`Monitoring and recording daily staff presence for ${format(date, "MMMM d, yyyy")}.`}
+        title="Attendance Register"
+        description={`View and mark daily attendance for ${format(date, "MMMM d, yyyy")}.`}
         icon={<UserCheck className="h-5 w-5" />}
         action={
           <div className="flex items-center gap-3 bg-white/50 backdrop-blur-md p-1.5 rounded-2xl shadow-sm border border-slate-100">
@@ -123,48 +123,48 @@ export function AttendanceRegister() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <motion.div variants={item}>
           <MetricCard
-            label="Active Personnel"
+            label="Present"
             value={presentCount.toString()}
             icon={<CheckCircle2 className="h-5 w-5" />}
             tone="emerald"
-            helper="Present on duty"
+            helper="Staff on duty"
           />
         </motion.div>
         <motion.div variants={item}>
           <MetricCard
-            label="Critical Absence"
+            label="Absent"
             value={absentCount.toString()}
             icon={<XCircle className="h-5 w-5" />}
             tone="rose"
-            helper="Unreported leave"
+            helper="Staff not present"
           />
         </motion.div>
         <motion.div variants={item}>
           <MetricCard
-            label="Temporal Latency"
+            label="Late Arrivals"
             value={lateCount.toString()}
             icon={<Clock className="h-5 w-5" />}
             tone="amber"
-            helper="Arrival delay log"
+            helper="Staff arriving late"
           />
         </motion.div>
         <motion.div variants={item}>
           <MetricCard
-            label="Approved Furlough"
+            label="On Leave"
             value={leaveCount.toString()}
             icon={<CalendarIcon className="h-5 w-5" />}
             tone="indigo"
-            helper="Scheduled leave nodes"
+            helper="Staff on approved leave"
           />
         </motion.div>
       </div>
 
-      <DataPanel title="Associate Matrix" description="Granular log of personnel presence and deployment status.">
+      <DataPanel title="Attendance List" description="List of staff members and their attendance status for today.">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div className="relative flex-1 md:w-80">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
             <Input 
-              placeholder="Search identity..." 
+              placeholder="Search staff..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 h-11 bg-slate-50/50 border-slate-100 rounded-2xl focus:ring-brand-primary/20 transition-all font-bold text-xs"
@@ -172,7 +172,7 @@ export function AttendanceRegister() {
           </div>
           <Button variant="outline" className="h-11 px-6 rounded-2xl flex items-center gap-2 font-black text-[10px] uppercase tracking-widest border-slate-100 bg-white/50 hover:bg-white shadow-sm transition-all">
             <Download className="h-3.5 w-3.5" />
-            Export Protocol
+            Download Report
           </Button>
         </div>
 
@@ -180,10 +180,10 @@ export function AttendanceRegister() {
           <Table>
             <TableHeader>
               <TableRow className="border-b border-slate-100 hover:bg-transparent">
-                <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">Associate Identifier</TableHead>
+                <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">Staff Member</TableHead>
                 <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">Designation</TableHead>
                 <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-center">Status</TableHead>
-                <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Settlement Action</TableHead>
+                <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Mark Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -203,7 +203,7 @@ export function AttendanceRegister() {
                   <TableCell colSpan={4} className="h-[300px] text-center">
                     <div className="flex flex-col items-center justify-center text-slate-300">
                       <Activity className="h-12 w-12 mb-2 opacity-20" />
-                      <p className="font-black text-[10px] uppercase tracking-widest">No matching personnel nodes found.</p>
+                      <p className="font-black text-[10px] uppercase tracking-widest">No staff members found.</p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -241,7 +241,7 @@ export function AttendanceRegister() {
                             {record.status}
                           </Badge>
                         ) : (
-                          <span className="text-slate-300 text-[9px] font-black uppercase tracking-widest italic">Pending Trace</span>
+                          <span className="text-slate-300 text-[9px] font-black uppercase tracking-widest italic">Not Marked</span>
                         )}
                       </TableCell>
                       <TableCell className="py-5 text-right">

@@ -84,29 +84,29 @@ export function SalesReport({
       <div className="grid gap-4 md:grid-cols-3">
         <motion.div variants={item}>
           <MetricCard
-            label="Gross Inflow"
+            label="Gross Sales"
             value={formatCurrency(parseFloat(salesData.total_sales))}
             icon={<DollarSign className="h-5 w-5" />}
             tone="brand"
-            helper={`${salesData.total_orders} total transactions`}
+            helper={`${salesData.total_orders} total orders`}
           />
         </motion.div>
         <motion.div variants={item}>
           <MetricCard
-            label="Volume Dispatched"
+            label="Total Items Sold"
             value={salesData.total_items_sold.toString()}
             icon={<Package className="h-5 w-5" />}
             tone="emerald"
-            helper="Total units sold"
+            helper="Units sold"
           />
         </motion.div>
         <motion.div variants={item}>
           <MetricCard
-            label="Transaction Delta"
+            label="Average Order Value"
             value={formatCurrency(parseFloat(salesData.average_order_value))}
             icon={<Zap className="h-5 w-5" />}
             tone="indigo"
-            helper="Average yield per order"
+            helper="Average spend per order"
           />
         </motion.div>
       </div>
@@ -114,21 +114,21 @@ export function SalesReport({
       <Tabs defaultValue="trend" className="space-y-8">
         <TabsList className="bg-slate-50 border-none p-1 h-12 shadow-inner rounded-2xl flex justify-start gap-1 w-fit">
           <TabsTrigger value="trend" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-brand-primary data-[state=active]:shadow-sm px-6 font-black text-[10px] uppercase tracking-widest transition-all">
-            <BarChart3 className="w-3.5 h-3.5 mr-2" /> Revenue Trend
+            <BarChart3 className="w-3.5 h-3.5 mr-2" /> Sales Trend
           </TabsTrigger>
           <TabsTrigger value="categories" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-brand-primary data-[state=active]:shadow-sm px-6 font-black text-[10px] uppercase tracking-widest transition-all">
-            <PieChartIcon className="w-3.5 h-3.5 mr-2" /> Category Delta
+            <PieChartIcon className="w-3.5 h-3.5 mr-2" /> Category Sales
           </TabsTrigger>
           <TabsTrigger value="products" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-brand-primary data-[state=active]:shadow-sm px-6 font-black text-[10px] uppercase tracking-widest transition-all">
-            <Package className="w-3.5 h-3.5 mr-2" /> SKU Performance
+            <Package className="w-3.5 h-3.5 mr-2" /> Product Performance
           </TabsTrigger>
           <TabsTrigger value="payments" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-brand-primary data-[state=active]:shadow-sm px-6 font-black text-[10px] uppercase tracking-widest transition-all">
-            <CreditCard className="w-3.5 h-3.5 mr-2" /> Settlement Nodes
+            <CreditCard className="w-3.5 h-3.5 mr-2" /> Payment Methods
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="trend" className="m-0 focus-visible:outline-none">
-          <DataPanel title="Revenue Trajectory" description="Temporal analysis of sales inflow across the selected cycle.">
+          <DataPanel title="Sales Performance" description="Daily revenue tracking across the selected period.">
             <div className="h-[400px] w-full pt-4">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={salesData.sales_by_date}>
@@ -169,7 +169,7 @@ export function SalesReport({
 
         <TabsContent value="categories" className="m-0 focus-visible:outline-none">
           <div className="grid gap-8 md:grid-cols-2">
-            <DataPanel title="Departmental Split" description="Revenue distribution across inventory categories.">
+            <DataPanel title="Sales by Category" description="Revenue distribution across your business categories.">
               <div className="h-[350px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -197,12 +197,12 @@ export function SalesReport({
               </div>
             </DataPanel>
 
-            <DataPanel title="Category Ledger" description="Granular performance metrics per department.">
+            <DataPanel title="Category Details" description="Detailed performance metrics for each category.">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="border-b border-slate-100 hover:bg-transparent">
-                      <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4">Department</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4">Category</TableHead>
                       <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4 text-right">Revenue</TableHead>
                       <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4 text-right">Units</TableHead>
                     </TableRow>
@@ -229,16 +229,16 @@ export function SalesReport({
         </TabsContent>
 
         <TabsContent value="products" className="m-0 focus-visible:outline-none">
-          <DataPanel title="High-Velocity Assets" description="Top performing inventory units by revenue yield and profit margin.">
+          <DataPanel title="Best Selling Products" description="Top performing items by total revenue and profit.">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="border-b border-slate-100 hover:bg-transparent">
-                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">SKU Identifier</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">Department</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Revenue Yield</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Volume</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Net Margin</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">Product Name</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">Category</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Total Revenue</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Units Sold</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Net Profit</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -271,7 +271,7 @@ export function SalesReport({
 
         <TabsContent value="payments" className="m-0 focus-visible:outline-none">
           <div className="grid gap-8 md:grid-cols-2">
-            <DataPanel title="Settlement Distribution" description="Primary channels used for transaction clearing.">
+            <DataPanel title="Payment Methods" description="How customers chose to pay for their orders.">
               <div className="h-[350px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={salesData.payment_methods}>
@@ -299,7 +299,7 @@ export function SalesReport({
               </div>
             </DataPanel>
 
-            <DataPanel title="Liquidity Nodes" description="Detailed breakdown of payment provider performance.">
+            <DataPanel title="Payment Channel Details" description="Detailed performance for each payment method.">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>

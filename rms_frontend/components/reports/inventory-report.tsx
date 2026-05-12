@@ -75,7 +75,7 @@ export function InventoryReport() {
 
   return (
     <div className="space-y-8">
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
         <motion.div variants={item}>
           <MetricCard
             label="Total Catalog"
@@ -87,13 +87,24 @@ export function InventoryReport() {
         </motion.div>
         <motion.div variants={item}>
           <MetricCard
-            label="Valuation"
+            label="Inventory At Cost"
             value={formatCurrency(parseFloat(inventoryData.total_stock_value))}
             icon={<DollarSign className="h-5 w-5" />}
             tone="emerald"
-            helper="Current asset value"
+            helper="Current asset value on cost basis"
           />
         </motion.div>
+        {inventoryData.potential_revenue !== undefined && (
+          <motion.div variants={item}>
+            <MetricCard
+              label="Potential Revenue"
+              value={formatCurrency(parseFloat(inventoryData.potential_revenue))}
+              icon={<BarChart3 className="h-5 w-5" />}
+              tone="indigo"
+              helper="Retail value if current stock sells through"
+            />
+          </motion.div>
+        )}
         <motion.div variants={item}>
           <MetricCard
             label="Low Stock Alerts"
@@ -132,7 +143,7 @@ export function InventoryReport() {
         </motion.div>
 
         <motion.div variants={item}>
-          <DataPanel title="Category Valuation" description="Financial exposure per inventory department.">
+          <DataPanel title="Category Valuation" description="Cost-based inventory exposure per department.">
             <div className="h-[350px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -175,7 +186,7 @@ export function InventoryReport() {
                   <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">SKU Identifier</TableHead>
                   <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">Stock Status</TableHead>
                   <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">Reorder Threshold</TableHead>
-                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Unit Price</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Unit Cost</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -192,7 +203,7 @@ export function InventoryReport() {
                         <div className="w-12 h-1 bg-slate-100 rounded-full overflow-hidden">
                           <div 
                             className="h-full bg-rose-500" 
-                            style={{ width: `${Math.min(100, (item.stock / item.reorder_level) * 100)}%` }} 
+                            style={{ width: `${item.reorder_level > 0 ? Math.min(100, (item.stock / item.reorder_level) * 100) : 100}%` }} 
                           />
                         </div>
                       </div>
@@ -204,6 +215,46 @@ export function InventoryReport() {
                     </TableCell>
                     <TableCell className="py-5 text-right font-black text-brand-primary text-xs">
                       {formatCurrency(parseFloat(item.price))}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </DataPanel>
+      </motion.div>
+
+      <motion.div variants={item}>
+        <DataPanel title="Category Inventory Map" description="Operational overview of products distributed across categories.">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b border-slate-100 hover:bg-transparent">
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">Category Department</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">SKU Count</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Total Units</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Total Asset Value</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {inventoryData.stock_by_category.map((category) => (
+                  <TableRow key={category.category_name} className="border-b border-slate-50 group hover:bg-slate-50/50 transition-colors">
+                    <TableCell className="py-5">
+                      <div className="flex items-center gap-3">
+                        <div className="h-2 w-2 rounded-full bg-brand-primary/20" />
+                        <span className="text-xs font-black text-slate-700">{category.category_name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-5 text-right font-bold text-slate-600 text-xs">
+                      {category.total_products} Items
+                    </TableCell>
+                    <TableCell className="py-5 text-right">
+                      <Badge className="bg-slate-100 text-slate-600 border-none font-black text-[10px] px-2 py-0.5">
+                        {category.total_stock} Units
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="py-5 text-right font-black text-brand-primary text-xs">
+                      {formatCurrency(parseFloat(category.total_value))}
                     </TableCell>
                   </TableRow>
                 ))}

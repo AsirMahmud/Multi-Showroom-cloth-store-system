@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { DateRange } from 'react-day-picker';
-import { reportsApi, formatDateRange, ReportDateRange, SalesReport, ExpenseReport, InventoryReport, CustomerReport, CategoryReport, ProfitLossReport, ProductPerformanceReport, OverviewReport, OnlinePreorderAnalytics } from '@/lib/api/reports';
+import { reportsApi, formatDateRange, ReportDateRange, SalesReport, ExpenseReport, InventoryReport, CustomerReport, CategoryReport, ProfitLossReport, ProductPerformanceReport, OverviewReport, OnlinePreorderAnalytics, IntegrityReport } from '@/lib/api/reports';
 import { useBranch } from '@/contexts/branch-context';
 
 export const useSalesReport = (dateRange: DateRange | undefined) => {
@@ -93,3 +93,11 @@ export function useOnlinePreorderAnalytics(dateRange: DateRange | undefined) {
         enabled: !!formattedDateRange,
     });
 } 
+
+export function useIntegrityCheck() {
+    return useQuery<IntegrityReport, Error>({
+        queryKey: ['integrity-check'],
+        queryFn: reportsApi.getIntegrityCheck,
+        refetchOnWindowFocus: false,
+    });
+}

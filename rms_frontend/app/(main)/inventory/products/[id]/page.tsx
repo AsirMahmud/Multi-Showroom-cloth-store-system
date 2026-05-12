@@ -32,6 +32,7 @@ import { useQuery } from "@tanstack/react-query";
 import { productsApi, type StockMovement } from "@/lib/api/inventory";
 import { getImageUrl } from "@/lib/utils";
 import QRCodeSVG from "react-qr-code";
+import { useBranch } from "@/contexts/branch-context";
 
 export default function ProductPage() {
   const params = useParams();
@@ -152,6 +153,7 @@ interface ProductDetailsProps {
 
 function ProductDetails({ product }: ProductDetailsProps) {
   const router = useRouter();
+  const { selectedBranchId } = useBranch();
   const deleteProduct = useDeleteProduct();
   const categoryName =
     typeof product.category === "object" ? product.category?.name : "N/A";
@@ -163,7 +165,7 @@ function ProductDetails({ product }: ProductDetailsProps) {
   const costPrice = Number(product.cost_price);
   const wholesalePrice = Number(product.wholesale_price);
   const retailPrice = Number(product.retail_price);
-  const profitMargin = ((retailPrice - costPrice) / retailPrice) * 100;
+  const profitMargin = retailPrice > 0 ? ((retailPrice - costPrice) / retailPrice) * 100 : 0;
   const isLowStock = product.stock_quantity <= product.minimum_stock;
   const isOutOfStock = product.stock_quantity <= 0;
 
@@ -180,7 +182,7 @@ function ProductDetails({ product }: ProductDetailsProps) {
 
   // Fetch stock history and filter additions
   const { data: stockHistoryData, isLoading: isLoadingStockHistory } = useQuery({
-    queryKey: ["product-stock-history", product.id],
+    queryKey: ["product-stock-history", product.id, selectedBranchId ?? "all"],
     queryFn: () => productsApi.getStockHistory(product.id), // Get all-time data by default
   });
   const stockAdditions: StockMovement[] = (stockHistoryData?.stock_history || []).filter(

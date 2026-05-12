@@ -65,11 +65,11 @@ export function StockAlerts() {
 
   return (
     <DataPanel 
-      title="Global Stock Vigilance" 
-      description="Identifying high-risk nodes requiring immediate replenishment."
+      title="Stock Alerts" 
+      description="Identifying products that are low or out of stock."
       actions={
         <Badge className="bg-rose-50 text-rose-600 border-none font-black text-[10px] uppercase tracking-widest px-3 py-1">
-          {alerts.length} Critical Vectors
+          {alerts.length} Alerts
         </Badge>
       }
     >
@@ -78,7 +78,7 @@ export function StockAlerts() {
           {alerts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-slate-300">
               <Package className="h-12 w-12 mb-4 opacity-10" />
-              <p className="text-sm font-black uppercase tracking-widest">Network integrity secured</p>
+              <p className="text-sm font-black uppercase tracking-widest">Stock levels are healthy</p>
             </div>
           ) : (
             alerts.map((alert) => (
@@ -106,7 +106,7 @@ export function StockAlerts() {
                       alert.quantity === 0 ? "text-rose-500" : "text-amber-600"
                     )}>
                       {alert.quantity === 0
-                        ? "Node depleted"
+                        ? "Out of stock"
                         : `${alert.quantity} units remaining`}
                     </p>
                   </div>

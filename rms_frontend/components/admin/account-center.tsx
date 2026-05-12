@@ -119,7 +119,7 @@ export function AccountCenter() {
     onSuccess: (result) => {
       toast({ 
         title: "Account Deactivated",
-        description: `Personnel identity for ${result.username} has been revoked.`
+        description: `Access for ${result.username} has been disabled.`
       });
       qc.invalidateQueries({ queryKey: ["admin-accounts"] });
     },
@@ -137,7 +137,7 @@ export function AccountCenter() {
     onSuccess: (result) => {
       toast({ 
         title: "Account Reactivated",
-        description: `Personnel identity for ${result.username} has been restored to active status.`
+        description: `Access for ${result.username} has been restored.`
       });
       qc.invalidateQueries({ queryKey: ["admin-accounts"] });
     },
@@ -167,16 +167,16 @@ export function AccountCenter() {
 
   return (
     <DataPanel
-      title="Identity Directory"
-      description="Holistic auditing of organizational personas and access hierarchies."
+      title="User Accounts"
+      description="Manage all user accounts and their permission levels."
     >
       <div className="space-y-6">
         <div className="flex flex-wrap items-center gap-2">
-          <KpiPill label="Total Nodes" value={counts.total} />
-          <KpiPill label="Supervisors" value={counts.admins} tone="amber" />
-          <KpiPill label="Node Managers" value={counts.managers} tone="indigo" />
-          <KpiPill label="Ops Support" value={counts.hr} tone="emerald" />
-          <KpiPill label="Revoked" value={counts.inactive} tone="rose" />
+          <KpiPill label="Total Accounts" value={counts.total} />
+          <KpiPill label="Admins" value={counts.admins} tone="amber" />
+          <KpiPill label="Managers" value={counts.managers} tone="indigo" />
+          <KpiPill label="HR / Staff" value={counts.hr} tone="emerald" />
+          <KpiPill label="Inactive" value={counts.inactive} tone="rose" />
         </div>
 
         <div className="flex flex-col gap-4 md:flex-row md:items-center">
@@ -185,7 +185,7 @@ export function AccountCenter() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search identity or email..."
+              placeholder="Search name or email..."
               className="pl-10 h-11 bg-slate-50 border-none rounded-xl font-bold text-sm"
             />
           </div>
@@ -193,24 +193,24 @@ export function AccountCenter() {
             <Select value={roleFilter} onValueChange={setRoleFilter}>
               <SelectTrigger className="w-[160px] h-11 bg-slate-50 border-none rounded-xl font-bold text-xs uppercase tracking-widest text-brand-primary">
                 <Filter className="h-3.5 w-3.5 mr-2 text-slate-400" />
-                <SelectValue placeholder="Hierarchy" />
+                <SelectValue placeholder="Role" />
               </SelectTrigger>
               <SelectContent className="rounded-xl border-brand-primary/5">
-                <SelectItem value="all">All Access</SelectItem>
+                <SelectItem value="all">All Roles</SelectItem>
                 <SelectItem value="admin">Administrators</SelectItem>
-                <SelectItem value="branch_manager">Node Managers</SelectItem>
-                <SelectItem value="hr">Operators</SelectItem>
+                <SelectItem value="branch_manager">Branch Managers</SelectItem>
+                <SelectItem value="hr">HR / Staff</SelectItem>
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[160px] h-11 bg-slate-50 border-none rounded-xl font-bold text-xs uppercase tracking-widest text-brand-primary">
                 <Shield className="h-3.5 w-3.5 mr-2 text-slate-400" />
-                <SelectValue placeholder="Integrity" />
+                <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent className="rounded-xl border-brand-primary/5">
-                <SelectItem value="active">Verified Only</SelectItem>
-                <SelectItem value="inactive">Revoked Only</SelectItem>
-                <SelectItem value="all">Universal View</SelectItem>
+                <SelectItem value="active">Active Only</SelectItem>
+                <SelectItem value="inactive">Inactive Only</SelectItem>
+                <SelectItem value="all">Show All</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -220,11 +220,11 @@ export function AccountCenter() {
           <Table>
             <TableHeader className="bg-brand-primary">
               <TableRow className="hover:bg-brand-primary border-none">
-                <TableHead className="text-brand-secondary font-black text-[10px] uppercase tracking-widest py-4">Identity</TableHead>
-                <TableHead className="text-brand-secondary font-black text-[10px] uppercase tracking-widest py-4">Hierarchy</TableHead>
-                <TableHead className="text-brand-secondary font-black text-[10px] uppercase tracking-widest py-4">Node Boundary</TableHead>
-                <TableHead className="text-brand-secondary font-black text-[10px] uppercase tracking-widest py-4">Integrity</TableHead>
-                <TableHead className="text-brand-secondary font-black text-[10px] uppercase tracking-widest py-4 text-right">Procedures</TableHead>
+                <TableHead className="text-brand-secondary font-black text-[10px] uppercase tracking-widest py-4">User</TableHead>
+                <TableHead className="text-brand-secondary font-black text-[10px] uppercase tracking-widest py-4">Role</TableHead>
+                <TableHead className="text-brand-secondary font-black text-[10px] uppercase tracking-widest py-4">Branch Access</TableHead>
+                <TableHead className="text-brand-secondary font-black text-[10px] uppercase tracking-widest py-4">Status</TableHead>
+                <TableHead className="text-brand-secondary font-black text-[10px] uppercase tracking-widest py-4 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -239,16 +239,16 @@ export function AccountCenter() {
               ) : error ? (
                 <TableRow>
                   <TableCell colSpan={5} className="py-20 text-center">
-                    <p className="text-sm font-black text-rose-500 uppercase tracking-widest">Synchronization Failure</p>
-                    <p className="text-xs text-slate-400 mt-2">Failed to retrieve organizational identity matrix.</p>
+                    <p className="text-sm font-black text-rose-500 uppercase tracking-widest">Error Loading Data</p>
+                    <p className="text-xs text-slate-400 mt-2">Failed to retrieve the list of user accounts.</p>
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="py-32 text-center">
                     <Users2 className="mx-auto mb-4 h-12 w-12 text-slate-200" />
-                    <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Null Identity Set</p>
-                    <p className="text-xs text-slate-300 mt-2">No personas match the active filter criteria.</p>
+                    <p className="text-sm font-black text-slate-400 uppercase tracking-widest">No Users Found</p>
+                    <p className="text-xs text-slate-300 mt-2">No users match your search or filter criteria.</p>
                   </TableCell>
                 </TableRow>
               ) : (
@@ -263,7 +263,7 @@ export function AccountCenter() {
                           <p className="text-sm font-black text-brand-primary flex items-center gap-1.5">
                             {account.username}
                             {account.is_superuser && (
-                              <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-none rounded-md px-1.5 h-4 text-[9px] font-black uppercase tracking-tighter">Root</Badge>
+                              <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-none rounded-md px-1.5 h-4 text-[9px] font-black uppercase tracking-tighter">Admin</Badge>
                             )}
                           </p>
                           <p className="text-[10px] font-bold text-slate-400 truncate max-w-[200px]">{account.email || "NO_EMAIL_RECORD"}</p>
@@ -285,13 +285,13 @@ export function AccountCenter() {
                         <Shield className="h-3.5 w-3.5 text-slate-300" />
                         <p className="text-[11px] font-bold text-slate-600">
                           {account.role === "admin" ? (
-                            "Global Omniscience"
+                            "Full Access"
                           ) : account.role === "branch_manager" ? (
                             account.managed_branch_name || "Unassigned"
                           ) : account.hr_branch_names.length > 0 ? (
                             account.hr_branch_names.join(", ")
                           ) : (
-                            "Global Access"
+                            "General Access"
                           )}
                         </p>
                       </div>
@@ -300,12 +300,12 @@ export function AccountCenter() {
                       {account.is_active ? (
                         <div className="flex items-center gap-1.5 text-emerald-600">
                           <ShieldCheck className="h-3.5 w-3.5" />
-                          <span className="text-[10px] font-black uppercase tracking-widest">Verified</span>
+                          <span className="text-[10px] font-black uppercase tracking-widest">Active</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-1.5 text-rose-500">
                           <ShieldOff className="h-3.5 w-3.5" />
-                          <span className="text-[10px] font-black uppercase tracking-widest">Revoked</span>
+                          <span className="text-[10px] font-black uppercase tracking-widest">Inactive</span>
                         </div>
                       )}
                     </TableCell>
@@ -316,6 +316,7 @@ export function AccountCenter() {
                           size="icon"
                           className="h-8 w-8 rounded-lg text-slate-400 hover:text-brand-primary hover:bg-brand-secondary/50"
                           onClick={() => setEditing(account)}
+                          title="Edit User"
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
@@ -324,6 +325,7 @@ export function AccountCenter() {
                           size="icon"
                           className="h-8 w-8 rounded-lg text-slate-400 hover:text-brand-primary hover:bg-brand-secondary/50"
                           onClick={() => setResetting(account)}
+                          title="Change Password"
                         >
                           <KeyRound className="h-3.5 w-3.5" />
                         </Button>
@@ -333,6 +335,7 @@ export function AccountCenter() {
                             size="icon"
                             className="h-8 w-8 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50"
                             onClick={() => setConfirmDeactivate(account)}
+                            title="Deactivate Account"
                           >
                             <ShieldOff className="h-3.5 w-3.5" />
                           </Button>
@@ -342,6 +345,7 @@ export function AccountCenter() {
                             size="icon"
                             className="h-8 w-8 rounded-lg text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50"
                             onClick={() => activateMutation.mutate(account.id)}
+                            title="Activate Account"
                           >
                             <ShieldCheck className="h-3.5 w-3.5" />
                           </Button>
@@ -377,10 +381,10 @@ export function AccountCenter() {
       >
         <AlertDialogContent className="rounded-[32px] border-none p-8">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl font-black text-brand-primary tracking-tight">Revoke Access?</AlertDialogTitle>
+            <AlertDialogTitle className="text-xl font-black text-brand-primary tracking-tight">Deactivate Account?</AlertDialogTitle>
             <AlertDialogDescription className="text-sm text-slate-500 font-medium">
-              Person: <span className="font-black text-brand-primary">{confirmDeactivate?.username}</span>. 
-              Revoking access will immediately disconnect this identity from the organizational grid.
+              User: <span className="font-black text-brand-primary">{confirmDeactivate?.username}</span>. 
+              Deactivating this account will immediately disable access for this user.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-3">
@@ -394,7 +398,7 @@ export function AccountCenter() {
                 setConfirmDeactivate(null);
               }}
             >
-              Confirm Revocation
+              Confirm Deactivation
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -467,8 +471,8 @@ function EditAccountDialog({
       }),
     onSuccess: (result) => {
       toast({ 
-        title: "Identity Synchronized",
-        description: `Operational profile for ${result.username} has been successfully updated.`
+        title: "Account Updated",
+        description: `Profile for ${result.username} has been successfully updated.`
       });
       onSaved();
     },
@@ -501,9 +505,9 @@ function EditAccountDialog({
     >
       <DialogContent className="sm:max-w-lg rounded-[32px] border-none p-8">
         <DialogHeader>
-          <DialogTitle className="text-xl font-black text-brand-primary tracking-tight uppercase">Update Personnel Identity</DialogTitle>
+          <DialogTitle className="text-xl font-black text-brand-primary tracking-tight uppercase">Edit User Account</DialogTitle>
           <DialogDescription className="text-sm text-slate-400 font-medium">
-            Modifying access level for node: <span className="font-bold text-brand-primary">{account?.username}</span>
+            Changing permissions for: <span className="font-bold text-brand-primary">{account?.username}</span>
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-6 sm:grid-cols-2 pt-4">
@@ -524,7 +528,7 @@ function EditAccountDialog({
             />
           </div>
           <div className="sm:col-span-2 space-y-1.5">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Secure Email</Label>
+            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Email Address</Label>
             <Input
               type="email"
               value={email}
@@ -533,7 +537,7 @@ function EditAccountDialog({
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Access Hierarchy</Label>
+            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">User Role</Label>
             <Select
               value={role}
               onValueChange={(v: Account["role"]) => setRole(v)}
@@ -548,12 +552,11 @@ function EditAccountDialog({
               </SelectContent>
             </Select>
           </div>
-          {role === "branch_manager" && (
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Node Assignment</Label>
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Assign to Branch</Label>
               <Select value={managedBranch} onValueChange={setManagedBranch}>
                 <SelectTrigger className="h-11 bg-slate-50 border-none rounded-xl font-bold text-sm">
-                  <SelectValue placeholder="Select node..." />
+                  <SelectValue placeholder="Select branch..." />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-brand-primary/5">
                   {branches.map((b) => (
@@ -575,7 +578,7 @@ function EditAccountDialog({
             onClick={() => save.mutate()}
             disabled={save.isPending || (role === "branch_manager" && !managedBranch)}
           >
-            {save.isPending ? "Syncing..." : "Update Identity"}
+            {save.isPending ? "Updating..." : "Save Changes"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -598,8 +601,8 @@ function ResetPasswordDialog({
     mutationFn: () => accountsApi.resetPassword(account!.id, pw),
     onSuccess: () => {
       toast({ 
-        title: "Credential Reset Successful",
-        description: "The security hash has been updated and propagated."
+        title: "Password Changed",
+        description: "The user's password has been successfully updated."
       });
       setPw("");
       setPw2("");
@@ -623,24 +626,24 @@ function ResetPasswordDialog({
     >
       <DialogContent className="sm:max-w-md rounded-[32px] border-none p-8">
         <DialogHeader>
-          <DialogTitle className="text-xl font-black text-brand-primary tracking-tight uppercase">Credential Reset</DialogTitle>
+          <DialogTitle className="text-xl font-black text-brand-primary tracking-tight uppercase">Change Password</DialogTitle>
           <DialogDescription className="text-sm text-slate-400 font-medium">
-            Generating new security hash for: <span className="font-bold text-brand-primary">{account?.username}</span>
+            Set a new password for: <span className="font-bold text-brand-primary">{account?.username}</span>
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-5 pt-4">
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">New Credential</Label>
+            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">New Password</Label>
             <Input
               type="password"
               value={pw}
               onChange={(e) => setPw(e.target.value)}
-              placeholder="Entropy minimum: 6 chars"
+              placeholder="Minimum 6 characters"
               className="h-11 bg-slate-50 border-none rounded-xl font-bold text-sm"
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Confirm Credential</Label>
+            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Confirm Password</Label>
             <Input
               type="password"
               value={pw2}
@@ -648,7 +651,7 @@ function ResetPasswordDialog({
               className="h-11 bg-slate-50 border-none rounded-xl font-bold text-sm"
             />
             {pw && pw2 && pw !== pw2 ? (
-              <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest mt-1 ml-1">Credential Mismatch</p>
+              <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest mt-1 ml-1">Passwords do not match</p>
             ) : null}
           </div>
         </div>
@@ -661,7 +664,7 @@ function ResetPasswordDialog({
             onClick={() => reset.mutate()} 
             disabled={!valid || reset.isPending}
           >
-            {reset.isPending ? "Hashing..." : "Commit Change"}
+            {reset.isPending ? "Updating..." : "Save Password"}
           </Button>
         </DialogFooter>
       </DialogContent>
