@@ -2,7 +2,8 @@ import axiosInstance from "./axios-config";
 
 export interface PurchaseHistoryItem {
     name: string;
-    size: string;
+    design: string;
+    color: string;
     price: string;
     quantity: number;
 }

@@ -282,7 +282,7 @@ class PublicProductsByColorView(APIView):
 
     def get_cover_image_url(self, request, product: Product, color: str):
         try:
-            gallery = Gallery.objects.get(product=product, color__iexact=color)
+            gallery = Gallery.objects.get(design__product=product, color__iexact=color)
             primary = gallery.images.filter(imageType='PRIMARY').first()
             image_obj = primary or gallery.images.first()
             if image_obj and image_obj.image:
@@ -378,9 +378,9 @@ class PublicProductsByColorView(APIView):
             price_min = request.query_params.get('price_min')
             price_max = request.query_params.get('price_max')
             if price_min is not None:
-                products = products.filter(selling_price__gte=price_min)
+                products = products.filter(retail_price__gte=price_min)
             if price_max is not None:
-                products = products.filter(selling_price__lte=price_max)
+                products = products.filter(retail_price__lte=price_max)
         except Exception:
             pass
         if product_id:
@@ -403,7 +403,7 @@ class PublicProductsByColorView(APIView):
         for product in products:
             # Consider all active variations, regardless of assign_to_online
             variations = ProductVariation.objects.filter(
-                product=product,
+                design__product=product,
                 is_active=True,
             )
             # group by color
@@ -414,7 +414,7 @@ class PublicProductsByColorView(APIView):
                 color_to_stock[key] += max(0, v.stock)
             # If no variations captured any color, fall back to galleries as color sources
             if not color_to_stock:
-                for g in Gallery.objects.filter(product=product):
+                for g in Gallery.objects.filter(design__product=product):
                     color_name = g.color.strip()
                     # Sum stock for this color if any variations exist; else 0
                     total_stock = variations.filter(color__iexact=color_name).aggregate(total=Sum('stock'))['total'] or 0
@@ -425,20 +425,13 @@ class PublicProductsByColorView(APIView):
                     continue
                 if only_in_stock and total_stock <= 0:
                     continue
-                # Size filter: must have at least one variation with requested size for this color
-                if wanted_sizes:
-                    has_size = variations.filter(
-                        color__iexact=color_name,
-                        size__isnull=False,
-                    ).filter(size__in=list(wanted_sizes)).exists()
-                    if not has_size:
-                        continue
+                # Size filter removed (Design-Color hierarchy)
                 # Calculate priority-based discount for this product
                 discount_info = calculate_discounted_price(product)
                 item = {
                     'product_id': product.id,
                     'product_name': product.name,
-                    'product_price': str(product.selling_price),
+                    'product_price': str(product.retail_price),
                     'discount_info': discount_info if discount_info['discount_type'] else None,
                     'color_name': color_name,
                     'color_slug': slugify(color_name),
@@ -488,7 +481,7 @@ class PublicProductDetailByColorView(APIView):
 
         # Resolve actual color name by matching slug against variations
         variations_qs = ProductVariation.objects.filter(
-            product=product,
+            design__product=product,
             is_active=True,
         )
         # Build available colors with stock + hex
@@ -513,7 +506,7 @@ class PublicProductDetailByColorView(APIView):
         # Images for current color
         images = []
         try:
-            gallery = Gallery.objects.get(product=product, color__iexact=current_color_name)
+            gallery = Gallery.objects.get(design__product=product, color__iexact=current_color_name)
             images_qs = gallery.images.order_by('imageType')
             for img in images_qs:
                 if img.image:
@@ -526,12 +519,13 @@ class PublicProductDetailByColorView(APIView):
             if product.image:
                 images.append({'type': 'PRIMARY', 'url': request.build_absolute_uri(product.image.url)})
 
-        # Sizes and stock for current color
-        size_entries = []
+        # Variations for current color (formerly sizes)
+        variation_entries = []
         current_variations = variations_qs.filter(color__iexact=current_color_name)
-        for v in current_variations.order_by('size'):
-            size_entries.append({
-                'size': v.size,
+        for v in current_variations:
+            variation_entries.append({
+                'id': v.id,
+                'design_name': v.design.name,
                 'stock_qty': max(0, v.stock),
                 'in_stock': v.stock > 0,
             })
@@ -543,7 +537,7 @@ class PublicProductDetailByColorView(APIView):
             'product': {
                 'id': product.id,
                 'name': product.name,
-                'price': str(product.selling_price),
+                'price': str(product.retail_price),
                 'category': product.category.name if product.category else None,
                 'online_categories': [
                     {'id': cat.id, 'name': cat.name, 'slug': cat.slug}
@@ -557,9 +551,9 @@ class PublicProductDetailByColorView(APIView):
                 'hex': current_color_hex,
             },
             'images': images,
-            'sizes': size_entries,
+            'variations': variation_entries,
             'available_colors': list(color_meta.values()),
-            'total_stock_for_color': sum(e['stock_qty'] for e in size_entries),
+            'total_stock_for_color': sum(e['stock_qty'] for e in variation_entries),
         }
         return Response(data)
 
@@ -715,13 +709,10 @@ class PublicCartPriceView(APIView):
             # Determine available stock based on requested variant
             max_stock = 0
             variant_color = line.get('color') or None
-            variant_size = line.get('size') or None
             try:
-                q = ProductVariation.objects.filter(product=p, is_active=True)
+                q = ProductVariation.objects.filter(design__product=p, is_active=True)
                 if variant_color:
                     q = q.filter(color__iexact=variant_color)
-                if variant_size:
-                    q = q.filter(size__iexact=variant_size)
                 max_stock = max(0, q.aggregate(total=Sum('stock'))['total'] or 0)
             except Exception:
                 max_stock = max(0, getattr(p, 'stock_quantity', 0))

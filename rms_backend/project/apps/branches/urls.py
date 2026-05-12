@@ -8,6 +8,9 @@ from .views import (
     EmployeeViewSet,
     FinancialOverviewViewSet,
     PayrollRecordViewSet,
+    SalaryComponentViewSet,
+    EmployeeSalaryStructureViewSet,
+    LeaveRequestViewSet,
 )
 
 router = DefaultRouter()
@@ -15,6 +18,9 @@ router.register(r"branches", BranchViewSet, basename="branches")
 router.register(r"hr/employees", EmployeeViewSet, basename="hr-employees")
 router.register(r"hr/attendance", AttendanceRecordViewSet, basename="hr-attendance")
 router.register(r"hr/payroll", PayrollRecordViewSet, basename="hr-payroll")
+router.register(r"hr/salary-components", SalaryComponentViewSet, basename="hr-salary-components")
+router.register(r"hr/salary-structures", EmployeeSalaryStructureViewSet, basename="hr-salary-structures")
+router.register(r"hr/leave-requests", LeaveRequestViewSet, basename="hr-leave-requests")
 router.register(
     r"admin/financial-overview",
     FinancialOverviewViewSet,

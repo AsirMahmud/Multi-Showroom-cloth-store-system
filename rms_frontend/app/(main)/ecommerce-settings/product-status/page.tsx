@@ -129,7 +129,7 @@ export default function ProductStatusPage() {
       sku: product.sku,
       image: imageUrl,
       category: product.category_name || "Uncategorized",
-      price: product.selling_price,
+      price: product.retail_price,
       stock: product.stock_quantity,
       ecommerce_statuses: normalizedStatuses,
       assign_to_online: product.assign_to_online || false,

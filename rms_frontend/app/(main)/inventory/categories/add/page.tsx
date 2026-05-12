@@ -23,6 +23,7 @@ import { motion } from "framer-motion";
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   description: z.string().optional(),
+  wholesale_cutoff: z.number().min(1, "Wholesale cutoff must be at least 1").default(10),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -37,6 +38,7 @@ export default function AddCategoryPage() {
     defaultValues: {
       name: "",
       description: "",
+      wholesale_cutoff: 10,
     },
   });
 
@@ -123,6 +125,26 @@ export default function AddCategoryPage() {
                     <Input 
                       placeholder="Brief context for this node..." 
                       {...field} 
+                      className="h-11 bg-slate-50 border-none rounded-xl font-bold text-sm focus-visible:ring-brand-primary"
+                    />
+                  </FormControl>
+                  <FormMessage className="text-[10px] font-bold uppercase tracking-tight" />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="wholesale_cutoff"
+              render={({ field }) => (
+                <FormItem className="space-y-1.5">
+                  <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Wholesale Cutoff Qty</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min="1"
+                      placeholder="10"
+                      value={field.value}
+                      onChange={(e) => field.onChange(parseInt(e.target.value || "10", 10))}
                       className="h-11 bg-slate-50 border-none rounded-xl font-bold text-sm focus-visible:ring-brand-primary"
                     />
                   </FormControl>

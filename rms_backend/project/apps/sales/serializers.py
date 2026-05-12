@@ -3,21 +3,26 @@ from .models import Sale, SaleItem, Payment, Return, ReturnItem, SalePayment, Du
 from apps.inventory.serializers import ProductSerializer
 from apps.customer.serializers import CustomerSerializer
 from apps.customer.models import Customer
-from apps.inventory.models import Product, ProductVariation
+from apps.inventory.models import Product, ProductVariation, StockMovement
 from django.core.exceptions import ValidationError
 from decimal import Decimal
 
 class SaleItemSerializer(serializers.ModelSerializer):
     product = ProductSerializer(read_only=True)
     product_id = serializers.IntegerField(write_only=True)
-    size = serializers.CharField(max_length=50)
+    design_name = serializers.CharField(max_length=255, required=False, allow_blank=True)
     color = serializers.CharField(max_length=50)
+    price_type = serializers.CharField(read_only=True)
     unit_price = serializers.DecimalField(
         max_digits=10,
         decimal_places=2,
         required=False,
-        min_value=Decimal('0.01')
+        min_value=Decimal('0.00')
     )
+    applied_unit_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    retail_price_snapshot = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    wholesale_price_snapshot = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    wholesale_cutoff_snapshot = serializers.IntegerField(read_only=True)
     discount = serializers.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -28,8 +33,10 @@ class SaleItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = SaleItem
         fields = [
-            'id', 'product', 'product_id', 'size', 'color',
-            'quantity', 'unit_price', 'discount', 'total', 'profit', 'loss', 'created_at'
+            'id', 'product', 'product_id', 'design_name', 'color',
+            'quantity', 'price_type', 'unit_price', 'applied_unit_price',
+            'retail_price_snapshot', 'wholesale_price_snapshot', 'wholesale_cutoff_snapshot',
+            'discount', 'total', 'profit', 'loss', 'created_at'
         ]
         read_only_fields = ['total', 'profit', 'loss']
 
@@ -202,15 +209,20 @@ class SaleSerializer(serializers.ModelSerializer):
     def validate(self, data):
         if 'items' not in data or not data['items']:
             raise serializers.ValidationError("At least one item is required")
-        
-        # Calculate totals
+
+        resolved_items = self._prepare_items_data(
+            data['items'],
+            existing_sale=self.instance if self.instance else None,
+        )
+
         subtotal = Decimal('0.00')
-        for item in data['items']:
+        for item in resolved_items:
             item_total = (item['quantity'] * item['unit_price']) - item['discount']
             if item_total < Decimal('0.00'):
                 raise serializers.ValidationError(f"Item total cannot be negative for product {item['product_id']}")
             subtotal += item_total
-        
+
+        data['items'] = resolved_items
         data['subtotal'] = subtotal
         data['total'] = subtotal + data['tax'] - data['discount']
         
@@ -243,6 +255,77 @@ class SaleSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("Total payment amount cannot exceed sale total")
         
         return data
+
+    def _prepare_items_data(self, items_data, existing_sale=None):
+        prepared_items = []
+        existing_quantities = {}
+        if existing_sale:
+            for existing_item in existing_sale.items.all():
+                key = (
+                    existing_item.product_id,
+                    existing_item.design_name or '',
+                    existing_item.color,
+                )
+                existing_quantities[key] = existing_quantities.get(key, 0) + existing_item.quantity
+
+        requested_quantities = {}
+        for item in items_data:
+            product = Product.objects.get(pk=item['product_id'])
+            quantity = int(item['quantity'])
+            design_name = item.get('design_name') or item.get('design') or ''
+            color = item['color']
+
+            try:
+                variation = ProductVariation.objects.get(
+                    design__product=product,
+                    design__name=design_name,
+                    color=color,
+                    is_active=True,
+                )
+            except ProductVariation.DoesNotExist as exc:
+                raise serializers.ValidationError(
+                    f"Invalid variation for {product.name} - Design: {design_name}, Color: {color}"
+                ) from exc
+
+            key = (product.id, design_name, color)
+            requested_quantities[key] = requested_quantities.get(key, 0) + quantity
+            available_stock = variation.stock + existing_quantities.get(key, 0)
+            if requested_quantities[key] > available_stock:
+                raise serializers.ValidationError(
+                    f"Not enough stock for {product.name} - Design: {design_name}, Color: {color}"
+                )
+
+            cutoff = product.resolve_wholesale_cutoff()
+            price_type = product.resolve_price_type(quantity)
+            unit_price = product.resolve_unit_price(quantity) or Decimal('0.00')
+
+            prepared_items.append({
+                **item,
+                'design_name': design_name,
+                'unit_price': unit_price,
+                'applied_unit_price': unit_price,
+                'price_type': price_type,
+                'retail_price_snapshot': product.retail_price or Decimal('0.00'),
+                'wholesale_price_snapshot': product.wholesale_price or Decimal('0.00'),
+                'wholesale_cutoff_snapshot': cutoff,
+            })
+
+        return prepared_items
+
+    def _restore_sale_stock(self, sale):
+        for item in sale.items.all():
+            variation = item.get_variation()
+            if variation:
+                variation.stock += item.quantity
+                variation.save(update_fields=['stock'])
+
+            item.product.stock_quantity += item.quantity
+            item.product.save(update_fields=['stock_quantity'])
+
+        StockMovement.objects.filter(
+            reference_number=sale.invoice_number,
+            movement_type__in=['OUT', 'GIFT'],
+        ).delete()
 
     def create(self, validated_data):
         items_data = validated_data.pop('items')
@@ -311,11 +394,13 @@ class SaleSerializer(serializers.ModelSerializer):
         
         # Update items if provided
         if items_data is not None:
+            self._restore_sale_stock(instance)
             # Delete existing items
             instance.items.all().delete()
             # Create new items
             for item_data in items_data:
                 SaleItem.objects.create(sale=instance, **item_data)
+            instance._reduce_stock_for_sale_items()
         
         # Process new payments if provided
         if payment_data:

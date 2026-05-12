@@ -1,28 +1,40 @@
 import { create } from 'zustand';
 import { Customer, CreateCustomerData, createCustomer, searchCustomers, lookupCustomerByPhone } from '@/lib/api/customer';
 import { Product } from '@/types/inventory';
-import { PaymentMethod, SaleStatus } from '@/types/sales';
+import { PaymentMethod, Sale } from '@/types/sales';
 import { createSale } from '@/lib/api/sales';
-import { Sale, SaleItem } from '@/types/sales';
 import { toast } from '@/hooks/use-toast';
 
-interface CartItem {
+export interface CartItem {
     id: number;
     productId: number;
     name: string;
     price: number;
     quantity: number;
-    size: string;
+    design: string;
     color: string;
+    colorHex?: string;
     image: string;
+    sku?: string;
+    availableStock: number;
+    retailPrice: number;
+    wholesalePrice: number;
+    wholesaleCutoff: number;
+    priceType: 'retail' | 'wholesale';
     discount?: {
         type: "percentage" | "fixed";
         value: number;
     };
 }
 
+interface AddToCartInput {
+    product: Product;
+    design: string;
+    color: string;
+    quantity?: number;
+}
+
 interface POSState {
-    // Customer related state
     showNewCustomerForm: boolean;
     setShowNewCustomerForm: (show: boolean) => void;
     newCustomer: CreateCustomerData;
@@ -37,19 +49,19 @@ interface POSState {
     handleAddNewCustomer: () => Promise<void>;
     resetNewCustomer: () => void;
 
-    // Cart related state
     cart: CartItem[];
     setCart: (cart: CartItem[]) => void;
     cartDiscount: { type: "percentage" | "fixed"; value: number } | null;
     setCartDiscount: (discount: { type: "percentage" | "fixed"; value: number } | null) => void;
-    handleAddToCart: (product: Product, size: string, color: string) => void;
+    handleAddToCart: (product: Product, design: string, color: string, quantity?: number) => void;
+    handleAddMultipleToCart: (items: AddToCartInput[]) => void;
     handleUpdateQuantity: (itemId: number, change: number) => void;
+    handleSetQuantity: (itemId: number, quantity: number) => void;
     handleRemoveItem: (itemId: number) => void;
     handleClearCart: () => void;
     handleItemDiscount: (itemId: number, discountType: "percentage" | "fixed", discountValue: number) => void;
     handleRemoveItemDiscount: (itemId: number) => void;
 
-    // Payment related state
     paymentMethod: PaymentMethod;
     setPaymentMethod: (method: PaymentMethod) => void;
     showSplitPayment: boolean;
@@ -61,7 +73,6 @@ interface POSState {
     currentSaleData: Partial<Sale> | null;
     setCurrentSaleData: (data: Partial<Sale> | null) => void;
 
-    // UI state
     showCustomerSearch: boolean;
     setShowCustomerSearch: (show: boolean) => void;
     showDiscountModal: boolean;
@@ -73,8 +84,10 @@ interface POSState {
         date: string;
         items: CartItem[];
         subtotal: number;
-        itemDiscounts: number;
-        globalDiscount: number;
+        discountedSubtotal?: number;
+        itemDiscounts?: number;
+        globalDiscount?: number;
+        discount?: { type: "percentage" | "fixed"; value: number } | null;
         tax: number;
         total: number;
         paymentMethod: PaymentMethod;
@@ -82,20 +95,44 @@ interface POSState {
         changeDue: number | null;
         customer: Customer | null;
         splitPayments: { method: PaymentMethod; amount: string }[] | null;
+        storeCredit?: number;
         isPaid: boolean;
+        isDue?: boolean;
     } | null;
     setReceiptData: (data: POSState['receiptData']) => void;
-    handleCompletePayment: (toast: (props: { title: string; description: string; variant?: "default" | "destructive" }) => void, markAsDue?: boolean) => Promise<Sale | undefined>;
+    handleCompletePayment: (toastFn: (props: { title: string; description: string; variant?: "default" | "destructive" }) => void, markAsDue?: boolean) => Promise<Sale | undefined>;
 }
 
 const initialNewCustomer: CreateCustomerData = {
     first_name: '',
     phone: '',
+};
 
+const getVariation = (product: Product, designName: string, colorName: string) => {
+    const design = (product.designs || []).find((item) => item.name === designName);
+    return design?.colors.find((item) => item.color === colorName);
+};
+
+const getResolvedWholesaleCutoff = (product: Product): number => {
+    return product.wholesale_cutoff || product.resolved_wholesale_cutoff || product.category?.wholesale_cutoff || 10;
+};
+
+const resolveCartPricing = (retailPrice: number, wholesalePrice: number, wholesaleCutoff: number, quantity: number) => {
+    const useWholesale = wholesalePrice > 0 && quantity >= wholesaleCutoff;
+    return {
+        price: useWholesale ? wholesalePrice : retailPrice,
+        priceType: useWholesale ? 'wholesale' as const : 'retail' as const,
+    };
+};
+
+const clampQuantity = (quantity: number, availableStock: number) => {
+    if (!Number.isFinite(quantity)) {
+        return 1;
+    }
+    return Math.max(1, Math.min(Math.floor(quantity), availableStock));
 };
 
 export const usePOSStore = create<POSState>((set, get) => ({
-    // Customer related state
     showNewCustomerForm: false,
     setShowNewCustomerForm: (show) => set({ showNewCustomerForm: show }),
 
@@ -124,7 +161,6 @@ export const usePOSStore = create<POSState>((set, get) => ({
     handleAddNewCustomer: async () => {
         const { newCustomer } = get();
         try {
-            // Check if customer exists by phone
             const existingCustomer = await lookupCustomerByPhone(newCustomer.phone);
             if (existingCustomer) {
                 toast({
@@ -157,65 +193,124 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
     resetNewCustomer: () => set({ newCustomer: initialNewCustomer }),
 
-    // Cart related state
     cart: [],
     setCart: (cart) => set({ cart }),
 
     cartDiscount: null,
     setCartDiscount: (discount) => set({ cartDiscount: discount }),
 
-    handleAddToCart: (product, size, color) => {
-        console.log('Adding to cart:', { product, size, color });
+    handleAddToCart: (product, design, color, quantity = 1) => {
+        const variation = getVariation(product, design, color);
+        const availableStock = variation?.stock || 0;
+        const safeQuantity = clampQuantity(quantity, availableStock);
+
+        if (availableStock <= 0) {
+            toast({
+                title: "Out of Stock",
+                description: `${product.name} (${design}, ${color}) is unavailable.`,
+                variant: "destructive",
+            });
+            return;
+        }
+
+        const retailPrice = Number(product.retail_price || 0);
+        const wholesalePrice = Number(product.wholesale_price || 0);
+        const wholesaleCutoff = getResolvedWholesaleCutoff(product);
+        const pricing = resolveCartPricing(retailPrice, wholesalePrice, wholesaleCutoff, safeQuantity);
+
         const { cart } = get();
         const existingItem = cart.find(
-            item => item.productId === product.id && item.size === size && item.color === color
+            (item) => item.productId === product.id && item.design === design && item.color === color
         );
 
         if (existingItem) {
-            console.log('Updating existing item:', existingItem);
-            const updatedCart = cart.map(item =>
-                item.id === existingItem.id
-                    ? { ...item, quantity: item.quantity + 1 }
-                    : item
-            );
-            set({ cart: updatedCart });
+            const mergedQuantity = clampQuantity(existingItem.quantity + safeQuantity, existingItem.availableStock);
+            const mergedPricing = resolveCartPricing(existingItem.retailPrice, existingItem.wholesalePrice, existingItem.wholesaleCutoff, mergedQuantity);
+            set({
+                cart: cart.map((item) =>
+                    item.id === existingItem.id
+                        ? {
+                            ...item,
+                            quantity: mergedQuantity,
+                            price: mergedPricing.price,
+                            priceType: mergedPricing.priceType,
+                        }
+                        : item
+                )
+            });
         } else {
-            console.log('Adding new item to cart');
             const newItem: CartItem = {
-                id: Date.now(),
+                id: Date.now() + Math.floor(Math.random() * 1000),
                 productId: product.id,
                 name: product.name,
-                price: Number(product.selling_price),
-                quantity: 1,
-                size,
+                price: pricing.price,
+                quantity: safeQuantity,
+                design,
                 color,
-                image: product.image || '/placeholder.svg'
+                colorHex: variation?.color_hax,
+                image: product.image || '/placeholder.svg',
+                sku: product.sku,
+                availableStock,
+                retailPrice,
+                wholesalePrice,
+                wholesaleCutoff,
+                priceType: pricing.priceType,
             };
             set({ cart: [...cart, newItem] });
         }
+
         toast({
             title: "Added to Cart",
-            description: `${product.name} (${size}, ${color}) added.`,
+            description: `${product.name} (${design}, ${color}) added.`,
         });
-        console.log('Updated cart:', get().cart);
+    },
+
+    handleAddMultipleToCart: (items) => {
+        items.forEach((item) => {
+            get().handleAddToCart(item.product, item.design, item.color, item.quantity || 1);
+        });
     },
 
     handleUpdateQuantity: (itemId, change) => {
         const { cart } = get();
-        const updatedCart = cart.map(item => {
-            if (item.id === itemId) {
-                const newQuantity = Math.max(1, item.quantity + change);
-                return { ...item, quantity: newQuantity };
+        const updatedCart = cart.map((item) => {
+            if (item.id !== itemId) {
+                return item;
             }
-            return item;
+            const newQuantity = clampQuantity(item.quantity + change, item.availableStock);
+            const pricing = resolveCartPricing(item.retailPrice, item.wholesalePrice, item.wholesaleCutoff, newQuantity);
+            return {
+                ...item,
+                quantity: newQuantity,
+                price: pricing.price,
+                priceType: pricing.priceType,
+            };
+        });
+        set({ cart: updatedCart });
+    },
+
+    handleSetQuantity: (itemId, quantity) => {
+        const { cart } = get();
+        const updatedCart = cart.map((item) => {
+            if (item.id !== itemId) {
+                return item;
+            }
+            const nextQuantity = clampQuantity(quantity, item.availableStock);
+            const pricing = resolveCartPricing(item.retailPrice, item.wholesalePrice, item.wholesaleCutoff, nextQuantity);
+            return {
+                ...item,
+                quantity: nextQuantity,
+                price: pricing.price,
+                priceType: pricing.priceType,
+            };
         });
         set({ cart: updatedCart });
     },
 
     handleRemoveItem: (itemId) => {
         const { cart } = get();
-        const itemToRemove = cart.find(i => i.id === itemId);
-        set({ cart: cart.filter(item => item.id !== itemId) });
+        const itemToRemove = cart.find((item) => item.id === itemId);
+        set({ cart: cart.filter((item) => item.id !== itemId) });
         if (itemToRemove) {
             toast({
                 title: "Removed from Cart",
@@ -234,36 +329,31 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
     handleItemDiscount: (itemId, discountType, discountValue) => {
         const { cart } = get();
-        const updatedCart = cart.map(item => {
-            if (item.id === itemId) {
-                // Apply discount to the item
-                const discountAmount = discountType === "percentage" ? (item.price * item.quantity) * (discountValue / 100) : discountValue;
-                const discountedTotal = (item.price * item.quantity) - discountAmount;
-                console.log(`Applying discount: ${discountValue} of type: ${discountType} to item: ${itemId}`);
-                return {
-                    ...item,
-                    discount: { type: discountType, value: Number(discountValue) },
-                    total: discountedTotal
-                };
-            }
-            return item;
+        set({
+            cart: cart.map((item) =>
+                item.id === itemId
+                    ? {
+                        ...item,
+                        discount: { type: discountType, value: Number(discountValue) },
+                    }
+                    : item
+            )
         });
-        set({ cart: updatedCart });
     },
 
     handleRemoveItemDiscount: (itemId) => {
         const { cart } = get();
-        const updatedCart = cart.map(item => {
-            if (item.id === itemId) {
+        set({
+            cart: cart.map((item) => {
+                if (item.id !== itemId) {
+                    return item;
+                }
                 const { discount, ...rest } = item;
                 return rest;
-            }
-            return item;
+            })
         });
-        set({ cart: updatedCart });
     },
 
-    // Payment related state
     paymentMethod: "cash",
     setPaymentMethod: (method) => set({ paymentMethod: method }),
     showSplitPayment: false,
@@ -275,7 +365,6 @@ export const usePOSStore = create<POSState>((set, get) => ({
     currentSaleData: null,
     setCurrentSaleData: (data) => set({ currentSaleData: data }),
 
-    // UI state
     showCustomerSearch: false,
     setShowCustomerSearch: (show) => set({ showCustomerSearch: show }),
     showDiscountModal: false,
@@ -285,10 +374,10 @@ export const usePOSStore = create<POSState>((set, get) => ({
     receiptData: null,
     setReceiptData: (data) => set({ receiptData: data }),
 
-    handleCompletePayment: async (toast, markAsDue = false) => {
+    handleCompletePayment: async (toastFn, markAsDue = false) => {
         const { cart, selectedCustomer, paymentMethod, cashAmount, splitPayments, cartDiscount } = get();
         if (cart.length === 0) {
-            toast({
+            toastFn({
                 title: "Empty Cart",
                 description: "Your cart is empty",
                 variant: "destructive",
@@ -297,55 +386,46 @@ export const usePOSStore = create<POSState>((set, get) => ({
         }
 
         try {
-            // Calculate item totals and discounts
-            const itemsWithDiscounts = cart.map(item => {
+            const itemsWithDiscounts = cart.map((item) => {
                 const itemTotal = item.price * item.quantity;
-                const itemDiscount = item.discount ? (item.discount.type === 'percentage' ?
-                    itemTotal * (item.discount.value / 100) :
-                    item.discount.value) : 0;
+                const itemDiscount = item.discount
+                    ? item.discount.type === 'percentage'
+                        ? itemTotal * (item.discount.value / 100)
+                        : item.discount.value
+                    : 0;
                 const discountedTotal = itemTotal - itemDiscount;
                 return {
                     ...item,
                     itemTotal,
                     itemDiscount,
-                    discountedTotal
+                    discountedTotal,
                 };
             });
 
-            // Calculate subtotal before any discounts
             const subtotalBeforeDiscount = itemsWithDiscounts.reduce((sum, item) => sum + item.itemTotal, 0);
-
-            // Calculate total item discounts
             const totalItemDiscounts = itemsWithDiscounts.reduce((sum, item) => sum + item.itemDiscount, 0);
+            const globalDiscount = cartDiscount
+                ? cartDiscount.type === 'percentage'
+                    ? subtotalBeforeDiscount * (cartDiscount.value / 100)
+                    : cartDiscount.value
+                : 0;
 
-            // Calculate global discount (only from cartDiscount, not from item discounts)
-            const globalDiscount = cartDiscount ? (cartDiscount.type === 'percentage' ?
-                subtotalBeforeDiscount * (cartDiscount.value / 100) :
-                cartDiscount.value) : 0;
-
-            // Calculate final subtotal after all discounts
             const subtotal = subtotalBeforeDiscount - totalItemDiscounts - globalDiscount;
-
-            // Remove tax calculation completely
             const tax = 0;
             const total = subtotal;
 
-            // Prepare payment data for backend
             let paymentData: any[] = [];
             if (markAsDue) {
-                // For due sales, don't send any payment data
                 paymentData = [];
             } else if (paymentMethod === "split") {
-                // For split payments, send the detailed payment breakdown
                 paymentData = splitPayments
-                    .filter(payment => payment.amount && parseFloat(payment.amount) > 0)
-                    .map(payment => ({
+                    .filter((payment) => payment.amount && parseFloat(payment.amount) > 0)
+                    .map((payment) => ({
                         method: payment.method,
                         amount: payment.amount,
                         notes: `Split payment - ${payment.method}`
                     }));
             } else if (paymentMethod === "cash") {
-                // For cash payments, send the cash amount
                 const cashAmountNum = parseFloat(cashAmount) || total;
                 paymentData = [{
                     method: "cash",
@@ -353,7 +433,6 @@ export const usePOSStore = create<POSState>((set, get) => ({
                     notes: "Cash payment"
                 }];
             } else if (["card", "mobile", "gift"].includes(paymentMethod)) {
-                // For card, mobile, and gift payments, send the full amount
                 paymentData = [{
                     method: paymentMethod,
                     amount: total.toString(),
@@ -361,44 +440,45 @@ export const usePOSStore = create<POSState>((set, get) => ({
                 }];
             }
 
-            // Create sale data
             const saleData: Partial<Sale> = {
                 customer: selectedCustomer?.id,
                 customer_phone: selectedCustomer?.phone,
                 subtotal: subtotalBeforeDiscount,
                 tax,
-                discount: globalDiscount, // Only global discount, not item discounts
+                discount: globalDiscount,
                 total,
                 payment_method: markAsDue ? "credit" : paymentMethod,
-                // Include payment_data for all non-due sales
                 ...(markAsDue ? { payment_data: [] } : { payment_data: paymentData }),
-                items: itemsWithDiscounts.map(item => ({
+                items: itemsWithDiscounts.map((item) => ({
                     product_id: item.productId,
-                    size: item.size,
+                    design_name: item.design,
                     color: item.color,
                     quantity: item.quantity,
+                    price_type: item.priceType,
                     unit_price: item.price,
-                    discount: item.itemDiscount, // Item-level discount
+                    applied_unit_price: item.price,
+                    retail_price_snapshot: item.retailPrice,
+                    wholesale_price_snapshot: item.wholesalePrice,
+                    wholesale_cutoff_snapshot: item.wholesaleCutoff,
+                    discount: item.itemDiscount,
                     total: item.discountedTotal
                 }))
             };
 
-            // Create sale through API
             const sale = await createSale(saleData);
-
             if (!sale.id) {
                 throw new Error('Sale ID not returned from API');
             }
 
-            // Create receipt data for UI
             const receipt = {
                 id: `INV-${Math.floor(100000 + Math.random() * 900000)}`,
                 date: new Date().toISOString(),
                 items: itemsWithDiscounts,
                 subtotal: subtotalBeforeDiscount,
-                discountedSubtotal: subtotalBeforeDiscount - totalItemDiscounts, // Add missing discountedSubtotal
+                discountedSubtotal: subtotalBeforeDiscount - totalItemDiscounts,
                 itemDiscounts: totalItemDiscounts,
-                globalDiscount: globalDiscount,
+                globalDiscount,
+                discount: cartDiscount,
                 tax,
                 total,
                 paymentMethod: markAsDue ? "credit" : paymentMethod,
@@ -406,18 +486,14 @@ export const usePOSStore = create<POSState>((set, get) => ({
                 changeDue: paymentMethod === "cash" && !markAsDue ? Number.parseFloat(cashAmount) - total : null,
                 customer: selectedCustomer,
                 splitPayments: paymentMethod === "split" && !markAsDue ? splitPayments : null,
-                storeCredit: 0, // Add missing storeCredit field
+                storeCredit: 0,
                 isPaid: !markAsDue,
                 isDue: markAsDue,
             };
 
-            // Set receipt data and show modal
-            set({ receiptData: receipt, showReceiptModal: true });
+            set({ receiptData: receipt, showReceiptModal: true, cart: [], cartDiscount: null });
 
-            // Clear cart after successful payment
-            set({ cart: [], cartDiscount: null });
-
-            toast({
+            toastFn({
                 title: markAsDue ? "Sale Created as Due" : "Success",
                 description: markAsDue ? "Sale created with pending payment" : "Payment processed successfully",
             });
@@ -426,7 +502,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
         } catch (error) {
             console.error('Error processing payment:', error);
             const errorMessage = error instanceof Error ? error.message : "Failed to process payment";
-            toast({
+            toastFn({
                 title: "Error",
                 description: errorMessage,
                 variant: "destructive",
@@ -434,4 +510,4 @@ export const usePOSStore = create<POSState>((set, get) => ({
             throw error;
         }
     },
-})); 
+}));

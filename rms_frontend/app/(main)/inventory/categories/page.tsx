@@ -270,7 +270,7 @@ export default function CategoriesPage() {
               placeholder="Search taxonomy..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-11 bg-slate-50/50 border-none rounded-xl focus-visible:ring-brand-primary"
+              className="pl-9 h-11 bg-white border border-slate-200 rounded-xl focus-visible:ring-brand-primary shadow-sm hover:border-slate-300 transition-all"
             />
           </div>
         </div>
@@ -296,7 +296,6 @@ export default function CategoriesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
       {/* Stats Dialog */}
       <Dialog open={isStatsDialogOpen} onOpenChange={setIsStatsDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-[32px] border-none shadow-2xl">

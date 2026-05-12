@@ -69,38 +69,23 @@ const productFormSchema = z.object({
   online_categories: z.array(z.string()).optional(),
   supplier: z.string({ required_error: "Please select a supplier" }).optional(),
   cost_price: z.string().min(1, "Cost price is required"),
-  selling_price: z.string().min(1, "Selling price is required"),
+  wholesale_price: z.string().min(1, "Wholesale price is required"),
+  retail_price: z.string().min(1, "Retail price is required"),
+  wholesale_cutoff: z.number().min(1, "Wholesale cutoff must be at least 1").default(10),
   status: z.enum(["active", "inactive", "discontinued"]),
   minimum_stock: z.number().default(10),
-  size_type: z.enum(
-    [
-      "pants",
-      "shoes",
-      "belts",
-      "underwear",
-      "jersey",
-      "shirts",
-      "tshirts",
-    ] as const,
-    {
-      required_error: "Please select a size type",
-    }
-  ),
-  gender: z.enum(["MALE", "FEMALE", "UNISEX"] as const, {
-    required_error: "Please select a gender",
-  }),
-  size_category: z
-    .string({ required_error: "Please select a size category" })
-    .optional(),
-  variations: z
+  gender: z.string({ required_error: "Please select a gender" }),
+  designs: z
     .array(
       z.object({
-        size: z.string().min(1, "Size is required"),
-        color: z.string().min(1, "Color is required"),
-        stock: z.number().min(0, "Stock must be 0 or greater"),
-        waist_size: z.number().optional(),
-        chest_size: z.number().optional(),
-        height: z.number().optional(),
+        name: z.string().min(1, "Design name is required"),
+        description: z.string().optional(),
+        colors: z.array(
+          z.object({
+            color: z.string().min(1, "Color is required"),
+            stock: z.number().min(0, "Stock must be 0 or greater"),
+          })
+        ),
       })
     )
     .optional(),
@@ -114,14 +99,12 @@ type ColorVariant = {
   color: string;
   colorHex: string;
   stock: number;
-  waist_size?: number;
-  chest_size?: number;
-  height?: number;
 };
 
-type SizeVariant = {
+type DesignVariant = {
   id: string;
-  size: string;
+  name: string;
+  description?: string;
   colors: ColorVariant[];
 };
 
@@ -203,17 +186,18 @@ export default function EditProductPage() {
       online_categories: [],
       supplier: undefined,
       cost_price: "",
-      selling_price: "",
+      wholesale_price: "",
+      retail_price: "",
+      wholesale_cutoff: 10,
       status: "active",
       minimum_stock: 10,
-      size_type: undefined,
-      gender: undefined,
-      size_category: undefined,
+      gender: "UNISEX",
+      designs: [],
     },
   });
 
-  // State for variants
-  const [variants, setVariants] = useState<SizeVariant[]>([]);
+  // State for designs
+  const [designs, setDesigns] = useState<DesignVariant[]>([]);
 
   // State for galleries
   const [galleries, setGalleries] = useState<ColorGallery[]>([]);
@@ -241,10 +225,10 @@ export default function EditProductPage() {
   const watchedSizeCategory = form.watch("size_category");
 
   // Sync galleries with variants
-  const syncGalleriesWithVariants = useCallback((currentGalleries: ColorGallery[], currentVariants: SizeVariant[]) => {
+  const syncGalleriesWithVariants = useCallback((currentGalleries: ColorGallery[], currentDesigns: DesignVariant[]) => {
     const allColors = new Set<string>();
-    currentVariants.forEach(variant => {
-      variant.colors.forEach(color => {
+    currentDesigns.forEach(design => {
+      design.colors.forEach(color => {
         allColors.add(color.color.toLowerCase());
       });
     });
@@ -257,8 +241,8 @@ export default function EditProductPage() {
 
       if (!colorExists) {
         let colorHex = '#000000';
-        for (const variant of currentVariants) {
-          const foundColor = variant.colors.find(c => c.color.toLowerCase() === colorName.toLowerCase());
+        for (const design of currentDesigns) {
+          const foundColor = design.colors.find(c => c.color.toLowerCase() === colorName.toLowerCase());
           if (foundColor) {
             colorHex = foundColor.colorHex;
             break;
@@ -283,7 +267,6 @@ export default function EditProductPage() {
     const updatedGalleries = currentGalleries.filter(gallery =>
       allColors.has(gallery.color.toLowerCase())
     ).map(gallery => {
-      // Ensure each existing gallery has exactly 4 image slots
       const imageTypes: ('PRIMARY' | 'SECONDARY' | 'THIRD' | 'FOURTH')[] = ['PRIMARY', 'SECONDARY', 'THIRD', 'FOURTH'];
       const existingImages = new Map();
 
@@ -312,12 +295,12 @@ export default function EditProductPage() {
     return [...updatedGalleries, ...newGalleries];
   }, []);
 
-  // Sync galleries when variants change
+  // Sync galleries when designs change
   useEffect(() => {
-    if (variants.length > 0) {
-      setGalleries(prevGalleries => syncGalleriesWithVariants(prevGalleries, variants));
+    if (designs.length > 0) {
+      setGalleries(prevGalleries => syncGalleriesWithVariants(prevGalleries, designs));
     }
-  }, [variants, syncGalleriesWithVariants]);
+  }, [designs, syncGalleriesWithVariants]);
 
   // Load product data into form when available
   useEffect(() => {
@@ -333,46 +316,31 @@ export default function EditProductPage() {
         online_categories: (product as any).online_categories?.map((cat: any) => cat.id.toString()) || [],
         supplier: product.supplier?.id.toString(),
         cost_price: product.cost_price.toString(),
-        selling_price: product.selling_price.toString(),
+        wholesale_price: product.wholesale_price?.toString() || "",
+        retail_price: product.retail_price?.toString() || "",
+        wholesale_cutoff: product.wholesale_cutoff || product.resolved_wholesale_cutoff || 10,
         status: product.is_active ? "active" : "inactive",
         minimum_stock: product.minimum_stock,
-        size_type: (product.size_type || "pants") as SizeType,
-        gender: (product.gender || "MALE") as GenderType,
-        size_category: product.size_category || undefined,
+        gender: (product.gender || "UNISEX") as GenderType,
       });
 
       // Set size category
       form.setValue("size_category", product.size_category || "");
 
-      // Set variants with proper typing
-      if (product.variations) {
-        const sizeVariants: SizeVariant[] = [];
-        const sizeMap = new Map<string, SizeVariant>();
-
-        product.variations.forEach((variation: ImportedProductVariation) => {
-          if (!sizeMap.has(variation.size)) {
-            const sizeVariant: SizeVariant = {
-              id: Math.random().toString(36).substr(2, 9),
-              size: variation.size,
-              colors: [],
-            };
-            sizeMap.set(variation.size, sizeVariant);
-            sizeVariants.push(sizeVariant);
-          }
-
-          const sizeVariant = sizeMap.get(variation.size)!;
-          sizeVariant.colors.push({
-            id: Math.random().toString(36).substr(2, 9),
-            color: variation.color,
-            colorHex: (variation as any).color_hax || "#000000",
-            stock: variation.stock,
-            waist_size: (variation as any).waist_size,
-            chest_size: (variation as any).chest_size,
-            height: (variation as any).height,
-          });
-        });
-
-        setVariants(sizeVariants);
+      // Set designs
+      if (product.designs) {
+        const designVariants: DesignVariant[] = product.designs.map((design: any) => ({
+          id: design.id.toString(),
+          name: design.name,
+          description: design.description,
+          colors: design.colors.map((color: any) => ({
+            id: color.id.toString(),
+            color: color.color,
+            colorHex: color.color_hax || "#000000",
+            stock: color.stock,
+          })),
+        }));
+        setDesigns(designVariants);
       }
 
       // Load galleries
@@ -455,293 +423,95 @@ export default function EditProductPage() {
     }
   }, [product, form]);
 
-  // Update the availableSizes useMemo with proper typing and data access
-  const availableSizes = useMemo(() => {
-    if (!watchedSizeType || !watchedSizeCategory) return [];
 
-    const sizeTypeData =
-      globalSizes[watchedSizeType as keyof typeof globalSizes];
-    if (!sizeTypeData) return [];
-
-    // Handle different size type structures
-    if (watchedSizeType === "belts" || watchedSizeType === "jersey") {
-      return (
-        sizeTypeData[watchedSizeCategory as keyof typeof sizeTypeData] || []
-      );
-    } else if (
-      watchedSizeType === "pants" ||
-      watchedSizeType === "shoes" ||
-      watchedSizeType === "underwear" ||
-      watchedSizeType === "shirts" ||
-      watchedSizeType === "tshirts"
-    ) {
-      // Convert backend gender values to frontend gender values
-      const frontendGender =
-        watchedGender === "MALE"
-          ? "men"
-          : watchedGender === "FEMALE"
-            ? "women"
-            : "unisex";
-      const genderData =
-        sizeTypeData[frontendGender as keyof typeof sizeTypeData];
-      if (genderData) {
-        return genderData[watchedSizeCategory as keyof typeof genderData] || [];
-      }
-    }
-
-    return [];
-  }, [watchedSizeType, watchedGender, watchedSizeCategory]);
-
-  // Update the size category select content
-  <SelectContent>
-    {watchedSizeType &&
-      watchedGender &&
-      (() => {
-        try {
-          const sizeTypeData =
-            globalSizes[watchedSizeType as keyof typeof globalSizes];
-          if (!sizeTypeData) return null;
-
-          let categories: string[] = [];
-
-          if (watchedSizeType === "belts" || watchedSizeType === "jersey") {
-            // For belts and jersey, categories are direct keys
-            categories = Object.keys(sizeTypeData);
-          } else if (
-            watchedSizeType === "pants" ||
-            watchedSizeType === "shoes" ||
-            watchedSizeType === "underwear" ||
-            watchedSizeType === "shirts" ||
-            watchedSizeType === "tshirts"
-          ) {
-            // Convert backend gender values to frontend gender values
-            const frontendGender =
-              watchedGender === "MALE"
-                ? "men"
-                : watchedGender === "FEMALE"
-                  ? "women"
-                  : "unisex";
-            const genderData =
-              sizeTypeData[frontendGender as keyof typeof sizeTypeData];
-            if (genderData) {
-              categories = Object.keys(genderData);
-            }
-          }
-
-          return categories.map((category) => (
-            <SelectItem key={category} value={category}>
-              {category}
-            </SelectItem>
-          ));
-        } catch (error) {
-          console.error("Error getting size categories:", error);
-          return null;
-        }
-      })()}
-  </SelectContent>;
-
-  // Update the handler functions to use proper typing
-  const handleSizeTypeChange = (value: string) => {
-    if (isValidSizeType(value)) {
-      form.setValue("size_type", value);
-      form.setValue("size_category", undefined); // Reset size category when size type changes
-    }
-  };
-
-  const handleGenderChange = (value: string) => {
-    if (isValidGender(value)) {
-      form.setValue("gender", value);
-      form.setValue("size_category", undefined); // Reset size category when gender changes
-    }
-  };
-
-  const validateSizeCategory = (
-    sizeType: string,
-    gender: string,
-    category: string
-  ) => {
-    const sizeTypeData = globalSizes[sizeType as keyof typeof globalSizes];
-    if (!sizeTypeData) return false;
-
-    if (sizeType === "belts" || sizeType === "jersey") {
-      return category in sizeTypeData;
-    } else if (
-      ["pants", "shoes", "underwear", "shirts", "tshirts"].includes(sizeType)
-    ) {
-      const genderKey =
-        gender === "MALE" ? "men" : gender === "FEMALE" ? "women" : "unisex";
-      return (
-        category in (sizeTypeData[genderKey as keyof typeof sizeTypeData] || {})
-      );
-    }
-    return false;
-  };
-
-  const handleSizeCategoryChange = (value: string) => {
-    const sizeType = form.getValues("size_type");
-    const gender = form.getValues("gender");
-
-    if (!sizeType || !gender) {
-      toast({
-        title: "Selection Required",
-        description: "Please select both size type and gender first",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!validateSizeCategory(sizeType, gender, value)) {
-      toast({
-        title: "Invalid Selection",
-        description:
-          "This size category is not valid for the selected type and gender",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    form.setValue("size_category", value);
-  };
-
-  const addSizeVariant = () => {
-    const currentSizeCategory = form.getValues("size_category");
-
-    if (!currentSizeCategory) {
-      toast({
-        title: "Size Category Required",
-        description: "Please select a size category first",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const newVariant: SizeVariant = {
+  const addDesign = () => {
+    const newDesign: DesignVariant = {
       id: Math.random().toString(36).substr(2, 9),
-      size: "",
+      name: "",
       colors: [],
     };
-    setVariants([...variants, newVariant]);
+    setDesigns([...designs, newDesign]);
   };
 
-  const addColorVariant = (sizeId: string) => {
-    const availableColors = getAvailableColorsForVariant(sizeId);
-
-    if (availableColors.length === 0) {
-      toast({
-        title: "No Available Colors",
-        description:
-          "All colors have been added for this size. Please remove a color first to add a new one.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const firstAvailableColor = availableColors[0];
-
-    setVariants(
-      variants.map((variant) =>
-        variant.id === sizeId
-          ? {
-            ...variant,
-            colors: [
-              ...variant.colors,
-              {
-                id: Math.random().toString(36).substr(2, 9),
-                color: firstAvailableColor,
-                colorHex: COLORS[firstAvailableColor as keyof typeof COLORS],
-                stock: 0,
-              },
-            ],
-          }
-          : variant
+  const updateDesignName = (id: string, name: string) => {
+    setDesigns(
+      designs.map((design) =>
+        design.id === id ? { ...design, name } : design
       )
     );
   };
 
-  const updateSizeVariant = (id: string, size: string) => {
-    setVariants(
-      variants.map((variant) =>
-        variant.id === id ? { ...variant, size } : variant
+  const removeDesign = (id: string) => {
+    setDesigns(designs.filter((design) => design.id !== id));
+  };
+
+  const addColorVariant = (designId: string) => {
+    const availableColors = getAvailableColorsForDesign(designId);
+    const firstAvailableColor = availableColors[0] || "Black";
+
+    setDesigns(
+      designs.map((design) =>
+        design.id === designId
+          ? {
+            ...design,
+            colors: [
+              ...design.colors,
+              {
+                id: Math.random().toString(36).substr(2, 9),
+                color: firstAvailableColor,
+                colorHex: COLORS[firstAvailableColor as keyof typeof COLORS] || "#000000",
+                stock: 0,
+              },
+            ],
+          }
+          : design
       )
     );
   };
 
   const updateColorVariant = (
-    sizeId: string,
+    designId: string,
     colorId: string,
     field: keyof ColorVariant,
     value: string | number
   ) => {
-    // If updating color name, check for duplicates
-    if (field === "color" && typeof value === "string") {
-      const currentVariant = variants.find((v) => v.id === sizeId);
-      if (currentVariant) {
-        const existingColors = currentVariant.colors
-          .filter((color) => color.id !== colorId) // Exclude current color being updated
-          .map((color) => color.color.toLowerCase());
-
-        if (existingColors.includes(value.toLowerCase())) {
-          toast({
-            title: "Duplicate Color",
-            description: `Color "${value}" already exists for this size. Please choose a different color.`,
-            variant: "destructive",
-          });
-          return; // Don't update if duplicate
-        }
-      }
-    }
-
-    setVariants(
-      variants.map((variant) =>
-        variant.id === sizeId
+    setDesigns(
+      designs.map((design) =>
+        design.id === designId
           ? {
-            ...variant,
-            colors: variant.colors.map((color) =>
-              color.id === colorId ? { ...color, [field]: value } : color
+            ...design,
+            colors: design.colors.map((color) =>
+              color.id === colorId ? { 
+                ...color, 
+                [field]: value,
+                ...(field === 'color' && typeof value === 'string' ? { colorHex: COLORS[value as keyof typeof COLORS] || color.colorHex } : {})
+              } : color
             ),
           }
-          : variant
+          : design
       )
     );
   };
 
-  const removeSizeVariant = (id: string) => {
-    setVariants(variants.filter((variant) => variant.id !== id));
-  };
-
-  const removeColorVariant = (sizeId: string, colorId: string) => {
-    setVariants(
-      variants.map((variant) =>
-        variant.id === sizeId
+  const removeColorVariant = (designId: string, colorId: string) => {
+    setDesigns(
+      designs.map((design) =>
+        design.id === designId
           ? {
-            ...variant,
-            colors: variant.colors.filter((color) => color.id !== colorId),
+            ...design,
+            colors: design.colors.filter((color) => color.id !== colorId),
           }
-          : variant
+          : design
       )
     );
   };
 
-  const getAvailableSizesForVariant = (currentVariantId: string): string[] => {
-    return availableSizes.filter(
-      (size: string) =>
-        !variants.some(
-          (variant) => variant.id !== currentVariantId && variant.size === size
-        )
-    );
-  };
+  const getAvailableColorsForDesign = (designId: string) => {
+    const design = designs.find((d) => d.id === designId);
+    if (!design) return Object.keys(COLORS);
 
-  // Function to get available colors for a specific size variant
-  const getAvailableColorsForVariant = (sizeId: string) => {
-    const currentVariant = variants.find((v) => v.id === sizeId);
-    if (!currentVariant) return Object.keys(COLORS);
-
-    const usedColors = currentVariant.colors.map((color) =>
-      color.color.toLowerCase()
-    );
-    return Object.keys(COLORS).filter(
-      (color) => !usedColors.includes(color.toLowerCase())
-    );
+    const usedColors = design.colors.map((c) => c.color.toLowerCase());
+    return Object.keys(COLORS).filter((c) => !usedColors.includes(c.toLowerCase()));
   };
 
   // Online category functions
@@ -910,62 +680,40 @@ export default function EditProductPage() {
   // Submit handler
   const onSubmit = async (data: ProductFormValues) => {
     try {
-      if (!data.size_category) {
+      // Validate that at least one design exists
+      if (designs.length === 0) {
         toast({
-          title: "Size Category Required",
-          description: "Please select a size category",
+          title: "Design Required",
+          description: "Please add at least one design",
           variant: "destructive",
         });
         return;
       }
 
-      if (variants.length === 0) {
-        toast({
-          title: "Variants Required",
-          description: "Please add at least one size variant",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Validate that each variant has at least one color
-      const invalidVariants = variants.filter((v) => v.colors.length === 0);
-      if (invalidVariants.length > 0) {
+      // Validate that each design has at least one color
+      const invalidDesigns = designs.filter((d) => d.colors.length === 0);
+      if (invalidDesigns.length > 0) {
         toast({
           title: "Color Required",
-          description: `Please add at least one color for size ${invalidVariants[0].size}`,
+          description: `Please add at least one color for design ${invalidDesigns[0].name || "unnamed"}`,
           variant: "destructive",
         });
         return;
       }
 
-      // Check for duplicate size-color combinations
-      const sizeColorCombinations: string[] = [];
-      const duplicates: string[] = [];
-
-      variants.forEach((variant) => {
-        variant.colors.forEach((color) => {
-          const combination = `${variant.size}-${color.color}`.toLowerCase();
-          if (sizeColorCombinations.includes(combination)) {
-            duplicates.push(`${variant.size} - ${color.color}`);
-          } else {
-            sizeColorCombinations.push(combination);
-          }
-        });
-      });
-
-      if (duplicates.length > 0) {
+      // Check for duplicate design names
+      const designNames = designs.map(d => d.name.toLowerCase());
+      const duplicateDesigns = designNames.filter((name, index) => designNames.indexOf(name) !== index);
+      if (duplicateDesigns.length > 0) {
         toast({
-          title: "Duplicate Variants Found",
-          description: `The following combinations already exist: ${duplicates.join(
-            ", "
-          )}. Please remove duplicates before saving.`,
+          title: "Duplicate Designs",
+          description: "Each design must have a unique name",
           variant: "destructive",
         });
         return;
       }
 
-      // Prepare the product data with proper typing
+      // Prepare the product data
       const productData = {
         name: data.name,
         description: data.description || "",
@@ -974,23 +722,21 @@ export default function EditProductPage() {
         online_categories: data.online_categories?.map(id => parseInt(id)),
         supplier: data.supplier ? parseInt(data.supplier) : undefined,
         cost_price: parseFloat(data.cost_price),
-        selling_price: parseFloat(data.selling_price),
+        wholesale_price: parseFloat(data.wholesale_price),
+        retail_price: parseFloat(data.retail_price),
+        wholesale_cutoff: data.wholesale_cutoff,
         minimum_stock: data.minimum_stock,
         is_active: data.status === "active",
-        size_type: data.size_type,
-        size_category: data.size_category as SizeCategoryType,
         gender: data.gender,
-        variations: variants.flatMap((sizeVariant) =>
-          sizeVariant.colors.map((colorVariant) => ({
-            size: sizeVariant.size,
-            color: colorVariant.color,
-            color_hax: colorVariant.colorHex,
-            stock: colorVariant.stock,
-            waist_size: colorVariant.waist_size,
-            chest_size: colorVariant.chest_size,
-            height: colorVariant.height,
-          }))
-        ),
+        designs: designs.map((design) => ({
+          name: design.name,
+          description: design.description || "",
+          colors: design.colors.map((color) => ({
+            color: color.color,
+            color_hax: color.colorHex,
+            stock: color.stock,
+          })),
+        })),
         material_composition: materialCompositions.map((item) => ({
           percentige: item.percentage,
           title: item.title || null,
@@ -1003,12 +749,6 @@ export default function EditProductPage() {
           title: item.title || null,
           description: item.description || null,
         })),
-        // Don't send galleries data in product update - handle separately
-        // galleries: galleries.map((gallery) => ({
-        //   color: gallery.color,
-        //   color_hax: gallery.color_hax || gallery.colorHex,
-        //   alt_text: gallery.color,
-        // })),
       };
 
       // Update the product with proper typing
@@ -1207,29 +947,12 @@ export default function EditProductPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Category</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
+                      <HierarchicalCategorySelect
+                        categories={categories}
                         value={field.value}
-                        defaultValue={product.category?.id.toString()}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a category">
-                              {product.category?.name}
-                            </SelectValue>
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {categories.map((category) => (
-                            <SelectItem
-                              key={category.id}
-                              value={category.id.toString()}
-                            >
-                              {category.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        onChange={field.onChange}
+                        placeholder="Select Category"
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -1342,11 +1065,11 @@ export default function EditProductPage() {
             <CardHeader>
               <CardTitle>Pricing and Stock</CardTitle>
               <CardDescription>
-                Set the product pricing and stock levels
+                Set the product pricing (Cost, Wholesale, Retail) and stock levels
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <FormField
                   control={form.control}
                   name="cost_price"
@@ -1357,14 +1080,8 @@ export default function EditProductPage() {
                         <Input
                           type="number"
                           step="0.01"
-                          placeholder="Enter cost price"
+                          placeholder="0.00"
                           {...field}
-                          onWheel={(e) => {
-                            // Prevent scrolling from changing the input value
-                            if (document.activeElement === e.target) {
-                              e.preventDefault();
-                            }
-                          }}
                         />
                       </FormControl>
                       <FormMessage />
@@ -1374,22 +1091,35 @@ export default function EditProductPage() {
 
                 <FormField
                   control={form.control}
-                  name="selling_price"
+                  name="wholesale_price"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Selling Price</FormLabel>
+                      <FormLabel>Wholesale Price</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
                           step="0.01"
-                          placeholder="Enter selling price"
+                          placeholder="0.00"
                           {...field}
-                          onWheel={(e) => {
-                            // Prevent scrolling from changing the input value
-                            if (document.activeElement === e.target) {
-                              e.preventDefault();
-                            }
-                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="retail_price"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Retail Price</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          {...field}
                         />
                       </FormControl>
                       <FormMessage />
@@ -1406,17 +1136,29 @@ export default function EditProductPage() {
                       <FormControl>
                         <Input
                           type="number"
-                          placeholder="Enter minimum stock level"
+                          placeholder="10"
                           {...field}
-                          onChange={(e) =>
-                            field.onChange(parseInt(e.target.value))
-                          }
-                          onWheel={(e) => {
-                            // Prevent scrolling from changing the input value
-                            if (document.activeElement === e.target) {
-                              e.preventDefault();
-                            }
-                          }}
+                          onChange={(e) => field.onChange(parseInt(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                    )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="wholesale_cutoff"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Wholesale Cutoff Qty</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="1"
+                          placeholder="10"
+                          value={field.value}
+                          onChange={(e) => field.onChange(parseInt(e.target.value || "10", 10))}
                         />
                       </FormControl>
                       <FormMessage />
@@ -1455,140 +1197,36 @@ export default function EditProductPage() {
             </CardContent>
           </Card>
 
-          {/* Size and Variations Card */}
+          {/* Designs & Colors Card */}
           <Card>
             <CardHeader>
-              <CardTitle>Size and Variations</CardTitle>
+              <CardTitle>Designs & Colors</CardTitle>
               <CardDescription>
-                Configure product sizes and variations
+                Manage product designs and their color variations
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <FormField
-                  control={form.control}
-                  name="size_type"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Size Type</FormLabel>
-                      <Select
-                        onValueChange={handleSizeTypeChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select size type" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="pants">Pants</SelectItem>
-                          <SelectItem value="shoes">Shoes</SelectItem>
-                          <SelectItem value="belts">Belts</SelectItem>
-                          <SelectItem value="underwear">Underwear</SelectItem>
-                          <SelectItem value="jersey">Jersey</SelectItem>
-                          <SelectItem value="shirts">Shirts</SelectItem>
-                          <SelectItem value="tshirts">T-Shirts</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
                   name="gender"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Gender</FormLabel>
+                      <FormLabel>Who is this for? (Gender)</FormLabel>
                       <Select
-                        onValueChange={handleGenderChange}
+                        onValueChange={field.onChange}
                         defaultValue={field.value}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select gender" />
+                            <SelectValue placeholder="Select target audience" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="MALE">Male</SelectItem>
                           <SelectItem value="FEMALE">Female</SelectItem>
                           <SelectItem value="UNISEX">Unisex</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="size_category"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Size Category</FormLabel>
-                      <Select
-                        value={field.value}
-                        onValueChange={handleSizeCategoryChange}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select size category" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {watchedSizeType &&
-                            watchedGender &&
-                            (() => {
-                              try {
-                                const sizeTypeData =
-                                  globalSizes[watchedSizeType as SizeType];
-                                if (!sizeTypeData) return null;
-
-                                let categories: string[] = [];
-
-                                if (
-                                  watchedSizeType === "belts" ||
-                                  watchedSizeType === "jersey"
-                                ) {
-                                  // For belts and jersey, categories are direct keys
-                                  categories = Object.keys(sizeTypeData);
-                                } else if (
-                                  watchedSizeType === "pants" ||
-                                  watchedSizeType === "shoes" ||
-                                  watchedSizeType === "underwear" ||
-                                  watchedSizeType === "shirts" ||
-                                  watchedSizeType === "tshirts"
-                                ) {
-                                  // Convert backend gender values to frontend gender values
-                                  const frontendGender =
-                                    watchedGender === "MALE"
-                                      ? "men"
-                                      : watchedGender === "FEMALE"
-                                        ? "women"
-                                        : "unisex";
-                                  const genderData =
-                                    sizeTypeData[
-                                    frontendGender as keyof typeof sizeTypeData
-                                    ];
-                                  if (genderData) {
-                                    categories = Object.keys(genderData);
-                                  }
-                                }
-
-                                return categories.map((category) => (
-                                  <SelectItem key={category} value={category}>
-                                    {category}
-                                  </SelectItem>
-                                ));
-                              } catch (error) {
-                                console.error(
-                                  "Error getting size categories:",
-                                  error
-                                );
-                                return null;
-                              }
-                            })()}
+                          <SelectItem value="KIDS">Kids</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -1597,54 +1235,41 @@ export default function EditProductPage() {
                 />
               </div>
 
-              {/* Size Variants */}
+              {/* Design Variations */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-medium">Size Variants</h3>
+                  <h3 className="text-lg font-medium">Designs</h3>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={addSizeVariant}
+                    onClick={addDesign}
                   >
                     <PlusCircle className="h-4 w-4 mr-2" />
-                    Add Size
+                    Add Design
                   </Button>
                 </div>
 
-                {variants.map((variant) => (
-                  <Card key={variant.id} className="p-4">
+                {designs.map((design) => (
+                  <Card key={design.id} className="p-4 bg-slate-50 dark:bg-slate-900 border-2">
                     <div className="space-y-4">
                       <div className="flex items-center gap-4">
-                        <FormItem className="flex-1">
-                          <FormLabel>Size</FormLabel>
-                          <Select
-                            value={variant.size}
-                            onValueChange={(value) =>
-                              updateSizeVariant(variant.id, value)
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select size" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {getAvailableSizesForVariant(variant.id).map(
-                                (size) => (
-                                  <SelectItem key={size} value={size}>
-                                    {size}
-                                  </SelectItem>
-                                )
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </FormItem>
+                        <div className="flex-1">
+                          <FormLabel>Design Name</FormLabel>
+                          <Input
+                            placeholder="e.g. Classic Slim Fit"
+                            value={design.name}
+                            onChange={(e) => updateDesignName(design.id, e.target.value)}
+                            className="bg-white"
+                          />
+                        </div>
 
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => addColorVariant(variant.id)}
-                          className="mt-8"
+                          onClick={() => addColorVariant(design.id)}
+                          className="mt-8 bg-white"
                         >
                           <PlusCircle className="h-4 w-4 mr-2" />
                           Add Color
@@ -1654,47 +1279,40 @@ export default function EditProductPage() {
                           type="button"
                           variant="ghost"
                           size="sm"
-                          onClick={() => removeSizeVariant(variant.id)}
+                          onClick={() => removeDesign(design.id)}
                           className="mt-8 text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
 
-                      {/* Color Variants */}
-                      <div className="space-y-4 pl-4">
-                        {variant.colors.map((color) => (
+                      {/* Color Variants for this Design */}
+                      <div className="space-y-4 pl-4 border-l-2 border-slate-200">
+                        {design.colors.map((color) => (
                           <div
                             key={color.id}
-                            className="flex items-center gap-4"
+                            className="flex items-center gap-4 bg-white dark:bg-slate-800 p-3 rounded-lg border shadow-sm"
                           >
                             <FormItem className="flex-1">
-                              <FormLabel>Color</FormLabel>
+                              <FormLabel className="text-xs">Color</FormLabel>
                               <Select
                                 value={color.color}
                                 onValueChange={(value) =>
-                                  updateColorVariant(
-                                    variant.id,
-                                    color.id,
-                                    "color",
-                                    value
-                                  )
+                                  updateColorVariant(design.id, color.id, "color", value)
                                 }
                               >
-                                <SelectTrigger>
+                                <SelectTrigger className="h-9">
                                   <SelectValue placeholder="Select color" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {Object.entries(COLORS).map(([name, hex]) => (
-                                    <SelectItem key={name} value={name}>
+                                  {Object.keys(COLORS).map((colorName) => (
+                                    <SelectItem key={colorName} value={colorName}>
                                       <div className="flex items-center gap-2">
                                         <div
                                           className="w-4 h-4 rounded-full border"
-                                          style={{
-                                            backgroundColor: hex,
-                                          }}
+                                          style={{ backgroundColor: COLORS[colorName as keyof typeof COLORS] }}
                                         />
-                                        {name}
+                                        {colorName}
                                       </div>
                                     </SelectItem>
                                   ))}
@@ -1703,91 +1321,20 @@ export default function EditProductPage() {
                             </FormItem>
 
                             <FormItem className="w-32">
-                              <FormLabel>Stock</FormLabel>
+                              <FormLabel className="text-xs">Stock</FormLabel>
                               <Input
                                 type="number"
                                 min="0"
+                                className="h-9"
                                 value={color.stock}
                                 onChange={(e) =>
                                   updateColorVariant(
-                                    variant.id,
+                                    design.id,
                                     color.id,
                                     "stock",
-                                    parseInt(e.target.value)
+                                    parseInt(e.target.value) || 0
                                   )
                                 }
-                                onWheel={(e) => {
-                                  // Prevent scrolling from changing the input value
-                                  if (document.activeElement === e.target) {
-                                    e.preventDefault();
-                                  }
-                                }}
-                              />
-                            </FormItem>
-
-                            <FormItem className="w-32">
-                              <FormLabel>Waist Size</FormLabel>
-                              <Input
-                                type="number"
-                                min="0"
-                                value={color.waist_size || ""}
-                                onChange={(e) =>
-                                  updateColorVariant(
-                                    variant.id,
-                                    color.id,
-                                    "waist_size",
-                                    e.target.value ? parseInt(e.target.value) : 0
-                                  )
-                                }
-                                onWheel={(e) => {
-                                  if (document.activeElement === e.target) {
-                                    e.preventDefault();
-                                  }
-                                }}
-                              />
-                            </FormItem>
-
-                            <FormItem className="w-32">
-                              <FormLabel>Chest Size</FormLabel>
-                              <Input
-                                type="number"
-                                min="0"
-                                value={color.chest_size || ""}
-                                onChange={(e) =>
-                                  updateColorVariant(
-                                    variant.id,
-                                    color.id,
-                                    "chest_size",
-                                    e.target.value ? parseInt(e.target.value) : 0
-                                  )
-                                }
-                                onWheel={(e) => {
-                                  if (document.activeElement === e.target) {
-                                    e.preventDefault();
-                                  }
-                                }}
-                              />
-                            </FormItem>
-
-                            <FormItem className="w-32">
-                              <FormLabel>Height</FormLabel>
-                              <Input
-                                type="number"
-                                min="0"
-                                value={color.height || ""}
-                                onChange={(e) =>
-                                  updateColorVariant(
-                                    variant.id,
-                                    color.id,
-                                    "height",
-                                    e.target.value ? parseInt(e.target.value) : 0
-                                  )
-                                }
-                                onWheel={(e) => {
-                                  if (document.activeElement === e.target) {
-                                    e.preventDefault();
-                                  }
-                                }}
                               />
                             </FormItem>
 
@@ -1796,14 +1343,19 @@ export default function EditProductPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() =>
-                                removeColorVariant(variant.id, color.id)
+                                removeColorVariant(design.id, color.id)
                               }
-                              className="mt-8 text-destructive"
+                              className="mt-6 text-destructive h-9"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         ))}
+                        {design.colors.length === 0 && (
+                          <p className="text-xs text-muted-foreground italic py-2">
+                            No colors added yet. Click "Add Color" to begin.
+                          </p>
+                        )}
                       </div>
                     </div>
                   </Card>

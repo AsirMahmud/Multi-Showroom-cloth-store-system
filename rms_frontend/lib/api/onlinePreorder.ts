@@ -4,7 +4,7 @@ export interface OnlinePreorderItem {
   product_id: number;
   product_name?: string;
   product_image?: string;
-  size: string;
+  design: string;
   color: string;
   quantity: number;
   unit_price: number;

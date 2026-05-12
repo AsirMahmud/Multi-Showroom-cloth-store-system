@@ -22,6 +22,8 @@ import {
 import { cn } from "@/lib/utils";
 import { NotificationsDrawer } from "@/components/notifications/notifications-drawer";
 
+import { SidebarTrigger } from "@/components/ui/sidebar";
+
 const ROLE_LABELS: Record<string, string> = {
   admin: "Administrator",
   branch_manager: "Branch Manager",
@@ -49,12 +51,15 @@ export function UpperNav() {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-brand-primary/5 bg-white/60 backdrop-blur-xl px-4 md:px-6 py-4">
       <div className="flex items-center justify-between gap-6">
-        <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-widest font-bold text-brand-primary/40">
-            Retail Management System
-          </div>
-          <div className="text-xl font-bold bg-gradient-to-r from-brand-primary to-emerald-800 bg-clip-text text-transparent truncate">
-            {user ? `Hello, ${user.username}` : "Hello"}
+        <div className="flex items-center gap-4 min-w-0">
+          <SidebarTrigger className="hidden md:flex" />
+          <div className="min-w-0">
+            <div className="text-[10px] uppercase tracking-widest font-bold text-brand-primary/40 leading-none mb-1">
+              Retail Management System
+            </div>
+            <div className="text-xl font-bold bg-gradient-to-r from-brand-primary to-emerald-800 bg-clip-text text-transparent truncate">
+              {user ? `Hello, ${user.username}` : "Hello"}
+            </div>
           </div>
         </div>
 

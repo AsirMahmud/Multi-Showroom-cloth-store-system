@@ -1,18 +1,31 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  AlertCircle,
+  ArrowRight,
+  Barcode,
+  CheckCircle2,
+  Package2,
+  ShoppingBag,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { GridSkeleton } from "@/components/ui/professional";
-import { AlertCircle, ShoppingBag, History, Plus, Barcode } from "lucide-react";
-import { useProducts, useInfiniteProducts } from "@/hooks/queries/useInventory";
-import { Product } from "@/types/inventory";
-import { usePOSStore } from "@/store/pos-store";
-import type { ProductVariation as BaseProductVariation } from "@/types/inventory";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useInfiniteProducts } from "@/hooks/queries/useInventory";
 import { formatCurrency } from "@/lib/utils";
-
-type ProductVariation = BaseProductVariation & { color_hax?: string };
+import { usePOSStore } from "@/store/pos-store";
+import { Product } from "@/types/inventory";
 
 interface ProductGridProps {
   searchQuery?: string;
@@ -20,24 +33,18 @@ interface ProductGridProps {
   priceRange?: [number, number];
 }
 
+type VariantQuantityMap = Record<string, number>;
+
 export default function ProductGrid({
   searchQuery = "",
   selectedCategory = "all",
-  priceRange = [0, 10000],
 }: ProductGridProps) {
-  const [selectedSizes, setSelectedSizes] = useState<Record<number, string>>(
-    {}
-  );
-  const [selectedColors, setSelectedColors] = useState<Record<number, string>>(
-    {}
-  );
-  const { handleAddToCart } = usePOSStore();
+  const { handleAddMultipleToCart } = usePOSStore();
   const observerTarget = useRef<HTMLDivElement>(null);
-
-  // Debounce search query to prevent excessive API calls
   const [debouncedSearch] = useDebounce(searchQuery, 300);
+  const [activeProduct, setActiveProduct] = useState<Product | null>(null);
+  const [variantQuantities, setVariantQuantities] = useState<VariantQuantityMap>({});
 
-  // Fetch products using the useInfiniteProducts hook
   const {
     data,
     fetchNextPage,
@@ -45,18 +52,11 @@ export default function ProductGrid({
     isFetchingNextPage,
     isLoading,
     isError,
-    error
   } = useInfiniteProducts({
     search: debouncedSearch,
     category: selectedCategory !== "all" ? selectedCategory : undefined,
-    // sending price filter to backend if supported, otherwise you might need to keep client side filtering for price if backend doesn't support it yet.
-    // Assuming backend supports price_min / price_max based on standard patterns, but checking api definition previously, it might not.
-    // If backend doesn't support price range, we might need to filter locally on the fetched pages, but that's inefficient for infinite scroll.
-    // For now, let's assume we pass what we can or rely on the backend.
-    // Based on previous view of useInventory, params are passed directly.
   });
 
-  // Infinite scroll observer
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -67,161 +67,95 @@ export default function ProductGrid({
       { threshold: 0.1 }
     );
 
-    if (observerTarget.current) {
-      observer.observe(observerTarget.current);
+    const target = observerTarget.current;
+    if (target) {
+      observer.observe(target);
     }
 
     return () => {
-      if (observerTarget.current) {
-        observer.unobserve(observerTarget.current);
+      if (target) {
+        observer.unobserve(target);
       }
     };
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const products = data?.pages.flatMap((page) => page.results) || [];
 
-  const getUniqueValues = (
-    variations: Product["variations"] = [],
-    key: "size" | "color"
-  ): string[] => {
-    return [
-      ...new Set(variations.filter((v) => v.is_active).map((v) => v[key])),
-    ];
-  };
+  useEffect(() => {
+    if (!activeProduct) {
+      setVariantQuantities({});
+      return;
+    }
 
-  const getVariationStock = (
-    product: Product,
-    size?: string,
-    color?: string
-  ): number => {
-    const variation = (product.variations || []).find(
-      (v) =>
-        v.is_active &&
-        (!size || v.size === size) &&
-        (!color || v.color === color)
+    const defaults: VariantQuantityMap = {};
+    for (const design of activeProduct.designs || []) {
+      for (const color of design.colors) {
+        defaults[getVariantKey(design.name, color.color)] = 0;
+      }
+    }
+    setVariantQuantities(defaults);
+  }, [activeProduct]);
+
+  const selectedVariants = useMemo(() => {
+    if (!activeProduct) {
+      return [];
+    }
+
+    return (activeProduct.designs || []).flatMap((design) =>
+      design.colors
+        .filter((color) => (variantQuantities[getVariantKey(design.name, color.color)] || 0) > 0)
+        .map((color) => ({
+          design: design.name,
+          color: color.color,
+          colorHex: color.color_hax,
+          stock: color.stock,
+          quantity: variantQuantities[getVariantKey(design.name, color.color)] || 0,
+        }))
     );
-    return variation?.stock || 0;
+  }, [activeProduct, variantQuantities]);
+
+  const selectedTotalQuantity = selectedVariants.reduce((sum, item) => sum + item.quantity, 0);
+
+  const handleQuantityChange = (
+    designName: string,
+    colorName: string,
+    stock: number,
+    rawValue: string
+  ) => {
+    const parsed = Number.parseInt(rawValue || "0", 10);
+    const safeValue = Number.isNaN(parsed) ? 0 : Math.max(0, Math.min(parsed, stock));
+
+    setVariantQuantities((prev) => ({
+      ...prev,
+      [getVariantKey(designName, colorName)]: safeValue,
+    }));
   };
 
-  const isLowStock = (product: Product): boolean => {
-    return (product.variations || []).some(
-      (v) => v.is_active && v.stock > 0 && v.stock < 5
+  const handleCommitSelection = () => {
+    if (!activeProduct || selectedVariants.length === 0) {
+      return;
+    }
+
+    handleAddMultipleToCart(
+      selectedVariants.map((variant) => ({
+        product: activeProduct,
+        design: variant.design,
+        color: variant.color,
+        quantity: variant.quantity,
+      }))
     );
-  };
 
-  const getColorValue = (colorName: string, product: Product): string => {
-    // Find the color hex from the product variations
-    const variations = product.variations || [];
-
-    // First, try to find a variation with this exact color and a valid hex
-    const exactMatch = variations.find(
-      (v) =>
-        v.color === colorName && v.color_hax && isValidHexColor(v.color_hax)
-    );
-
-    if (exactMatch?.color_hax) {
-      return exactMatch.color_hax;
-    }
-
-    // If no exact match with valid hex, try to find any variation with this color
-    const anyMatch = variations.find((v) => v.color === colorName);
-    if (anyMatch?.color_hax && isValidHexColor(anyMatch.color_hax)) {
-      return anyMatch.color_hax;
-    }
-
-    // If still no valid hex, use the color map
-    const colorMap: Record<string, string> = {
-      White: "#FFFFFF",
-      Black: "#000000",
-      Blue: "#3B82F6",
-      Red: "#EF4444",
-      Green: "#10B981",
-      Yellow: "#F59E0B",
-      Purple: "#8B5CF6",
-      Pink: "#EC4899",
-      Gray: "#6B7280",
-      Navy: "#1E3A8A",
-      Orange: "#FFA500",
-      Brown: "#A52A2A",
-      Teal: "#008080",
-      Maroon: "#800000",
-      Olive: "#808000",
-      Silver: "#C0C0C0",
-      Gold: "#FFD700",
-      Beige: "#F5F5DC",
-      Burgundy: "#800020",
-      Khaki: "#F0E68C",
-    };
-
-    return colorMap[colorName] || "#9CA3AF";
-  };
-
-  // Helper function to validate hex colors
-  const isValidHexColor = (hex: string): boolean => {
-    if (!hex || typeof hex !== "string") return false;
-
-    // Remove # if present
-    const cleanHex = hex.startsWith("#") ? hex.slice(1) : hex;
-
-    // Check if it's a valid 3 or 6 digit hex
-    const hexRegex = /^[0-9A-Fa-f]{3}$|^[0-9A-Fa-f]{6}$/;
-    if (!hexRegex.test(cleanHex)) return false;
-
-    // Don't allow pure black or pure white as they might be defaults
-    if (
-      cleanHex.toLowerCase() === "000000" ||
-      cleanHex.toLowerCase() === "ffffff"
-    ) {
-      return false;
-    }
-
-    return true;
-  };
-
-  const handleViewProductHistory = (product: Product) => {
-    // TODO: Implement product history viewing logic
-  };
-
-  const getCurrentVariationStock = (product: Product): number => {
-    // If no size or color is selected, return total stock across all variations
-    if (!selectedSizes[product.id] && !selectedColors[product.id]) {
-      return (product.variations || []).reduce((total, v) => {
-        return v.is_active ? total + v.stock : total;
-      }, 0);
-    }
-
-    // If only size is selected, return sum of stock for that size across all colors
-    if (selectedSizes[product.id] && !selectedColors[product.id]) {
-      return (product.variations || []).reduce((total, v) => {
-        return v.is_active && v.size === selectedSizes[product.id]
-          ? total + v.stock
-          : total;
-      }, 0);
-    }
-
-    // If only color is selected, return sum of stock for that color across all sizes
-    if (!selectedSizes[product.id] && selectedColors[product.id]) {
-      return (product.variations || []).reduce((total, v) => {
-        return v.is_active && v.color === selectedColors[product.id]
-          ? total + v.stock
-          : total;
-      }, 0);
-    }
-
-    // If both size and color are selected, return stock for that specific variation
-    const size = selectedSizes[product.id];
-    const color = selectedColors[product.id];
-    return getVariationStock(product, size, color);
+    setActiveProduct(null);
   };
 
   if (isLoading) {
-    return <GridSkeleton cols={2} rows={3} />;
+    return <GridSkeleton count={6} />;
   }
 
   if (isError) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-center">
-        <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
+      <div className="flex h-64 flex-col items-center justify-center text-center">
+        <AlertCircle className="mb-4 h-12 w-12 text-red-500" />
         <h3 className="text-lg font-medium">Error loading products</h3>
         <p className="text-muted-foreground">Please try again later</p>
       </div>
@@ -229,259 +163,364 @@ export default function ProductGrid({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        {products.map((product) => {
-          const sizes = getUniqueValues(product.variations, "size");
-          const colors = getUniqueValues(product.variations, "color");
-          const currentStock = getCurrentVariationStock(product);
+    <>
+      <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {products.map((product) => {
+            const totalStock = (product.designs || []).reduce(
+              (sum, design) => sum + design.colors.reduce((inner, color) => inner + color.stock, 0),
+              0
+            );
+            const variantCount = (product.designs || []).reduce(
+              (sum, design) => sum + design.colors.length,
+              0
+            );
+            const cutoff = product.resolved_wholesale_cutoff || product.wholesale_cutoff || 10;
+            const isLowStock = totalStock > 0 && totalStock < 5;
 
-          return (
-            <Card key={product.id} className="overflow-hidden flex flex-col">
-              <div className="relative h-32 bg-gray-100">
-                <img
-                  src={product.image || "/placeholder.svg?height=200&width=200"}
-                  alt={product.name}
-                  className="h-full w-full object-cover"
-                />
+            return (
+              <Card
+                key={product.id}
+                className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+              >
+                <div className="relative h-36 overflow-hidden bg-slate-100">
+                  <img
+                    src={product.image || "/placeholder.svg?height=240&width=320"}
+                    alt={product.name}
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                  />
 
-                {/* SKU Badge */}
-                <div className="absolute top-1 left-1">
-                  <Badge
-                    variant="secondary"
-                    className="flex items-center gap-2 text-sm text-muted-foreground"
-                  >
-                    <Barcode className="h-3 w-3" />
-                    {product.sku}
-                  </Badge>
-                </div>
-
-                {/* Low stock indicator */}
-                {isLowStock(product) && (
-                  <div className="absolute top-1 right-1">
-                    <Badge
-                      variant="destructive"
-                      className="flex items-center text-[10px]"
-                    >
-                      <AlertCircle className="h-2 w-2 mr-0.5" />
-                      Low Stock
+                  <div className="absolute inset-x-0 top-0 flex items-start justify-between p-3">
+                    <Badge className="rounded-full bg-white/95 text-[10px] font-bold text-slate-600 shadow-sm">
+                      <Barcode className="mr-1 h-3 w-3" />
+                      {product.sku}
                     </Badge>
-                  </div>
-                )}
-
-                {/* Sales history button */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute bottom-1 right-1 bg-white/80 hover:bg-white h-6 w-6"
-                  onClick={() => handleViewProductHistory(product)}
-                >
-                  <History className="h-3 w-3" />
-                </Button>
-              </div>
-
-              <CardContent className="p-2 flex-1 flex flex-col">
-                <h3
-                  className="font-medium text-xs mb-0.5 truncate"
-                  title={product.name}
-                >
-                  {product.name}
-                </h3>
-                <p className="text-[10px] text-muted-foreground mb-1 line-clamp-1">
-                  {product.description}
-                </p>
-
-                {/* Size Type and Gender Info */}
-                {(product.size_category || product.gender) && (
-                  <div className="flex gap-1 mt-1">
-                    {product.size_category && (
-                      <Badge variant="outline" className="text-xs bg-emerald-200">
-                        {product.size_category}
+                    {isLowStock ? (
+                      <Badge variant="destructive" className="rounded-full text-[10px]">
+                        Low Stock
                       </Badge>
-                    )}
-                    {product.gender && (
-                      <Badge
-                        variant="outline"
-                        className="text-xs bg-red-600 text-white"
-                      >
-                        {product.gender}
-                      </Badge>
-                    )}
+                    ) : null}
                   </div>
-                )}
-
-                <p className="text-sm font-bold mb-1">
-                  {formatCurrency(product.selling_price)}
-                </p>
-
-                {/* Size selection */}
-                {sizes.length > 0 && (
-                  <div className="mb-2">
-                    <p className="text-xs font-medium mb-1.5 flex items-center gap-1">
-                      <span>Select Size:</span>
-                      {!selectedSizes[product.id] && (
-                        <span className="text-red-500 text-[10px]">
-                          (Required)
-                        </span>
-                      )}
-                    </p>
-                    <div className="flex flex-wrap gap-1">
-                      {sizes.map((size) => (
-                        <Badge
-                          key={size}
-                          variant={
-                            selectedSizes[product.id] === size
-                              ? "default"
-                              : "outline"
-                          }
-                          className={`cursor-pointer text-xs h-6 px-2 transition-all ${selectedSizes[product.id] === size
-                            ? "bg-blue-600 hover:bg-blue-700"
-                            : "hover:bg-gray-100"
-                            }`}
-                          onClick={() => {
-                            setSelectedSizes({
-                              ...selectedSizes,
-                              [product.id]: size,
-                            });
-                          }}
-                        >
-                          {size}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Color selection */}
-                {colors.length > 0 && (
-                  <div className="mb-2">
-                    <p className="text-xs font-medium mb-1.5 flex items-center gap-1">
-                      <span>Select Color:</span>
-                      {!selectedColors[product.id] && (
-                        <span className="text-red-500 text-[10px]">
-                          (Required)
-                        </span>
-                      )}
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {colors.map((color) => {
-                        const colorHex = getColorValue(color, product);
-                        return (
-                          <button
-                            key={color}
-                            className={`group relative flex items-center gap-1.5 px-2 py-1 rounded-md border transition-all ${selectedColors[product.id] === color
-                              ? "border-blue-600 bg-blue-50"
-                              : "border-gray-200 hover:border-gray-300"
-                              }`}
-                            onClick={() => {
-                              setSelectedColors({
-                                ...selectedColors,
-                                [product.id]: color,
-                              });
-                            }}
-                            title={color}
-                            aria-label={`Select color ${color}`}
-                          >
-                            <div
-                              className={`h-5 w-5 rounded-full border transition-all shadow-sm ${selectedColors[product.id] === color
-                                ? "border-blue-600 ring-2 ring-blue-200"
-                                : "border-gray-300 group-hover:border-gray-400"
-                                }`}
-                              style={{ backgroundColor: colorHex }}
-                            />
-                            <span className="text-xs text-gray-700 font-medium">
-                              {color}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Stock indicator */}
-                <div className="mb-1.5">
-                  <p className="text-[10px] text-muted-foreground">
-                    Stock:{" "}
-                    <span
-                      className={
-                        currentStock < 5
-                          ? "text-red-600 font-medium"
-                          : "text-green-600"
-                      }
-                    >
-                      {currentStock} available
-                    </span>
-                  </p>
                 </div>
 
-                {/* Add to cart button */}
-                <Button
-                  className={`w-full mt-auto h-8 text-xs transition-all ${currentStock === 0
-                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    : !selectedSizes[product.id] || !selectedColors[product.id]
-                      ? "bg-gray-100 text-gray-400 hover:bg-gray-200"
-                      : "bg-blue-600 hover:bg-blue-700"
-                    }`}
-                  disabled={
-                    currentStock === 0 ||
-                    !selectedSizes[product.id] ||
-                    !selectedColors[product.id]
-                  }
-                  onClick={() => {
-                    const size = selectedSizes[product.id] || sizes[0];
-                    const color = selectedColors[product.id] || colors[0];
-                    handleAddToCart(product, size, color);
-                  }}
-                >
-                  <Plus className="h-3 w-3 mr-1" />
-                  {currentStock === 0
-                    ? "Out of Stock"
-                    : !selectedSizes[product.id] || !selectedColors[product.id]
-                      ? "Select Size & Color"
-                      : "Add to Cart"}
-                </Button>
-              </CardContent>
-            </Card>
-          );
-        })}
+                <CardContent className="space-y-4 p-4">
+                  <div className="space-y-1.5">
+                    <h3 className="line-clamp-1 text-sm font-black text-slate-900" title={product.name}>
+                      {product.name}
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-slate-400">
+                      <span>{variantCount} variants</span>
+                      <span>{totalStock} stock</span>
+                      <span>{cutoff}+ wholesale</span>
+                    </div>
+                  </div>
 
-        {products.length === 0 && (
-          <div className="col-span-full flex flex-col items-center justify-center py-8 text-center">
-            <ShoppingBag className="h-8 w-8 text-gray-300 mb-2" />
-            <h3 className="text-sm font-medium">No products found</h3>
-            <p className="text-xs text-muted-foreground">
-              Try adjusting your search or filter criteria
-            </p>
+                  <div className="rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-slate-50 p-3">
+                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">
+                      Wholesale
+                    </div>
+                    <div className="mt-1 text-2xl font-black text-slate-900">
+                      {formatCurrency(Number(product.wholesale_price || 0))}
+                    </div>
+                    <div className="mt-1 text-[11px] text-slate-500">
+                      Retail {formatCurrency(Number(product.retail_price || 0))}
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={() => setActiveProduct(product)}
+                    className="h-11 w-full rounded-2xl bg-slate-900 text-xs font-black uppercase tracking-[0.18em] text-white hover:bg-slate-800"
+                  >
+                    Configure Product
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
+
+          {products.length === 0 ? (
+            <div className="col-span-full flex flex-col items-center justify-center py-10 text-center">
+              <ShoppingBag className="mb-2 h-8 w-8 text-gray-300" />
+              <h3 className="text-sm font-medium">No products found</h3>
+              <p className="text-xs text-muted-foreground">
+                Try adjusting your search or filter criteria
+              </p>
+            </div>
+          ) : null}
+        </div>
+
+        {hasNextPage ? (
+          <div ref={observerTarget} className="flex w-full justify-center py-8">
+            {isFetchingNextPage ? (
+              <div className="w-full">
+                <GridSkeleton count={4} />
+              </div>
+            ) : (
+              <Button
+                variant="ghost"
+                className="text-[10px] font-black uppercase tracking-widest text-slate-300 hover:text-brand-primary"
+              >
+                Load more items
+              </Button>
+            )}
           </div>
-        )}
+        ) : null}
       </div>
 
-      {/* Loading sentinel */}
-      {hasNextPage && (
-        <div
-          ref={observerTarget}
-          className="w-full flex justify-center py-8"
-        >
-          {isFetchingNextPage ? (
-            <div className="w-full">
-              <GridSkeleton count={4} />
-            </div>
-          ) : (
-            <Button 
-              variant="ghost" 
-              className="text-[10px] font-black uppercase tracking-widest text-slate-300 hover:text-brand-primary"
-            >
-              Load more items
-            </Button>
-          )}
-        </div>
-      )}
-    </div>
+      <Dialog open={Boolean(activeProduct)} onOpenChange={(open) => !open && setActiveProduct(null)}>
+        <DialogContent className="max-h-[88vh] overflow-hidden border-none bg-white p-0 shadow-2xl sm:max-w-5xl">
+          {activeProduct ? (
+            <>
+              <DialogHeader className="border-b border-slate-100 px-6 py-5">
+                <DialogTitle className="flex items-center gap-3 text-2xl font-black text-slate-900">
+                  <Package2 className="h-6 w-6 text-emerald-600" />
+                  {activeProduct.name}
+                </DialogTitle>
+                <DialogDescription className="text-sm text-slate-500">
+                  Choose design, color, and typed quantity. Selections for this product merge into one grouped cart card.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="grid max-h-[calc(88vh-92px)] grid-cols-1 md:grid-cols-[1.6fr_0.95fr]">
+                <ScrollArea className="max-h-[calc(88vh-92px)] px-6 py-5">
+                  <div className="mb-3 grid grid-cols-[minmax(0,1.5fr)_90px_92px_92px] items-center gap-3 px-1 text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
+                    <span>Variant</span>
+                    <span className="text-right">Stock</span>
+                    <span className="text-right">Price</span>
+                    <span className="text-right">Qty</span>
+                  </div>
+
+                  <div className="space-y-4">
+                    {(activeProduct.designs || []).map((design) => (
+                      <section
+                        key={design.id}
+                        className="rounded-3xl border border-slate-200 bg-slate-50/70 p-4"
+                      >
+                        <div className="mb-3 flex items-center justify-between gap-2">
+                          <div>
+                            <h4 className="text-sm font-black uppercase tracking-[0.16em] text-slate-900">
+                              {design.name}
+                            </h4>
+                            <p className="text-[11px] text-slate-500">
+                              Enter quantities by color. Zero means not selected.
+                            </p>
+                          </div>
+
+                          <Badge
+                            variant="outline"
+                            className="rounded-full border-slate-300 bg-white text-[10px] font-bold uppercase tracking-widest text-slate-500"
+                          >
+                            {design.colors.length} colors
+                          </Badge>
+                        </div>
+
+                        <div className="space-y-2">
+                          {design.colors.map((color) => {
+                            const key = getVariantKey(design.name, color.color);
+                            const quantity = variantQuantities[key] || 0;
+                            const cutoff =
+                              activeProduct.resolved_wholesale_cutoff ||
+                              activeProduct.wholesale_cutoff ||
+                              10;
+                            const useWholesale =
+                              quantity >= cutoff && Number(activeProduct.wholesale_price || 0) > 0;
+                            const unitPrice = useWholesale
+                              ? Number(activeProduct.wholesale_price || 0)
+                              : Number(activeProduct.retail_price || 0);
+
+                            return (
+                              <div
+                                key={key}
+                                className={`grid grid-cols-[minmax(0,1.5fr)_90px_92px_92px] items-center gap-3 rounded-2xl border px-3 py-3 ${
+                                  quantity > 0
+                                    ? "border-emerald-200 bg-white shadow-sm"
+                                    : "border-slate-200 bg-white/80"
+                                }`}
+                              >
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span
+                                      className="h-4 w-4 rounded-full border border-slate-300"
+                                      style={{ backgroundColor: color.color_hax || "#cbd5e1" }}
+                                    />
+                                    <span className="truncate text-sm font-semibold text-slate-800">
+                                      {color.color}
+                                    </span>
+                                    {quantity > 0 ? (
+                                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                                    ) : null}
+                                  </div>
+                                  <div className="mt-1">
+                                    <Badge
+                                      className={
+                                        useWholesale
+                                          ? "rounded-full bg-emerald-100 text-[10px] font-black uppercase tracking-widest text-emerald-700"
+                                          : "rounded-full bg-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-600"
+                                      }
+                                    >
+                                      {useWholesale ? "Wholesale" : "Retail"}
+                                    </Badge>
+                                  </div>
+                                </div>
+
+                                <div className="text-right text-sm font-semibold text-slate-700">
+                                  {color.stock}
+                                </div>
+
+                                <div className="text-right">
+                                  <div className="text-sm font-black text-slate-900">
+                                    {formatCurrency(unitPrice)}
+                                  </div>
+                                  <div className="text-[10px] text-slate-400">
+                                    RT {formatCurrency(Number(activeProduct.retail_price || 0))}
+                                  </div>
+                                </div>
+
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  max={color.stock}
+                                  value={quantity}
+                                  onChange={(e) =>
+                                    handleQuantityChange(design.name, color.color, color.stock, e.target.value)
+                                  }
+                                  className="h-10 rounded-xl border-slate-200 text-center text-sm font-black"
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    ))}
+                  </div>
+                </ScrollArea>
+
+                <div className="border-l border-slate-100 bg-slate-950 px-5 py-5 text-white">
+                  <div className="space-y-5">
+                    <div className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900">
+                      <div className="h-40 overflow-hidden border-b border-slate-800 bg-slate-800/60">
+                        <img
+                          src={activeProduct.image || "/placeholder.svg?height=320&width=480"}
+                          alt={activeProduct.name}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                      <div className="space-y-2 p-4">
+                        <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
+                          Pricing
+                        </div>
+                        <div className="text-2xl font-black">
+                          {formatCurrency(Number(activeProduct.wholesale_price || 0))}
+                        </div>
+                        <div className="text-sm text-slate-400">
+                          Retail {formatCurrency(Number(activeProduct.retail_price || 0))}
+                        </div>
+                        <div className="text-[11px] text-slate-500">
+                          Wholesale starts at{" "}
+                          {activeProduct.resolved_wholesale_cutoff ||
+                            activeProduct.wholesale_cutoff ||
+                            10}
+                          + units per selected color row.
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-3xl border border-slate-800 bg-slate-900 p-4">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-slate-400">Selected rows</span>
+                        <span className="font-black">{selectedVariants.length}</span>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between text-sm">
+                        <span className="text-slate-400">Total quantity</span>
+                        <span className="font-black">{selectedTotalQuantity}</span>
+                      </div>
+
+                      <div className="mt-4 space-y-2">
+                        {selectedVariants.length === 0 ? (
+                          <div className="rounded-2xl border border-dashed border-slate-700 px-3 py-4 text-center text-xs text-slate-500">
+                            Type quantities to prepare this product for the cart.
+                          </div>
+                        ) : (
+                          selectedVariants.map((variant) => {
+                            const cutoff =
+                              activeProduct.resolved_wholesale_cutoff ||
+                              activeProduct.wholesale_cutoff ||
+                              10;
+                            const useWholesale =
+                              variant.quantity >= cutoff &&
+                              Number(activeProduct.wholesale_price || 0) > 0;
+                            const unitPrice = useWholesale
+                              ? Number(activeProduct.wholesale_price || 0)
+                              : Number(activeProduct.retail_price || 0);
+
+                            return (
+                              <div
+                                key={`${variant.design}-${variant.color}`}
+                                className="rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-3"
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <div className="truncate text-xs font-black uppercase tracking-wide">
+                                      {variant.design}
+                                    </div>
+                                    <div className="mt-1 flex items-center gap-2 text-xs text-slate-400">
+                                      <span
+                                        className="h-3 w-3 rounded-full border border-slate-700"
+                                        style={{
+                                          backgroundColor:
+                                            variant.colorHex && variant.colorHex !== "null"
+                                              ? variant.colorHex
+                                              : "#94a3b8",
+                                        }}
+                                      />
+                                      <span className="truncate">
+                                        {variant.color} x {variant.quantity}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <Badge
+                                    className={
+                                      useWholesale
+                                        ? "bg-emerald-100 text-emerald-700"
+                                        : "bg-slate-100 text-slate-700"
+                                    }
+                                  >
+                                    {useWholesale ? "WS" : "RT"}
+                                  </Badge>
+                                </div>
+                                <div className="mt-2 text-right text-sm font-black">
+                                  {formatCurrency(unitPrice * variant.quantity)}
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+
+                    <Button
+                      onClick={handleCommitSelection}
+                      disabled={selectedVariants.length === 0}
+                      className="h-12 w-full rounded-2xl bg-emerald-500 text-xs font-black uppercase tracking-[0.2em] text-slate-950 hover:bg-emerald-400"
+                    >
+                      Add Selected Variants
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
-// Simple debounce hook for search
+function getVariantKey(design: string, color: string) {
+  return `${design}__${color}`;
+}
+
 function useDebounce<T>(value: T, delay: number): [T] {
   const [debouncedValue, setDebouncedValue] = useState(value);
 

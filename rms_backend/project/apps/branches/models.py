@@ -131,3 +131,91 @@ class PayrollRecord(models.Model):
 
     def __str__(self):
         return f"{self.employee} — {self.period_start}"
+
+
+class SalaryComponent(models.Model):
+    TYPE_EARNING = "earning"
+    TYPE_DEDUCTION = "deduction"
+    TYPE_CHOICES = [
+        (TYPE_EARNING, "Earning"),
+        (TYPE_DEDUCTION, "Deduction"),
+    ]
+
+    name = models.CharField(max_length=100)
+    component_type = models.CharField(
+        max_length=20, choices=TYPE_CHOICES, default=TYPE_EARNING
+    )
+    is_recurring = models.BooleanField(
+        default=True, help_text="If true, added to monthly payroll automatically"
+    )
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.get_component_type_display()})"
+
+
+class EmployeeSalaryStructure(models.Model):
+    employee = models.ForeignKey(
+        Employee, on_delete=models.CASCADE, related_name="salary_structures"
+    )
+    component = models.ForeignKey(SalaryComponent, on_delete=models.CASCADE)
+    amount = models.DecimalField(
+        max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal("0.00"))]
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["employee", "component"], name="uniq_employee_component"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.employee.full_name} - {self.component.name}: {self.amount}"
+
+
+class LeaveRequest(models.Model):
+    LEAVE_TYPES = [
+        ("sick", "Sick Leave"),
+        ("casual", "Casual Leave"),
+        ("vacation", "Vacation"),
+        ("unpaid", "Unpaid Leave"),
+    ]
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+    ]
+
+    employee = models.ForeignKey(
+        Employee, on_delete=models.CASCADE, related_name="leave_requests"
+    )
+    leave_type = models.CharField(max_length=20, choices=LEAVE_TYPES)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    reason = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approved_leaves",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.employee.full_name} - {self.leave_type} ({self.status})"
+
+
+class PayrollItem(models.Model):
+    payroll_record = models.ForeignKey(
+        PayrollRecord, on_delete=models.CASCADE, related_name="items"
+    )
+    component_name = models.CharField(max_length=100)
+    component_type = models.CharField(max_length=20)  # earning or deduction
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+
+    def __str__(self):
+        return f"{self.payroll_record} - {self.component_name}: {self.amount}"

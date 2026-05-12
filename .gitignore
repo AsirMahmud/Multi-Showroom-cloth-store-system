@@ -1,6 +1,27 @@
-/package-lock.json
-/package.json
-node_modules
-node_modules
-node_modules
-venv
+# Dependencies
+node_modules/
+.next/
+dist/
+build/
+
+# Python Virtual Environments
+venv/
+.venv/
+env/
+venv_*/
+bin/
+include/
+lib/
+share/
+pyvenv.cfg
+*.pyc
+__pycache__/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# OS Files
+.DS_Store
+Thumbs.db

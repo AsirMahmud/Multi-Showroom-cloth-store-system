@@ -11,12 +11,23 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Users, Briefcase, Download, X, Building2 } from "lucide-react";
+import { 
+  Users, 
+  Briefcase, 
+  Download, 
+  Building2, 
+  ArrowRight,
+  Plus
+} from "lucide-react";
+import { 
+  PageHeader, 
+  MetricCard, 
+  DataPanel, 
+  FilterToolbar, 
+  StatusBadge, 
+  TableShell 
+} from "@/components/ui/professional";
 import { AddEmployeeDialog } from "@/components/hr/add-employee-dialog";
 
 export function EmployeeTable() {
@@ -31,154 +42,127 @@ export function EmployeeTable() {
     employee.phone?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const clearSearch = () => setSearchTerm("");
+  const activeCount = data?.filter(e => e.is_active).length || 0;
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-slate-50 via-[#E4FCD5]/10 to-[#163625]/5">
-      <div className="p-6 space-y-8">
-        
-        {/* Header Section */}
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-          <div className="space-y-2">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-[#163625] to-[#2a6646] bg-clip-text text-transparent flex items-center gap-3">
-              <Users className="h-8 w-8 text-[#163625]" />
-              Employee Directory
-            </h1>
-            <p className="text-lg text-slate-600">
-              Manage branch staff, view detailed profiles, and oversee attendance.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
+    <div className="space-y-8 animate-in fade-in duration-700">
+      <PageHeader
+        title="Workforce Directory"
+        description="Unified personnel management across all operational branches."
+        icon={<Users className="h-6 w-6" />}
+        actions={
+          <div className="flex gap-2">
             <Button
               variant="outline"
-              className="bg-white border-slate-200 shadow-sm hover:bg-slate-50 text-[#163625]"
+              className="h-10 px-4 bg-white border-brand-primary/5 shadow-sm rounded-xl font-bold text-xs uppercase tracking-widest text-brand-primary"
               disabled={isLoading}
             >
-              <Download className="w-4 h-4 mr-2" />
-              Export Roster
+              <Download className="w-3.5 h-3.5 mr-2" />
+              Export roster
             </Button>
             <AddEmployeeDialog />
           </div>
-        </div>
+        }
+      />
 
-        {/* Filters and Search */}
-        <Card className="bg-white border-0 shadow-lg">
-          <CardContent className="p-6">
-            <div className="flex flex-col lg:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
-                  <Input
-                    placeholder="Search employees by name, designation, email, or phone..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 pr-10 h-12 bg-slate-50 border-slate-200 focus:bg-white transition-colors"
-                  />
-                  {searchTerm && (
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={clearSearch}
-                        className="h-6 w-6 p-0 hover:bg-slate-200 text-slate-500"
-                      >
-                        <X className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-                {searchTerm && (
-                  <div className="mt-2 text-sm text-slate-600">
-                    Found {filteredEmployees?.length || 0} results for "{searchTerm}"
-                  </div>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <MetricCard
+          label="Total Staff"
+          value={data?.length || 0}
+          icon={<Users className="h-5 w-5" />}
+          tone="brand"
+        />
+        <MetricCard
+          label="Active Duty"
+          value={activeCount}
+          icon={<Building2 className="h-5 w-5" />}
+          tone="emerald"
+        />
+        <MetricCard
+          label="New Hires"
+          value={data?.filter(e => {
+            if (!e.hire_date) return false;
+            const hire = new Date(e.hire_date);
+            const now = new Date();
+            return hire.getMonth() === now.getMonth() && hire.getFullYear() === now.getFullYear();
+          }).length || 0}
+          icon={<Plus className="h-5 w-5" />}
+          tone="indigo"
+          helper="Joined this month"
+        />
+      </div>
 
-        {/* Data Table */}
-        <Card className="border-0 shadow-lg overflow-hidden bg-white">
-          <Table>
-            <TableHeader className="bg-[#163625] hover:bg-[#163625]">
-              <TableRow className="hover:bg-[#163625]">
-                <TableHead className="font-semibold text-white py-4">Employee Info</TableHead>
-                <TableHead className="font-semibold text-white py-4">Designation</TableHead>
-                <TableHead className="font-semibold text-white py-4">Branch</TableHead>
-                <TableHead className="font-semibold text-white py-4">Status</TableHead>
-                <TableHead className="font-semibold text-white py-4 text-right">Base Salary</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <>
-                  {[...Array(5)].map((_, i) => (
-                    <TableRow key={i} className="border-slate-100">
-                      <TableCell><Skeleton className="h-10 w-48" /></TableCell>
-                      <TableCell><Skeleton className="h-6 w-24" /></TableCell>
-                      <TableCell><Skeleton className="h-6 w-32" /></TableCell>
-                      <TableCell><Skeleton className="h-6 w-16" /></TableCell>
-                      <TableCell><Skeleton className="h-6 w-20 ml-auto" /></TableCell>
-                    </TableRow>
-                  ))}
-                </>
-              ) : filteredEmployees?.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="h-[400px] text-center">
-                    <div className="flex flex-col items-center justify-center space-y-3 text-slate-500">
-                      <Users className="h-12 w-12 text-slate-300" />
-                      <p className="text-lg font-medium">No employees found.</p>
-                      <p className="text-sm">Try adjusting your search or add a new employee.</p>
-                    </div>
-                  </TableCell>
+      <DataPanel>
+        <FilterToolbar
+          search={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Filter by name, role, email..."
+        />
+
+        <div className="mt-6 overflow-hidden rounded-[24px] border border-brand-primary/5 shadow-sm">
+          <TableShell 
+            isLoading={isLoading} 
+            emptyMessage={searchTerm ? "No personnel matching your criteria" : "No employees registered"}
+            colSpan={5}
+          >
+            <Table>
+              <TableHeader className="bg-brand-primary">
+                <TableRow className="hover:bg-brand-primary border-none">
+                  <TableHead className="text-brand-secondary font-black text-[10px] uppercase tracking-widest py-4 pl-6">Personnel</TableHead>
+                  <TableHead className="text-brand-secondary font-black text-[10px] uppercase tracking-widest py-4">Specialization</TableHead>
+                  <TableHead className="text-brand-secondary font-black text-[10px] uppercase tracking-widest py-4">Deployment</TableHead>
+                  <TableHead className="text-brand-secondary font-black text-[10px] uppercase tracking-widest py-4">Status</TableHead>
+                  <TableHead className="text-brand-secondary font-black text-[10px] uppercase tracking-widest py-4 text-right pr-6">Action</TableHead>
                 </TableRow>
-              ) : (
-                filteredEmployees?.map((employee) => (
+              </TableHeader>
+              <TableBody>
+                {filteredEmployees?.map((employee) => (
                   <TableRow 
                     key={employee.id} 
-                    className="hover:bg-slate-50 cursor-pointer transition-colors border-slate-100"
+                    className="group hover:bg-slate-50/50 transition-colors border-brand-primary/5 cursor-pointer"
                     onClick={() => router.push(`/hr/employees/${employee.id}`)}
                   >
-                    <TableCell>
+                    <TableCell className="pl-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-[#E4FCD5] flex items-center justify-center text-[#163625] font-bold">
+                        <div className="h-10 w-10 rounded-xl bg-brand-secondary text-brand-primary flex items-center justify-center font-black text-sm shadow-sm group-hover:scale-105 transition-transform">
                           {employee.full_name.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <p className="font-medium text-[#163625]">{employee.full_name}</p>
-                          <p className="text-xs text-slate-500 flex items-center gap-1">
-                            {employee.phone || employee.email || "No contact info"}
-                          </p>
+                          <p className="text-sm font-black text-brand-primary uppercase tracking-tight">{employee.full_name}</p>
+                          <p className="text-[10px] font-bold text-slate-400">{employee.email || employee.phone}</p>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2 text-slate-700">
-                        <Briefcase className="h-4 w-4 text-slate-400" />
-                        {employee.designation || "-"}
+                      <div className="flex items-center gap-2 text-slate-600">
+                        <Briefcase className="h-3.5 w-3.5 opacity-40" />
+                        <span className="text-[11px] font-bold uppercase tracking-wider">{employee.designation || "-"}</span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2 text-slate-700">
-                        <Building2 className="h-4 w-4 text-slate-400" />
-                        {employee.branch_name || employee.branch}
+                      <div className="flex items-center gap-2 text-slate-600">
+                        <Building2 className="h-3.5 w-3.5 opacity-40" />
+                        <span className="text-[11px] font-bold uppercase tracking-wider">{employee.branch_name || "Headquarters"}</span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={employee.is_active ? "default" : "secondary"} className={employee.is_active ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-emerald-200" : ""}>
-                        {employee.is_active ? "Active" : "Inactive"}
-                      </Badge>
+                      <StatusBadge 
+                        label={employee.is_active ? "Active" : "Inactive"} 
+                        tone={employee.is_active ? "emerald" : "slate"} 
+                      />
                     </TableCell>
-                    <TableCell className="font-medium text-right text-slate-700">
-                      ${parseFloat(employee.base_salary).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <TableCell className="text-right pr-6">
+                       <Button variant="ghost" size="sm" className="h-8 w-8 rounded-lg p-0 text-slate-300 group-hover:text-brand-primary group-hover:bg-brand-secondary transition-all">
+                         <ArrowRight className="h-4 w-4" />
+                       </Button>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </Card>
-      </div>
+                ))}
+              </TableBody>
+            </Table>
+          </TableShell>
+        </div>
+      </DataPanel>
     </div>
   );
 }

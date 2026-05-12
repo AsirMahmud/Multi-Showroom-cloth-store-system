@@ -1,6 +1,14 @@
 import os
 import sys
-from PIL import Image
+try:
+    from PIL import Image
+    PILLOW_AVAILABLE = True
+except ImportError:
+    PILLOW_AVAILABLE = False
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.warning("Pillow is not installed. Image optimization will be skipped.")
+
 from io import BytesIO
 from django.core.files.uploadedfile import InMemoryUploadedFile, UploadedFile
 
@@ -11,6 +19,9 @@ def optimize_image(image_field, max_width=1920, max_height=1920):
     2. Converts it to WebP format.
     3. Reduces file size.
     """
+    if not PILLOW_AVAILABLE:
+        return
+
     # Only process if it's a new upload (UploadedFile)
     # Existing files are FieldFile and shouldn't be re-processed
     if not image_field or not hasattr(image_field, 'file') or not isinstance(image_field.file, UploadedFile):

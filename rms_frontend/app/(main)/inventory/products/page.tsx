@@ -261,7 +261,7 @@ export default function ProductsPage() {
             product.description || "Premium quality clothing from Raw Stitch. Designed for style and comfort.",
             product.stock_quantity > 0 ? "in stock" : "out of stock",
             "new",
-            `${product.selling_price} BDT`,
+            `${product.retail_price} BDT`,
             `${ecomBaseUrl}/product/${product.id}${colorSlug ? `/${colorSlug}` : ""}`,
             getImageUrl(variantImage),
             "Raw Stitch",
@@ -273,7 +273,7 @@ export default function ProductsPage() {
             product.sku,
             product.gender || "unisex",
             gallery.color || "",
-            product.first_variation_size || "",
+            "", // design (can be filled if needed)
             "adult",
             product.material_composition_string || "",
             "", "", "", "", "", "", "", "", ""
@@ -288,9 +288,9 @@ export default function ProductsPage() {
           product.description || "Premium quality clothing from Raw Stitch.",
           product.stock_quantity > 0 ? "in stock" : "out of stock",
           "new",
-          `${product.selling_price} BDT`,
+          `${product.retail_price} BDT`,
           `${ecomBaseUrl}/product/${product.id}`,
-          getImageUrl(product.first_variation_image || product.image),
+          getImageUrl(product.image),
           "Raw Stitch",
           product.online_categories?.[0]?.name || product.category?.name || "",
           product.online_categories?.[0]?.name || product.category?.name || "",
@@ -299,8 +299,8 @@ export default function ProductsPage() {
           product.discount_end_date || "",
           product.sku,
           product.gender || "unisex",
-          product.first_variation_color || "",
-          product.first_variation_size || "",
+          "", // color
+          "", // design
           "adult",
           product.material_composition_string || "",
           "", "", "", "", "", "", "", "", ""
@@ -393,23 +393,8 @@ export default function ProductsPage() {
                     <Barcode className="h-3 w-3" />
                     {product.sku}
                   </div>
-                  {(product.size_type ||
-                    product.size_category ||
-                    product.gender) && (
+                  {(product.gender) && (
                       <div className="flex gap-1 mt-1">
-                        {product.size_type && (
-                          <Badge variant="outline" className="text-xs bg-blue-100">
-                            {product.size_type}
-                          </Badge>
-                        )}
-                        {product.size_category && (
-                          <Badge
-                            variant="outline"
-                            className="text-xs bg-emerald-200"
-                          >
-                            {product.size_category}
-                          </Badge>
-                        )}
                         {product.gender && (
                           <Badge
                             variant="outline"
@@ -518,17 +503,23 @@ export default function ProductsPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-2">
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Cost Price</p>
-              <p className="text-lg font-bold text-red-600">
+              <p className="text-[10px] text-muted-foreground uppercase font-bold">Cost</p>
+              <p className="text-sm font-bold text-slate-500">
                 ${product.cost_price}
               </p>
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Selling Price</p>
-              <p className="text-lg font-bold text-green-600">
-                ${product.selling_price}
+              <p className="text-[10px] text-muted-foreground uppercase font-bold">Wholesale</p>
+              <p className="text-sm font-bold text-blue-600">
+                ${product.wholesale_price}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] text-muted-foreground uppercase font-bold">Retail</p>
+              <p className="text-sm font-bold text-emerald-600">
+                ${product.retail_price}
               </p>
             </div>
           </div>
@@ -545,7 +536,7 @@ export default function ProductsPage() {
               <p className="text-lg font-bold text-green-600">
                 $
                 {(
-                  (product.selling_price - product.cost_price) *
+                  (product.retail_price - product.cost_price) *
                   product.stock_quantity
                 ).toLocaleString()}
               </p>
@@ -896,7 +887,7 @@ export default function ProductsPage() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="py-4 text-xs font-bold text-slate-600">${product.selling_price}</TableCell>
+                      <TableCell className="py-4 text-xs font-bold text-slate-600">${product.retail_price}</TableCell>
                       <TableCell className="py-4 text-xs font-black text-emerald-600">
                         {product.discount_percentage && product.discount_percentage > 0 ? (
                           <span>${product.sale_price}</span>

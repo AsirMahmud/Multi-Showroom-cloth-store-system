@@ -27,13 +27,18 @@ import { PlusCircle } from "lucide-react";
 
 interface AddStockDialogProps {
   productId: number;
-  variations: Array<{ id: number; size: string; color: string; stock: number }>;
+  designs: Array<{
+    id: number;
+    name: string;
+    colors: Array<{ id: number; color: string; stock: number }>;
+  }>;
   trigger?: React.ReactNode;
 }
 
-export function AddStockDialog({ productId, variations, trigger }: AddStockDialogProps) {
+export function AddStockDialog({ productId, designs, trigger }: AddStockDialogProps) {
   const [open, setOpen] = React.useState(false);
-  const [selectedVariationIndex, setSelectedVariationIndex] = React.useState<number>(-1);
+  const [selectedDesignIndex, setSelectedDesignIndex] = React.useState<number>(-1);
+  const [selectedColorIndex, setSelectedColorIndex] = React.useState<number>(-1);
   const [quantity, setQuantity] = React.useState<number>(1);
   const [notes, setNotes] = React.useState<string>("");
   
@@ -43,7 +48,8 @@ export function AddStockDialog({ productId, variations, trigger }: AddStockDialo
 
 
   const resetForm = () => {
-    setSelectedVariationIndex(-1);
+    setSelectedDesignIndex(-1);
+    setSelectedColorIndex(-1);
     setQuantity(1);
     setNotes("");
   };
@@ -55,9 +61,15 @@ export function AddStockDialog({ productId, variations, trigger }: AddStockDialo
     }
   };
 
-  const handleVariationChange = (value: string) => {
+  const handleDesignChange = (value: string) => {
     const index = parseInt(value);
-    setSelectedVariationIndex(index);
+    setSelectedDesignIndex(index);
+    setSelectedColorIndex(-1); // Reset color when design changes
+  };
+
+  const handleColorChange = (value: string) => {
+    const index = parseInt(value);
+    setSelectedColorIndex(index);
   };
 
   const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -82,15 +94,23 @@ export function AddStockDialog({ productId, variations, trigger }: AddStockDialo
     }
 
     try {
-      // Create updated variations with the new stock quantity
-      const updatedVariations = variations.map((variation, index) => {
-        if (index === selectedVariationIndex) {
+      // Create updated designs structure with the new stock quantity
+      const updatedDesigns = designs.map((design, dIndex) => {
+        if (dIndex === selectedDesignIndex) {
           return {
-            ...variation,
-            stock: variation.stock + quantity
+            ...design,
+            colors: design.colors.map((color, cIndex) => {
+              if (cIndex === selectedColorIndex) {
+                return {
+                  ...color,
+                  stock: color.stock + quantity
+                };
+              }
+              return color;
+            })
           };
         }
-        return variation;
+        return design;
       });
 
       // Prepare the product data for update (similar to edit-product page)
@@ -100,18 +120,12 @@ export function AddStockDialog({ productId, variations, trigger }: AddStockDialo
         category: product.category?.id || 0,
         supplier: product.supplier?.id,
         cost_price: product.cost_price,
-        selling_price: product.selling_price,
+        wholesale_price: product.wholesale_price,
+        retail_price: product.retail_price,
         minimum_stock: product.minimum_stock,
         is_active: product.is_active,
-        size_type: product.size_type || "",
-        size_category: product.size_category || "",
         gender: product.gender || "UNISEX",
-        variations: updatedVariations.map(variation => ({
-          size: variation.size,
-          color: variation.color,
-          color_hax: "#000000", // Default color hex
-          stock: variation.stock,
-        })),
+        designs: updatedDesigns,
       };
       
       await updateProduct.mutateAsync({
@@ -146,18 +160,42 @@ export function AddStockDialog({ productId, variations, trigger }: AddStockDialo
 
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="variation" className="text-right">
-              Variation
+            <Label htmlFor="design" className="text-right">
+              Design
             </Label>
             <div className="col-span-3">
-              <Select onValueChange={handleVariationChange} value={selectedVariationIndex >= 0 ? String(selectedVariationIndex) : ""}>
-                <SelectTrigger id="variation">
-                  <SelectValue placeholder="Select size/color" />
+              <Select onValueChange={handleDesignChange} value={selectedDesignIndex >= 0 ? String(selectedDesignIndex) : ""}>
+                <SelectTrigger id="design">
+                  <SelectValue placeholder="Select design" />
                 </SelectTrigger>
                 <SelectContent>
-                  {variations.map((v, index) => (
-                    <SelectItem key={v.id} value={String(index)}>
-                      {v.size} / {v.color} (Current Stock: {v.stock})
+                  {designs.map((d, index) => (
+                    <SelectItem key={d.id} value={String(index)}>
+                      {d.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="color" className="text-right">
+              Color
+            </Label>
+            <div className="col-span-3">
+              <Select 
+                onValueChange={handleColorChange} 
+                value={selectedColorIndex >= 0 ? String(selectedColorIndex) : ""}
+                disabled={selectedDesignIndex === -1}
+              >
+                <SelectTrigger id="color">
+                  <SelectValue placeholder={selectedDesignIndex === -1 ? "Select design first" : "Select color"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {selectedDesignIndex >= 0 && designs[selectedDesignIndex].colors.map((c, index) => (
+                    <SelectItem key={c.id} value={String(index)}>
+                      {c.color} (Current Stock: {c.stock})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -177,13 +215,13 @@ export function AddStockDialog({ productId, variations, trigger }: AddStockDialo
               className="col-span-3"
             />
           </div>
-          {selectedVariationIndex >= 0 && (
+          {selectedDesignIndex >= 0 && selectedColorIndex >= 0 && (
             <div className="grid grid-cols-4 items-center gap-4">
               <Label className="text-right text-sm text-muted-foreground">
                 New Stock
               </Label>
               <div className="col-span-3 text-sm">
-                {variations[selectedVariationIndex]?.stock + quantity} units
+                {designs[selectedDesignIndex].colors[selectedColorIndex]?.stock + quantity} units
               </div>
             </div>
           )}

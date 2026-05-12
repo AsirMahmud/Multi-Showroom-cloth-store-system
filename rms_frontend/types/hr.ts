@@ -25,6 +25,46 @@ export interface Employee {
   base_salary: string;
   hire_date: string | null;
   is_active: boolean;
+  salary_structures?: EmployeeSalaryStructure[];
+  leave_requests?: LeaveRequest[];
+  payroll_records?: PayrollRecord[];
+}
+
+export interface SalaryComponent {
+  id: number;
+  name: string;
+  component_type: "earning" | "deduction";
+  is_recurring: boolean;
+  description: string;
+}
+
+export interface EmployeeSalaryStructure {
+  id: number;
+  employee: number;
+  component: number;
+  component_name: string;
+  component_type: "earning" | "deduction";
+  amount: string;
+}
+
+export interface LeaveRequest {
+  id: number;
+  employee: number;
+  employee_name: string;
+  leave_type: "sick" | "casual" | "vacation" | "unpaid";
+  start_date: string;
+  end_date: string;
+  reason: string;
+  status: "pending" | "approved" | "rejected";
+  approved_by_name?: string;
+}
+
+export interface PayrollItem {
+  id: number;
+  payroll_record: number;
+  component_name: string;
+  component_type: "earning" | "deduction";
+  amount: string;
 }
 
 export interface AttendanceRecord {
@@ -46,6 +86,7 @@ export interface PayrollRecord {
   deductions: string;
   net_amount: string;
   is_paid: boolean;
+  items?: PayrollItem[];
 }
 
 export interface Account {

@@ -14,6 +14,8 @@ import { BismillahLogo } from "@/components/bismillah-logo";
 import { BranchSelectorModal } from "@/components/branch/branch-selector-modal";
 import { ViewingBranchRibbon } from "@/components/branch/viewing-branch-ribbon";
 
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+
 const inter = Inter({ subsets: ["latin"] });
 
 export default function MainLayout({
@@ -27,20 +29,22 @@ export default function MainLayout({
         <TaskProvider>
           <ThemeProvider attribute="class" defaultTheme="light">
             <BismillahProvider>
-              <div className="flex min-h-screen selection:bg-brand-secondary selection:text-brand-primary">
-                <SideNav />
-                <div className="flex-1 flex flex-col min-w-0 md:ml-[280px]">
-                  <UpperNav />
-                  <div className="flex-1 flex flex-col relative">
-                    <ViewingBranchRibbon />
-                    <BismillahLogo />
-                    <main className="flex-1 p-4 md:p-8 transition-all duration-500 ease-in-out">
-                      {children}
-                    </main>
-                  </div>
-                  <Toaster />
+              <SidebarProvider>
+                <div className="flex min-h-screen w-full selection:bg-brand-secondary selection:text-brand-primary">
+                  <SideNav />
+                  <SidebarInset className="flex flex-col min-w-0 flex-1">
+                    <UpperNav />
+                    <div className="flex-1 flex flex-col relative">
+                      <ViewingBranchRibbon />
+                      <BismillahLogo />
+                      <main className="flex-1 p-4 md:p-8 transition-all duration-500 ease-in-out">
+                        {children}
+                      </main>
+                    </div>
+                  </SidebarInset>
                 </div>
-              </div>
+              </SidebarProvider>
+              <Toaster />
               <BranchSelectorModal />
             </BismillahProvider>
           </ThemeProvider>

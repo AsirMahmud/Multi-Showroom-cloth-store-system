@@ -69,7 +69,7 @@ export function OnlinePreorderVerificationModal({ order, open, onClose, onComple
   }, [verification]);
 
   // Decode QR code data - ported from ModernPOS
-  const decodeQRCodeData = (scannedValue: string): { productId: string; color: string; size: string } | null => {
+  const decodeQRCodeData = (scannedValue: string): { productId: string; color: string; design: string } | null => {
     try {
       if (!scannedValue || typeof scannedValue !== 'string' || scannedValue.trim().length === 0) {
         return null;
@@ -92,7 +92,7 @@ export function OnlinePreorderVerificationModal({ order, open, onClose, onComple
           return {
             productId: String(item.productId),
             color: item.variations?.color || "",
-            size: item.variations?.size || "",
+            design: item.variations?.design || "",
           };
         }
       }

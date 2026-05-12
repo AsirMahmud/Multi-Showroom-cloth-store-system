@@ -94,7 +94,7 @@ type CartItem = {
   name: string;
   price: number;
   quantity: number;
-  size: string;
+  design: string;
   color: string;
   image: string;
   discount?: {
@@ -147,7 +147,7 @@ export function ModernPOS() {
   const [cashAmount, setCashAmount] = useState("");
   const [showCustomerSearch, setShowCustomerSearch] = useState(false);
   const [customerSearchQuery, setCustomerSearchQuery] = useState("");
-  const [selectedSizes, setSelectedSizes] = useState<Record<number, string>>(
+  const [selectedDesigns, setSelectedDesigns] = useState<Record<number, string>>(
     {}
   );
   const [selectedColors, setSelectedColors] = useState<Record<number, string>>(
@@ -605,7 +605,7 @@ export function ModernPOS() {
   }, [barcodeMode]);
 
   // Decode QR code data
-  const decodeQRCodeData = (scannedValue: string): { productId: string; color: string; size: string } | null => {
+  const decodeQRCodeData = (scannedValue: string): { productId: string; color: string; design: string } | null => {
     try {
       // Validate input
       if (!scannedValue || typeof scannedValue !== 'string' || scannedValue.trim().length === 0) {
@@ -642,7 +642,7 @@ export function ModernPOS() {
           return {
             productId: String(item.productId),
             color: item.variations.color || "",
-            size: item.variations.size || "",
+            design: item.variations.design || "",
           };
         }
       }
@@ -694,16 +694,23 @@ export function ModernPOS() {
             const product = await productsApi.getById(productId);
             
             if (product) {
-              // Verify variation exists
-              const variation = product.variations?.find(
-                (v: ProductVariation) =>
-                  v.is_active &&
-                  v.size === qrData.size &&
-                  v.color === qrData.color
-              );
+              // Verify variation exists in the new hierarchy
+              let foundDesign = null;
+              let foundColor = null;
 
-              if (variation && variation.stock > 0) {
-                handleAddToCart(product, qrData.size, qrData.color);
+              for (const design of product.designs || []) {
+                if (design.name === qrData.design) {
+                  const colorMatch = design.colors.find(c => c.color === qrData.color);
+                  if (colorMatch) {
+                    foundDesign = design;
+                    foundColor = colorMatch;
+                    break;
+                  }
+                }
+              }
+
+              if (foundDesign && foundColor && foundColor.stock > 0) {
+                handleAddToCart(product, qrData.design, qrData.color);
                 toast({
                   title: "Added",
                   description: `${product.name}`,
@@ -736,11 +743,21 @@ export function ModernPOS() {
             const product = await productsApi.searchByBarcode(scannedValue);
             
             if (product) {
-              // Get first available variation
-              const firstVariation = product.variations?.find((v: ProductVariation) => v.is_active && v.stock > 0);
+              // Get first available variation from the new hierarchy
+              let firstDesign = null;
+              let firstColor = null;
+
+              for (const design of product.designs || []) {
+                const colorMatch = design.colors.find(c => c.stock > 0);
+                if (colorMatch) {
+                  firstDesign = design;
+                  firstColor = colorMatch;
+                  break;
+                }
+              }
               
-              if (firstVariation) {
-                handleAddToCart(product, firstVariation.size, firstVariation.color);
+              if (firstDesign && firstColor) {
+                handleAddToCart(product, firstDesign.name, firstColor.color);
                 toast({
                   title: "Added",
                   description: `${product.name}`,
@@ -968,17 +985,18 @@ export function ModernPOS() {
                     {product.name}
                   </h3>
                   <p className="text-lg font-bold mb-2">
-                    {formatCurrency(Number(product.selling_price))}
+                    {formatCurrency(Number(product.retail_price))}
                   </p>
                   <Button
                     className="w-full mt-2"
                     onClick={() => {
-                      const variation = product.variations?.[0];
-                      if (variation) {
+                      const design = product.designs?.[0];
+                      const color = design?.colors?.[0];
+                      if (design && color) {
                         handleAddToCart(
                           product,
-                          variation.size,
-                          variation.color
+                          design.name,
+                          color.color
                         );
                       }
                       setShowUpsellModal(false);

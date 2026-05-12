@@ -55,7 +55,7 @@ export default function ReceiptModal({
         quantity: item.quantity,
         variations: {
           color: item.color || "",
-          size: item.size || "",
+          design: item.design || "",
         },
       })),
     };
@@ -264,7 +264,7 @@ export default function ReceiptModal({
                 <div class="item-name">${item.name}</div>
                 <div class="item-details">
                   ${item.quantity} x ${formatCurrency(item.price)} - ${
-                  item.size
+                  item.design
                 } - ${item.color}
                   ${
                     item.itemDiscount > 0
@@ -465,7 +465,7 @@ export default function ReceiptModal({
                     <div>{item.name}</div>
                     <div className="text-xs text-muted-foreground">
                       {item.quantity} x {formatCurrency(item.price)} -{" "}
-                      {item.size} - {item.color}
+                      {item.design} - {item.color}
                     </div>
                     {item.itemDiscount > 0 && (
                       <div className="text-xs text-red-600">

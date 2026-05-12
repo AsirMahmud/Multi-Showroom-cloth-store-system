@@ -11,6 +11,7 @@ export interface Category {
     slug: string;
     description?: string;
     parent?: number;
+    wholesale_cutoff?: number | null;
     product_count?: number;
     total_stock?: number;
     children?: Category[];
@@ -20,7 +21,8 @@ export interface Category {
     updated_at: string;
     detailed_stats?: {
         color_breakdown: { color: string; total_stock: number }[];
-        size_breakdown: { size: string; total_stock: number }[];
+        design_breakdown: { design: string; total_stock: number }[];
+        size_breakdown?: { size: string; total_stock: number }[];
         max_inventory: { name: string | null; stock: number };
         min_inventory: { name: string | null; stock: number };
         performance: {
@@ -32,8 +34,9 @@ export interface Category {
             id: number;
             name: string;
             total_stock: number;
-            size_breakdown: { size: string; total_stock: number }[];
+            design_breakdown: { design: string; total_stock: number }[];
             color_breakdown: { color: string; total_stock: number }[];
+            size_breakdown?: { size: string; total_stock: number }[];
         }[];
         financials?: {
             total_investment: number;
@@ -70,19 +73,21 @@ export interface Product {
     online_categories?: Category[];
     supplier?: Supplier;
     cost_price: number;
-    selling_price: number;
+    wholesale_price: number;
+    retail_price: number;
+    wholesale_cutoff?: number | null;
+    resolved_wholesale_cutoff?: number;
     stock_quantity: number;
     minimum_stock: number;
     image?: string;
     is_active: boolean;
-    size_type?: string;
-    size_category?: string;
     gender?: string;
     assign_to_online?: boolean;
     created_at: string;
     updated_at: string;
-    variations?: ProductVariation[];
+    designs?: Design[];
     galleries?: Gallery[];
+    color_galleries?: Gallery[];
     material_composition?: MeterialComposition[];
     material_composition_string?: string;
     who_is_this_for?: WhoIsThisFor[];
@@ -91,20 +96,23 @@ export interface Product {
     discount_end_date?: string | null;
     sale_price?: number;
     first_variation_color?: string | null;
-    first_variation_size?: string | null;
     first_variation_image?: string | null;
+}
+
+export interface Design {
+    id: number;
+    name: string;
+    description?: string;
+    colors: ProductVariation[];
+    galleries: Gallery[];
 }
 
 export interface ProductVariation {
     id: number;
-    product: number;
-    size: string;
+    design: number;
     color: string;
     color_hax?: string;
     stock: number;
-    waist_size?: number;
-    chest_size?: number;
-    height?: number;
     is_active: boolean;
     created_at: string;
     updated_at: string;
@@ -151,6 +159,7 @@ export interface CreateCategoryDTO {
     description?: string;
     parent?: number;
     gender?: string;
+    wholesale_cutoff?: number | null;
 }
 
 export type CreateSupplierDTO = Omit<Supplier, 'id' | 'created_at' | 'updated_at'>;
@@ -164,31 +173,31 @@ export interface CreateProductDTO {
     online_categories?: number[];
     supplier?: number;
     cost_price: number;
-    selling_price: number;
+    wholesale_price: number;
+    retail_price: number;
+    wholesale_cutoff?: number | null;
     stock_quantity?: number;
     minimum_stock: number;
     image?: File;
     is_active: boolean;
-    size_type?: string;
-    size_category?: string;
     gender?: string;
-    variations?: {
-        size: string;
-        color: string;
-        color_hax?: string;
-        stock: number;
-        waist_size?: number;
-        chest_size?: number;
-        height?: number;
-    }[];
-    galleries?: {
-        color: string;
-        color_hax?: string;
-        alt_text?: string;
-        images?: {
-            imageType: 'PRIMARY' | 'SECONDARY' | 'THIRD' | 'FOURTH';
-            image: File;
+    designs: {
+        name: string;
+        description?: string;
+        colors: {
+            color: string;
+            color_hax?: string;
+            stock: number;
+        }[];
+        galleries?: {
+            color: string;
+            color_hax?: string;
             alt_text?: string;
+            images?: {
+                imageType: 'PRIMARY' | 'SECONDARY' | 'THIRD' | 'FOURTH';
+                image: File;
+                alt_text?: string;
+            }[];
         }[];
     }[];
     material_composition?: {

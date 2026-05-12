@@ -11,7 +11,7 @@ export interface PreorderProduct {
         company_name: string;
     };
     cost_price: number;
-    selling_price: number;
+    retail_price: number;
     deposit_amount: number;
     expected_arrival_date: string;
     max_quantity: number;
@@ -32,7 +32,7 @@ export interface PreorderProduct {
 export interface PreorderVariation {
     id: number;
     preorder_product: number;
-    size: string;
+    design: string;
     color: string;
     color_hax: string;
     max_quantity: number;
@@ -64,7 +64,7 @@ export interface Preorder {
     updated_at: string;
     items: {
         product_id: number;
-        size: string;
+        design: string;
         color: string;
         quantity: number;
         unit_price: number;
@@ -98,7 +98,7 @@ export interface CreatePreorderProductDTO {
     category?: number;
     supplier?: number;
     cost_price: number;
-    selling_price: number;
+    retail_price: number;
     deposit_amount?: number;
     expected_arrival_date: string;
     max_quantity?: number;
@@ -113,7 +113,7 @@ export interface UpdatePreorderProductDTO extends Partial<CreatePreorderProductD
 
 export interface CreatePreorderVariationDTO {
     preorder_product: number;
-    size: string;
+    design: string;
     color: string;
     color_hax?: string;
     max_quantity?: number;
@@ -134,7 +134,7 @@ export interface CreatePreorderDTO {
     expected_delivery_date?: string;
     items: {
         product_id: number;
-        size: string;
+        design: string;
         color: string;
         quantity: number;
         unit_price: number;

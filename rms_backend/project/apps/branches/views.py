@@ -12,7 +12,7 @@ from apps.expenses.models import Expense
 from apps.inventory.models import Product
 from apps.sales.models import DuePayment, Sale
 
-from .models import AttendanceRecord, Branch, Employee, PayrollRecord
+from .models import AttendanceRecord, Branch, Employee, PayrollRecord, SalaryComponent, EmployeeSalaryStructure, LeaveRequest, PayrollItem
 from .permissions import get_allowed_branch_ids, get_requested_branch_id, is_admin
 from .serializers import (
     AccountSerializer,
@@ -22,6 +22,13 @@ from .serializers import (
     PasswordResetSerializer,
     PayrollRecordSerializer,
     StaffAccountCreateSerializer,
+)
+from .hr_serializers import (
+    SalaryComponentSerializer,
+    EmployeeSalaryStructureSerializer,
+    LeaveRequestSerializer,
+    EmployeeHRDetailSerializer,
+    PayrollRecordDetailSerializer,
 )
 
 User = get_user_model()
@@ -123,6 +130,71 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             return qs
         return qs.filter(branch_id__in=get_allowed_branch_ids(self.request.user))
 
+    @action(detail=True, methods=['get'], url_path='hr-profile')
+    def hr_profile(self, request, pk=None):
+        employee = self.get_object()
+        serializer = EmployeeHRDetailSerializer(employee)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], url_path='run-payroll')
+    def run_payroll(self, request, pk=None):
+        employee = self.get_object()
+        period = request.data.get("period")
+        
+        if not period:
+            period_start = timezone.now().date().replace(day=1)
+        else:
+            period_start = datetime.strptime(period, "%Y-%m-%d").date().replace(day=1)
+
+        # Check if already exists
+        if PayrollRecord.objects.filter(employee=employee, period_start=period_start).exists():
+            return Response({"detail": "Payroll already exists for this period."}, status=400)
+
+        # Calculate Breakdown
+        structures = employee.salary_structures.all()
+        gross = employee.base_salary
+        deductions = Decimal("0.00")
+        
+        items_to_create = []
+        # Add base salary as an item
+        items_to_create.append({
+            "name": "Base Salary",
+            "type": "earning",
+            "amount": employee.base_salary
+        })
+
+        for struct in structures:
+            if struct.component.component_type == "earning":
+                gross += struct.amount
+            else:
+                deductions += struct.amount
+            
+            items_to_create.append({
+                "name": struct.component.name,
+                "type": struct.component.component_type,
+                "amount": struct.amount
+            })
+
+        net = gross - deductions
+        
+        payroll = PayrollRecord.objects.create(
+            employee=employee,
+            period_start=period_start,
+            gross_amount=gross,
+            deductions=deductions,
+            net_amount=net
+        )
+
+        for item in items_to_create:
+            PayrollItem.objects.create(
+                payroll_record=payroll,
+                component_name=item["name"],
+                component_type=item["type"],
+                amount=item["amount"]
+            )
+
+        return Response(PayrollRecordDetailSerializer(payroll).data)
+
 
 class AttendanceRecordViewSet(viewsets.ModelViewSet):
     serializer_class = AttendanceRecordSerializer
@@ -195,6 +267,53 @@ class PayrollRecordViewSet(viewsets.ModelViewSet):
             if was_created:
                 created += 1
         return Response({"period_start": str(period_start), "created_records": created})
+
+
+class SalaryComponentViewSet(viewsets.ModelViewSet):
+    queryset = SalaryComponent.objects.all()
+    serializer_class = SalaryComponentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+class EmployeeSalaryStructureViewSet(viewsets.ModelViewSet):
+    queryset = EmployeeSalaryStructure.objects.all()
+    serializer_class = EmployeeSalaryStructureSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        emp_id = self.request.query_params.get("employee")
+        if emp_id:
+            qs = qs.filter(employee_id=emp_id)
+        return qs
+
+class LeaveRequestViewSet(viewsets.ModelViewSet):
+    queryset = LeaveRequest.objects.all()
+    serializer_class = LeaveRequestSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if not is_admin(self.request.user):
+            qs = qs.filter(employee__branch_id__in=get_allowed_branch_ids(self.request.user))
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save()
+
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        leave = self.get_object()
+        leave.status = "approved"
+        leave.approved_by = request.user
+        leave.save()
+        return Response({"status": "approved"})
+
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        leave = self.get_object()
+        leave.status = "rejected"
+        leave.save()
+        return Response({"status": "rejected"})
 
 
 class FinancialOverviewViewSet(viewsets.ViewSet):

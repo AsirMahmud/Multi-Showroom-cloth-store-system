@@ -174,7 +174,7 @@ export function ManualOrderForm({ onSuccess, onCancel, initialData }: ManualOrde
             setItems(initialData.items.map(item => ({
                 product_id: item.product_id,
                 name: item.product_name || `Product #${item.product_id}`,
-                size: item.size,
+                design: item.design,
                 color: item.color,
                 quantity: item.quantity,
                 unit_price: Number(item.unit_price),
@@ -220,7 +220,7 @@ export function ManualOrderForm({ onSuccess, onCancel, initialData }: ManualOrde
     // Handlers
     const handleAddGridItem = (data: {
         product: any;
-        size: string;
+        design: string;
         color: string;
         colorHex?: string;
         finalPrice: number;
@@ -231,11 +231,11 @@ export function ManualOrderForm({ onSuccess, onCancel, initialData }: ManualOrde
             product_id: data.product.id,
             name: data.product.name,
             image: data.product.image || data.product.first_variation_image,
-            size: data.size,
+            design: data.design,
             color: data.color,
             colorHex: data.colorHex,
             quantity: 1,
-            unit_price: Number(data.product.selling_price || 0),
+            unit_price: Number(data.product.retail_price || 0),
             discount: Number(data.discountAmount || 0),
             unit_discount: Number(data.discountAmount || 0) // Store unit discount for recalculations
         };
@@ -299,7 +299,7 @@ export function ManualOrderForm({ onSuccess, onCancel, initialData }: ManualOrde
                 customer_email: email,
                 items: items.map(item => ({
                     product_id: item.product_id,
-                    size: item.size,
+                    design: item.design,
                     color: item.color,
                     quantity: item.quantity,
                     unit_price: item.unit_price,
@@ -658,7 +658,7 @@ export function ManualOrderForm({ onSuccess, onCancel, initialData }: ManualOrde
                                                         <div className="flex-1 min-w-0">
                                                             <p className="font-bold text-xs truncate" title={item.name}>{item.name}</p>
                                                             <div className="flex items-center gap-2 mt-1">
-                                                                <Badge variant="outline" className="px-1 py-0 h-4 text-[9px] uppercase border-slate-200 bg-slate-50">{item.size}</Badge>
+                                                                <Badge variant="outline" className="px-1 py-0 h-4 text-[9px] uppercase border-slate-200 bg-slate-50">{item.design}</Badge>
                                                                 <div className="flex items-center gap-1 bg-slate-50 px-1 py-0 h-4 rounded border border-slate-200">
                                                                     {item.colorHex && (
                                                                         <div
@@ -772,7 +772,7 @@ export function ManualOrderForm({ onSuccess, onCancel, initialData }: ManualOrde
                                                 </div>
                                                 <div className="flex flex-col">
                                                     <span className="font-medium">{item.name}</span>
-                                                    <span className="text-xs text-slate-500">Qty: {item.quantity} | {item.size}/{item.color}</span>
+                                                    <span className="text-xs text-slate-500">Qty: {item.quantity} | {item.design}/{item.color}</span>
                                                 </div>
                                             </div>
                                             <div className="text-right">

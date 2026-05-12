@@ -1,6 +1,6 @@
 "use client";
 
-import { usePayroll, useRunPayroll } from "@/hooks/queries/use-hr";
+import { usePayroll, useRunPayroll, useSettlePayroll } from "@/hooks/queries/use-hr";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -20,6 +20,7 @@ import { useMemo } from "react";
 export function PayrollTable() {
   const { data, isLoading } = usePayroll();
   const runPayroll = useRunPayroll();
+  const settlePayroll = useSettlePayroll();
 
   const counts = useMemo(() => {
     if (!data) return { total: 0, paid: 0, pending: 0, amount: 0 };
@@ -120,6 +121,16 @@ export function PayrollTable() {
                       )}
                     </TableCell>
                     <TableCell className="text-right pr-6">
+                       {!row.is_paid && (
+                         <Button 
+                          size="sm" 
+                          onClick={() => settlePayroll.mutate(row.id)}
+                          disabled={settlePayroll.isPending}
+                          className="h-8 rounded-xl bg-brand-primary text-brand-secondary hover:bg-emerald-900 font-bold text-[10px] uppercase tracking-widest shadow-lg shadow-brand-primary/10 mr-2"
+                        >
+                           {settlePayroll.isPending ? "Settling..." : "Settle Now"}
+                         </Button>
+                       )}
                        <Button variant="ghost" size="sm" className="h-8 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-brand-primary hover:bg-brand-secondary/50">
                          Audit
                        </Button>

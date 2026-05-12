@@ -23,6 +23,7 @@ class Category(models.Model):
     slug = models.SlugField(max_length=100, unique=True, blank=True)
     description = models.TextField(blank=True)
     parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='children')
+    wholesale_cutoff = models.PositiveIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -73,14 +74,14 @@ class Product(models.Model):
     online_categories = models.ManyToManyField(OnlineCategory, blank=True, related_name='products')
     supplier = models.ForeignKey(Supplier, on_delete=models.SET_NULL, null=True, blank=True, related_name='products')
     cost_price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
-    selling_price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
+    wholesale_price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))], null=True, blank=True)
+    retail_price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
+    wholesale_cutoff = models.PositiveIntegerField(null=True, blank=True)
     description = models.TextField(blank=True,null=True)
     stock_quantity = models.IntegerField(default=0, validators=[MinValueValidator(0)])
     minimum_stock = models.IntegerField(default=10)
     image = models.ImageField(upload_to='products/', null=True, blank=True)
     is_active = models.BooleanField(default=True)
-    size_type = models.CharField(max_length=50, null=True, blank=True)
-    size_category=models.CharField(max_length=50, null=True, blank=True)
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES, default='UNISEX')
     assign_to_online = models.BooleanField(default=False, null=True)
     # Ecommerce status fields
@@ -102,17 +103,43 @@ class Product(models.Model):
             random_component = str(uuid.uuid4())[:4]  # First 4 characters of UUID
             self.sku = f"{category_prefix}-{timestamp}-{random_component}"
         
-        # Calculate total stock from variants
+        # Calculate total stock from variants (through designs)
         if self.id:  # Only calculate if the product already exists
-            total_variant_stock = self.variations.aggregate(
-                total=Sum('stock')
-            )['total'] or 0
+            total_variant_stock = ProductVariation.objects.filter(
+                design__product=self
+            ).aggregate(total=Sum('stock'))['total'] or 0
             self.stock_quantity = total_variant_stock
         
         super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.name} ({self.sku})"
+
+    def resolve_wholesale_cutoff(self):
+        if self.wholesale_cutoff:
+            return self.wholesale_cutoff
+        if self.category and self.category.wholesale_cutoff:
+            return self.category.wholesale_cutoff
+        return WholesalePricingSettings.load().global_wholesale_cutoff
+
+    def resolve_price_type(self, quantity):
+        cutoff = self.resolve_wholesale_cutoff()
+        if self.wholesale_price and quantity >= cutoff:
+            return 'wholesale'
+        return 'retail'
+
+    def resolve_unit_price(self, quantity):
+        return self.wholesale_price if self.resolve_price_type(quantity) == 'wholesale' else self.retail_price
+
+    @property
+    def galleries(self):
+        from .models import Gallery
+        return Gallery.objects.filter(design__product=self)
+
+    @property
+    def variations(self):
+        from .models import ProductVariation
+        return ProductVariation.objects.filter(design__product=self)
     
     def delete(self, *args, **kwargs):
         """Override delete to also delete the main product image and gallery folder from filesystem"""
@@ -139,14 +166,21 @@ class Product(models.Model):
         
         super().delete(*args, **kwargs)
 
+class Design(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='designs')
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.product.name} - {self.name}"
+
 class ProductVariation(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='variations')
+    design = models.ForeignKey(Design, on_delete=models.CASCADE, related_name='colors')
     size = models.CharField(max_length=50, default='Standard')
     color = models.CharField(max_length=50, default='Default')
     color_hax = models.CharField(max_length=50, default='#FFFFFF')
-    waist_size=models.PositiveIntegerField(null=True,default=None)
-    chest_size=models.PositiveIntegerField(null=True,default=None)
-    height=models.PositiveIntegerField(null=True,default=None)
     stock = models.IntegerField(default=0, validators=[MinValueValidator(0)])
     assign_to_online=models.BooleanField(default=False,null=True)
     is_active = models.BooleanField(default=True)
@@ -154,10 +188,10 @@ class ProductVariation(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ('product', 'size', 'color')
+        unique_together = ('design', 'size', 'color')
 
     def __str__(self):
-        return f"{self.product.name} - {self.size} - {self.color}"
+        return f"{self.design.product.name} - {self.design.name} - {self.color} ({self.size})"
 class MeterialComposition(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='material_compositions')
     percentige=models.PositiveIntegerField()
@@ -174,20 +208,20 @@ class Features(models.Model):
       
       
 class Gallery(models.Model):
-    product = models.ForeignKey('Product', on_delete=models.CASCADE, related_name='galleries')
+    design = models.ForeignKey(Design, on_delete=models.CASCADE, related_name='galleries')
     color = models.CharField(max_length=50)
     color_hax=models.CharField(max_length=50,null=True,default='#ffff')  # must match ProductVariation.color
     alt_text = models.CharField(max_length=255, blank=True)
 
     class Meta:
-        unique_together = ['product', 'color']
+        unique_together = ['design', 'color']
 
     def __str__(self):
-        return f"{self.product.name} - {self.color}"
+        return f"{self.design.product.name} - {self.design.name} - {self.color}"
 
 def gallery_upload_path(instance, filename):
-    """Generate upload path: product_colors/{product_id}/{color_name}/{imageType}.{ext}"""
-    return f'gallery/{instance.gallery.product.id}/{instance.gallery.color.lower()}/{instance.imageType.lower()}.{filename.split(".")[-1]}'
+    """Generate upload path: gallery/{product_id}/{design_id}/{color_name}/{imageType}.{ext}"""
+    return f'gallery/{instance.gallery.design.product.id}/{instance.gallery.design.id}/{instance.gallery.color.lower()}/{instance.imageType.lower()}.{filename.split(".")[-1]}'
 
 class Image(models.Model):
     IMAGE_TYPES = [
@@ -205,7 +239,7 @@ class Image(models.Model):
         unique_together = ['gallery', 'imageType']
 
     def __str__(self):
-        return f"{self.gallery.product.name} - {self.gallery.color} - {self.get_imageType_display()}"
+        return f"{self.gallery.design.product.name} - {self.gallery.design.name} - {self.gallery.color} - {self.get_imageType_display()}"
     
     def save(self, *args, **kwargs):
         if self.image:
@@ -219,6 +253,30 @@ class Image(models.Model):
             if os.path.isfile(self.image.path):
                 os.remove(self.image.path)
         super().delete(*args, **kwargs)
+
+
+class WholesalePricingSettings(models.Model):
+    global_wholesale_cutoff = models.PositiveIntegerField(default=10)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Wholesale Pricing Settings'
+        verbose_name_plural = 'Wholesale Pricing Settings'
+
+    def __str__(self):
+        return "Wholesale Pricing Settings"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        obj, _ = cls.objects.get_or_create(pk=1, defaults={'global_wholesale_cutoff': 10})
+        return obj
+
+    def delete(self, *args, **kwargs):
+        pass
 
 # class ProductImage(models.Model):
 #     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
@@ -345,9 +403,13 @@ class BranchProduct(models.Model):
         max_digits=10, decimal_places=2, null=True, blank=True,
         help_text="If set, overrides product.cost_price for this branch.",
     )
-    selling_price_override = models.DecimalField(
+    wholesale_price_override = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True,
-        help_text="If set, overrides product.selling_price for this branch.",
+        help_text="If set, overrides product.wholesale_price for this branch.",
+    )
+    retail_price_override = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="If set, overrides product.retail_price for this branch.",
     )
 
     class Meta:
@@ -362,8 +424,8 @@ class BranchProduct(models.Model):
         return self.cost_price_override or self.product.cost_price
 
     @property
-    def effective_selling_price(self):
-        return self.selling_price_override or self.product.selling_price
+    def effective_retail_price(self):
+        return self.retail_price_override or self.product.retail_price
 
 
 class BranchVariationStock(models.Model):

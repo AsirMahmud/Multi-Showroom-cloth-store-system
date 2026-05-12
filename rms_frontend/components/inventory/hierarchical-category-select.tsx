@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 interface HierarchicalCategorySelectProps {
   categories: Category[];
   value?: string;
-  onValueChange: (value: string) => void;
+  onChange: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
@@ -23,7 +23,7 @@ interface HierarchicalCategorySelectProps {
 export function HierarchicalCategorySelect({
   categories,
   value,
-  onValueChange,
+  onChange,
   placeholder = "Select category",
   disabled = false,
   className,
@@ -67,7 +67,7 @@ export function HierarchicalCategorySelect({
   }, [value, categories, placeholder]);
 
   const handleSelect = (categoryId: string) => {
-    onValueChange(categoryId);
+    onChange(categoryId);
     setOpen(false);
   };
 

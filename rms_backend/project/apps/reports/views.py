@@ -223,18 +223,18 @@ class ReportViewSet(viewsets.ModelViewSet):
         products = Product.objects.all()
         total_products = products.count()
         total_stock_value = products.aggregate(
-            total=Sum(F('stock_quantity') * F('selling_price'))
+            total=Sum(F('stock_quantity') * F('retail_price'))
         )['total'] or Decimal('0.00')
 
         # Low stock items
         low_stock_items = products.filter(
             stock_quantity__lte=F('minimum_stock')
         ).values(
-            'name', 'stock_quantity', 'minimum_stock', 'selling_price'
+            'name', 'stock_quantity', 'minimum_stock', 'retail_price'
         ).annotate(
             stock=F('stock_quantity'),
             reorder_level=F('minimum_stock'),
-            price=F('selling_price')
+            price=F('retail_price')
         ).order_by('stock_quantity')
 
         # Stock by category
@@ -244,7 +244,7 @@ class ReportViewSet(viewsets.ModelViewSet):
             category_name=F('category__name'),
             total_products=Count('id'),
             total_stock=Sum('stock_quantity'),
-            total_value=Sum(F('stock_quantity') * F('selling_price'))
+            total_value=Sum(F('stock_quantity') * F('retail_price'))
         ).order_by('-total_value')
 
         # Stock movements
@@ -345,7 +345,7 @@ class ReportViewSet(viewsets.ModelViewSet):
             category_name=F('category__name'),
             total_products=Count('id'),
             total_stock=Sum('stock_quantity'),
-            total_value=Sum(F('stock_quantity') * F('selling_price'))
+            total_value=Sum(F('stock_quantity') * F('retail_price'))
         ).order_by('-total_value')
 
         # Top categories by sales

@@ -27,7 +27,7 @@ class ImageOptimizationTest(TestCase):
             name="Test Product",
             category=self.category,
             cost_price=Decimal("10.00"),
-            selling_price=Decimal("20.00"),
+            retail_price=Decimal("20.00"),
             image=image
         )
         

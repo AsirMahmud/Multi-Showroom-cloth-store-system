@@ -135,6 +135,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
       setSelectedBranchIdState(id);
       persistSelection(id);
       setSelectionMade(true);
+      setSelectorOpen(false);
       return;
     }
 
@@ -149,7 +150,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
       setSelectedBranchIdState(valid);
       if (valid !== null) persistSelection(valid);
       setSelectionMade(valid !== null);
-      if (valid === null) setSelectorOpen(true);
+      setSelectorOpen(false);
       return;
     }
 
@@ -162,10 +163,11 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
         setSelectedBranchIdState(Number.isNaN(parsed) ? null : parsed);
       }
       setSelectionMade(true);
+      setSelectorOpen(false);
     } else {
       setSelectedBranchIdState(null);
       setSelectionMade(false);
-      setSelectorOpen(true);
+      setSelectorOpen(false);
     }
   }, [isAuthenticated, user, availableBranchIds, persistSelection]);
 
@@ -204,13 +206,6 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
     };
   }, [isAuthenticated, user, availableBranchIds]);
-
-  // Force the modal open whenever the admin has not yet chosen.
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    if (selectionMade) return;
-    if (isAdmin) setSelectorOpen(true);
-  }, [isAuthenticated, selectionMade, isAdmin]);
 
   const value = useMemo<BranchContextType>(
     () => ({

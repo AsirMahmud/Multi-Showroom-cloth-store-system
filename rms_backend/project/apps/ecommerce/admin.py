@@ -18,7 +18,7 @@ class DiscountAdmin(admin.ModelAdmin):
             'fields': ('start_date', 'end_date', 'status', 'is_active')
         }),
         ('Target', {
-            'fields': ('category', 'online_category', 'product'),
+            'fields': ('categories', 'online_categories', 'products'),
             'classes': ('collapse',)
         }),
         ('Timestamps', {

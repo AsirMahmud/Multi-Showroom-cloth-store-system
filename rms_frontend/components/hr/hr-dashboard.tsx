@@ -80,11 +80,16 @@ export function HRDashboard() {
     queryKey: ["hr", "payroll"],
     queryFn: hrApi.getPayroll,
   });
+  const { data: leaves, isLoading: leavesLoading } = useQuery({
+    queryKey: ["hr", "leave-requests"],
+    queryFn: hrApi.getLeaveRequests,
+  });
 
   const today = new Date().toISOString().slice(0, 10);
   const todayPresent = (attendance ?? []).filter((a) => a.date === today && a.status === "present").length;
   const totalEmployees = employees?.length ?? 0;
   const pendingPayroll = (payroll ?? []).filter((p) => !p.is_paid).length;
+  const pendingLeaves = (leaves ?? []).filter((l) => l.status === "pending").length;
 
   if (employeesLoading || attendanceLoading || payrollLoading) {
     return (
@@ -138,6 +143,16 @@ export function HRDashboard() {
                 Attendance
               </Link>
             </Button>
+            <Button
+              asChild
+              variant="outline"
+              className="h-10 px-4 bg-white border-brand-primary/5 shadow-sm rounded-xl font-bold text-xs uppercase tracking-widest text-brand-primary hover:bg-slate-50"
+            >
+              <Link href="/hr/leaves">
+                <ClipboardList className="h-3.5 w-3.5 mr-2" />
+                Leaves
+              </Link>
+            </Button>
           </div>
         }
       />
@@ -159,6 +174,15 @@ export function HRDashboard() {
             icon={<CalendarCheck className="h-5 w-5" />}
             tone="emerald"
             helper={`${totalEmployees > 0 ? Math.round((todayPresent / totalEmployees) * 100) : 0}% Attendance Rate`}
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Pending Leaves"
+            value={pendingLeaves}
+            icon={<ClipboardList className="h-5 w-5" />}
+            tone="indigo"
+            helper="Needs approval"
           />
         </motion.div>
         <motion.div variants={item}>

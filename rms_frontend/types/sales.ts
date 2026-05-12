@@ -13,10 +13,16 @@ export interface SaleItem {
         sku: string;
         cost_price: number;
     };
-    size: string;
+    design?: string;
+    design_name?: string;
     color: string;
     quantity: number;
+    price_type?: 'retail' | 'wholesale';
     unit_price: number;
+    applied_unit_price?: number;
+    retail_price_snapshot?: number;
+    wholesale_price_snapshot?: number;
+    wholesale_cutoff_snapshot?: number;
     discount: number;
     total?: number;
     profit?: number;

@@ -36,3 +36,64 @@ export function useRunPayroll() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["hr", "payroll"] }),
   });
 }
+
+export function useEmployeeHRProfile(id: number | string) {
+  return useQuery({
+    queryKey: ["hr", "employee-profile", id],
+    queryFn: () => hrApi.getEmployeeHRProfile(id),
+    enabled: !!id,
+  });
+}
+
+export function useRunIndividualPayroll() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, period }: { id: number | string; period?: string }) => 
+      hrApi.runIndividualPayroll(id, period),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: ["hr", "payroll"] });
+      qc.invalidateQueries({ queryKey: ["hr", "employee-profile", id] });
+    },
+  });
+}
+
+export function useSalaryComponents() {
+  return useQuery({
+    queryKey: ["hr", "salary-components"],
+    queryFn: hrApi.getSalaryComponents,
+  });
+}
+
+export function useSalaryStructures(employeeId?: number) {
+  return useQuery({
+    queryKey: ["hr", "salary-structures", employeeId],
+    queryFn: () => hrApi.getSalaryStructures(employeeId),
+  });
+}
+
+export function useLeaveRequests() {
+  return useQuery({
+    queryKey: ["hr", "leave-requests"],
+    queryFn: hrApi.getLeaveRequests,
+  });
+}
+
+export function useApproveLeave() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: hrApi.approveLeaveRequest,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["hr", "leave-requests"] });
+    },
+  });
+}
+
+export function useSettlePayroll() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: hrApi.payPayroll,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["hr", "payroll"] });
+    },
+  });
+}

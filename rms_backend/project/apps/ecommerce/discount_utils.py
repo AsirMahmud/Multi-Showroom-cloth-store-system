@@ -85,7 +85,7 @@ def calculate_discounted_price(product, original_price=None):
     
     Args:
         product: Product instance
-        original_price: Optional override for original price (defaults to product.selling_price)
+        original_price: Optional override for original price (defaults to product.retail_price)
         
     Returns:
         dict with:
@@ -97,7 +97,7 @@ def calculate_discounted_price(product, original_price=None):
             - discount_name: str or None (name of the applied discount)
     """
     if original_price is None:
-        original_price = product.selling_price
+        original_price = product.retail_price
     
     original_price = Decimal(str(original_price))
     

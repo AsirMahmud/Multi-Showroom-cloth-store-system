@@ -29,7 +29,7 @@ export interface ProductAnalytics {
         sku: string;
         current_stock: number;
         cost_price: number;
-        selling_price: number;
+        retail_price: number;
         profit_margin_percentage: number;
     };
     stock_analytics: {
@@ -104,7 +104,7 @@ export interface SalesHistory {
     sale_id: number;
     invoice_number: string;
     quantity: number;
-    size: string;
+    design: string;
     color: string;
     unit_price: number;
     discount: number;

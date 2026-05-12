@@ -80,13 +80,13 @@ class Command(BaseCommand):
         cat_shirt, _ = Category.objects.get_or_create(name="Shirt", defaults={"description": "All shirts"})
         cat_pant, _ = Category.objects.get_or_create(name="Pant", defaults={"description": "All pants"})
 
-        prod_oxford = self._upsert_product("SKU-DEMO-001", "Oxford Shirt", cat_shirt, supplier, "700.00", "1200.00")
-        prod_chino = self._upsert_product("SKU-DEMO-002", "Chino Pant", cat_pant, supplier, "900.00", "1550.00")
+        prod_oxford = self._upsert_product("SKU-DEMO-001", "Oxford Shirt", cat_shirt, supplier, "700.00", "1000.00", "1200.00")
+        prod_chino = self._upsert_product("SKU-DEMO-002", "Chino Pant", cat_pant, supplier, "900.00", "1300.00", "1550.00")
 
-        self._upsert_variation(prod_oxford, "M", "Blue", 60)
-        self._upsert_variation(prod_oxford, "L", "White", 50)
-        self._upsert_variation(prod_chino, "32", "Khaki", 40)
-        self._upsert_variation(prod_chino, "34", "Black", 35)
+        self._upsert_variation(prod_oxford, "Standard", "Blue", 60)
+        self._upsert_variation(prod_oxford, "Standard", "White", 50)
+        self._upsert_variation(prod_chino, "Standard", "Khaki", 40)
+        self._upsert_variation(prod_chino, "Standard", "Black", 35)
 
         today = date.today()
         customers = [
@@ -228,7 +228,7 @@ class Command(BaseCommand):
                 "items": [
                     {
                         "product_id": prod_oxford.id,
-                        "size": "L",
+                        "design_name": "Standard",
                         "color": "White",
                         "quantity": 2,
                         "unit_price": "1200.00",
@@ -247,8 +247,8 @@ class Command(BaseCommand):
             },
         )
 
-        self._ensure_stock_movement(prod_oxford, "M", "Blue", dhaka, 20, "IN", "STK-DEMO-DHK-001")
-        self._ensure_stock_movement(prod_chino, "32", "Khaki", chittagong, 15, "IN", "STK-DEMO-CTG-001")
+        self._ensure_stock_movement(prod_oxford, "Standard", "Blue", dhaka, 20, "IN", "STK-DEMO-DHK-001")
+        self._ensure_stock_movement(prod_chino, "Standard", "Khaki", chittagong, 15, "IN", "STK-DEMO-CTG-001")
 
         self.stdout.write(self.style.SUCCESS("Realistic demo data seeded successfully."))
         self.stdout.write("Admin login: demo_admin / demo12345")
@@ -266,7 +266,7 @@ class Command(BaseCommand):
         user.save()
         return user
 
-    def _upsert_product(self, sku, name, category, supplier, cost_price, selling_price):
+    def _upsert_product(self, sku, name, category, supplier, cost_price, wholesale_price, retail_price):
         product, _ = Product.objects.get_or_create(
             sku=sku,
             defaults={
@@ -274,7 +274,8 @@ class Command(BaseCommand):
                 "category": category,
                 "supplier": supplier,
                 "cost_price": Decimal(cost_price),
-                "selling_price": Decimal(selling_price),
+                "wholesale_price": Decimal(wholesale_price),
+                "retail_price": Decimal(retail_price),
                 "minimum_stock": 10,
                 "is_active": True,
                 "gender": "UNISEX",
@@ -282,10 +283,15 @@ class Command(BaseCommand):
         )
         return product
 
-    def _upsert_variation(self, product, size, color, stock):
-        variation, _ = ProductVariation.objects.get_or_create(
+    def _upsert_variation(self, product, design_name, color, stock):
+        from apps.inventory.models import Design
+        design, _ = Design.objects.get_or_create(
             product=product,
-            size=size,
+            name=design_name,
+            defaults={"is_active": True}
+        )
+        variation, _ = ProductVariation.objects.get_or_create(
+            design=design,
             color=color,
             defaults={"stock": stock, "color_hax": "#1f2937", "is_active": True},
         )
@@ -294,8 +300,12 @@ class Command(BaseCommand):
             variation.save(update_fields=["stock"])
         return variation
 
-    def _ensure_stock_movement(self, product, size, color, branch, qty, movement_type, reference):
-        variation = ProductVariation.objects.filter(product=product, size=size, color=color).first()
+    def _ensure_stock_movement(self, product, design_name, color, branch, qty, movement_type, reference):
+        variation = ProductVariation.objects.filter(
+            design__product=product, 
+            design__name=design_name, 
+            color=color
+        ).first()
         if not variation:
             return
         StockMovement.objects.get_or_create(
