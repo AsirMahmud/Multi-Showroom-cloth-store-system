@@ -108,9 +108,16 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
 
   const openBranchSelector = useCallback(() => setSelectorOpen(true), []);
   const closeBranchSelector = useCallback(() => {
-    if (!selectionMade) return; // can't dismiss before initial choice
+    if (!selectionMade && isAdmin) {
+      setSelectedBranchIdState(null);
+      persistSelection(null);
+      setSelectionMade(true);
+      setSelectorOpen(false);
+      return;
+    }
+    if (!selectionMade) return; // Non-admins can't dismiss before initial choice.
     setSelectorOpen(false);
-  }, [selectionMade]);
+  }, [isAdmin, persistSelection, selectionMade]);
 
   // Reset internal state when the user logs out.
   useEffect(() => {
@@ -167,7 +174,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
     } else {
       setSelectedBranchIdState(null);
       setSelectionMade(false);
-      setSelectorOpen(false);
+      setSelectorOpen(true);
     }
   }, [isAuthenticated, user, availableBranchIds, persistSelection]);
 

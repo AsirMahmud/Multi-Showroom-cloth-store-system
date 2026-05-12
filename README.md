@@ -1,8 +1,7 @@
-# 🛍️ RawStitch — Retail Management System + E-Commerce Platform
+# 🛍️ RMS Admin — Retail Management System + E-Commerce Platform
 
 > A unified platform that powers your physical shop and online store from a single dashboard.
 
-[![Live Demo](https://img.shields.io/badge/Live-rawstitch.com.bd-blue?style=flat-square)](https://rawstitch.com.bd)
 ![Python](https://img.shields.io/badge/Backend-Python%20%7C%20Django-3776AB?style=flat-square&logo=python)
 ![TypeScript](https://img.shields.io/badge/Frontend-TypeScript%20%7C%20Next.js-3178C6?style=flat-square&logo=typescript)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
@@ -11,7 +10,7 @@
 
 ## 📖 Overview
 
-**RawStitch** is a full-featured Retail Management System (RMS) with a built-in E-Commerce storefront. Designed for modern retail shops, it bridges the gap between in-store operations and online sales — letting you manage inventory, orders, customers, and sales reporting all from one place.
+**RMS Admin** is a full-featured Retail Management System (RMS) with a built-in E-Commerce storefront. Designed for modern retail shops, it bridges the gap between in-store operations and online sales — letting you manage inventory, orders, customers, and sales reporting all from one place.
 
 Whether a customer walks into your shop or orders from your website, every transaction flows through the same unified system.
 
@@ -28,7 +27,7 @@ Whether a customer walks into your shop or orders from your website, every trans
 - **Staff & Role Management** — Assign roles and permissions to employees
 
 ### 🛒 E-Commerce (Online Store)
-- **Online Storefront** — A customer-facing shop at [rawstitch.com.bd](https://rawstitch.com.bd)
+- **Online Storefront** — A customer-facing shop integrated with your backend
 - **Product Listings** — Synced directly from your inventory — no double entry
 - **Order Management** — View, process, and fulfill online orders from the dashboard
 - **Cart & Checkout** — Smooth buying experience for online customers
@@ -178,7 +177,7 @@ CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8000
-NEXT_PUBLIC_SHOP_NAME=RawStitch
+NEXT_PUBLIC_SHOP_NAME=RetailAdmin
 ```
 
 ---
@@ -242,7 +241,6 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 **Asir Mahmud**
 - GitHub: [@AsirMahmud](https://github.com/AsirMahmud)
-- Live Project: [rawstitch.com.bd](https://rawstitch.com.bd)
 
 ---
 

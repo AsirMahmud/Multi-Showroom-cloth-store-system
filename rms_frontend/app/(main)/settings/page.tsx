@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader, DataPanel } from "@/components/ui/professional";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,9 +20,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useFlushDatabase } from "@/hooks/queries/use-settings";
 import { useBismillah } from "@/contexts/bismillah-context";
-import { Loader2, Trash2, Settings, ShieldAlert, Palette, Database } from "lucide-react";
+import { AppearanceSettings } from "@/components/settings/appearance-settings";
+import { wholesaleSettingsApi } from "@/lib/api/inventory";
+import { useToast } from "@/components/ui/use-toast";
+import { Loader2, Save, Tags, Trash2, Settings, ShieldAlert } from "lucide-react";
 import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
 
 const container = {
   hidden: { opacity: 0 },
@@ -63,25 +67,29 @@ export default function SettingsPage() {
       className="space-y-8"
     >
       <PageHeader
-        title="System Infrastructure"
-        description="Core configuration, security protocols, and database lifecycle management."
+        title="System Orchestration"
+        description="Global aesthetics, security protocols, and database lifecycle management."
         icon={<Settings className="h-6 w-6" />}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <motion.div variants={item} className="space-y-8">
           <DataPanel 
-            title="Aesthetics & Interface" 
-            description="Global UI preferences and branding toggle."
+            title="Appearance & Aesthetics" 
+            description="Manage global UI mode and brand color presets."
           >
-            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-brand-primary/5 transition-all hover:bg-white hover:shadow-lg">
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-brand-primary">Bismillah Protocol</Label>
-                <p className="text-[11px] font-medium text-slate-400">
-                  Toggle symbolic identifier in navigation stream.
-                </p>
+            <AppearanceSettings />
+            
+            <div className="mt-8 pt-6 border-t border-slate-100">
+              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-brand-primary/5 transition-all hover:bg-white hover:shadow-lg">
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-brand-primary">Bismillah Protocol</Label>
+                  <p className="text-[11px] font-medium text-slate-400">
+                    Toggle symbolic identifier in navigation stream.
+                  </p>
+                </div>
+                <Switch checked={showBismillah} onCheckedChange={toggleBismillah} />
               </div>
-              <Switch checked={showBismillah} onCheckedChange={toggleBismillah} />
             </div>
           </DataPanel>
 
@@ -99,6 +107,8 @@ export default function SettingsPage() {
               </div>
             </div>
           </DataPanel>
+
+          <WholesalePricingSettingsPanel />
         </motion.div>
 
         <motion.div variants={item} className="space-y-8">
@@ -217,4 +227,93 @@ export default function SettingsPage() {
       </motion.div>
     </motion.div>
   )
+}
+
+function WholesalePricingSettingsPanel() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const [cutoff, setCutoff] = useState("10");
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["wholesale-pricing-settings"],
+    queryFn: wholesaleSettingsApi.get,
+  });
+
+  useEffect(() => {
+    if (data?.global_wholesale_cutoff) {
+      setCutoff(String(data.global_wholesale_cutoff));
+    }
+  }, [data?.global_wholesale_cutoff]);
+
+  const saveSettings = useMutation({
+    mutationFn: () =>
+      wholesaleSettingsApi.update({
+        global_wholesale_cutoff: Math.max(1, Number(cutoff) || 1),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["wholesale-pricing-settings"] });
+      toast({
+        title: "Pricing rule saved",
+        description: "Global wholesale quantity limit has been updated.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Unable to save pricing rule",
+        description: "Please check your permission or try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  return (
+    <DataPanel
+      title="Pricing Rules"
+      description="Set the default quantity where POS switches from retail to wholesale pricing."
+    >
+      <div className="space-y-5">
+        <div className="flex items-start gap-4 rounded-2xl border border-brand-primary/5 bg-slate-50 p-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-primary text-brand-secondary">
+            <Tags className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1 space-y-1">
+            <Label className="text-[10px] font-black uppercase tracking-widest text-brand-primary">
+              Global Wholesale Limit
+            </Label>
+            <p className="text-[11px] font-medium text-slate-400">
+              Example: if this is 10, buying 10 or more pieces uses wholesale price unless product/category overrides it.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
+          <Input
+            type="number"
+            min={1}
+            value={cutoff}
+            onChange={(e) => setCutoff(e.target.value)}
+            disabled={isLoading || saveSettings.isPending}
+            className="h-12 rounded-xl border-none bg-slate-50 font-bold text-brand-primary"
+            placeholder="10"
+          />
+          <Button
+            onClick={() => saveSettings.mutate()}
+            disabled={isLoading || saveSettings.isPending || Number(cutoff) < 1}
+            className="h-12 rounded-xl bg-brand-primary px-6 font-black text-brand-secondary hover:bg-emerald-900"
+          >
+            {saveSettings.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
+            Save Rule
+          </Button>
+        </div>
+
+        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+          Priority: product cutoff, then category cutoff, then this global cutoff.
+        </p>
+      </div>
+    </DataPanel>
+  );
 }

@@ -231,8 +231,8 @@ export default function SalesHistory() {
 
   const handleExport = () => {
     const csv = [
-      ["Invoice", "Customer", "Date", "Status", "Total", "Paid"].join(","),
-      ...typedSales.map(s => [s.invoice_number, s.customer ? `${s.customer.first_name} ${s.customer.last_name}` : "Guest", s.date, s.status, s.total, s.amount_paid].join(","))
+      ["Invoice", "Branch", "Customer", "Date", "Status", "Total", "Paid"].join(","),
+      ...typedSales.map(s => [s.invoice_number, s.branch_name || "Unassigned", s.customer ? `${s.customer.first_name} ${s.customer.last_name}` : "Guest", s.date, s.status, s.total, s.amount_paid].join(","))
     ].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     saveAs(blob, `sales_history_${Date.now()}.csv`);
@@ -243,8 +243,8 @@ export default function SalesHistory() {
     doc.text("Transaction History Report", 14, 16);
     // @ts-ignore
     doc.autoTable({
-      head: [["Invoice", "Customer", "Date", "Status", "Total"]],
-      body: typedSales.map(s => [s.invoice_number, s.customer ? `${s.customer.first_name} ${s.customer.last_name}` : "Guest", format(new Date(s.date || ""), "PPP"), s.status, formatCurrency(s.total)])
+      head: [["Invoice", "Branch", "Customer", "Date", "Status", "Total"]],
+      body: typedSales.map(s => [s.invoice_number, s.branch_name || "Unassigned", s.customer ? `${s.customer.first_name} ${s.customer.last_name}` : "Guest", format(new Date(s.date || ""), "PPP"), s.status, formatCurrency(s.total)])
     });
     doc.save(`sales_report_${Date.now()}.pdf`);
   };
@@ -400,6 +400,7 @@ export default function SalesHistory() {
               <TableHeader>
                 <TableRow className="hover:bg-transparent border-slate-100">
                   <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">Invoice</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">Branch</TableHead>
                   <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">Customer</TableHead>
                   <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">Date</TableHead>
                   <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">Method</TableHead>
@@ -411,12 +412,17 @@ export default function SalesHistory() {
               <TableBody>
                 {typedSales.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-32 text-center text-slate-400 font-bold text-sm uppercase tracking-widest">No records found</TableCell>
+                    <TableCell colSpan={8} className="h-32 text-center text-slate-400 font-bold text-sm uppercase tracking-widest">No records found</TableCell>
                   </TableRow>
                 ) : (
                   typedSales.map((sale) => (
                     <TableRow key={sale.id} className="group border-slate-50 hover:bg-slate-50/50 transition-colors">
                       <TableCell><span className="text-xs font-black text-brand-primary">#{sale.invoice_number}</span></TableCell>
+                      <TableCell>
+                        <span className="inline-flex max-w-[140px] truncate rounded-lg bg-brand-primary/5 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-brand-primary">
+                          {sale.branch_name || "Unassigned"}
+                        </span>
+                      </TableCell>
                       <TableCell>
                         <div className="flex flex-col">
                           <span className="text-xs font-bold text-slate-700">{sale.customer ? `${sale.customer.first_name} ${sale.customer.last_name}` : "Guest"}</span>
@@ -547,6 +553,10 @@ export default function SalesHistory() {
                   <div className="space-y-2">
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Customer</span>
                     <div className="flex flex-col"><span className="text-sm font-bold text-slate-700">{selectedOrder.customer ? `${selectedOrder.customer.first_name} ${selectedOrder.customer.last_name}` : "Guest"}</span></div>
+                  </div>
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Branch</span>
+                    <div className="flex flex-col"><span className="text-sm font-bold text-slate-700">{selectedOrder.branch_name || "Unassigned"}</span></div>
                   </div>
                   <div className="space-y-2">
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Payment</span>

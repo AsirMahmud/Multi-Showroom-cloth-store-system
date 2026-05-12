@@ -34,7 +34,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-=i3-$(--y)2nbeogrplsh-c1z%
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["rawstitch.info","localhost",'127.0.0.1']
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # Application definition
@@ -110,11 +110,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# Add CSRF exemption for API views
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "https://rawstitch.info"
 ]
 
 # Exempt API views from CSRF
@@ -198,7 +196,7 @@ MEDIA_URL = '/media/'
 # Production vs Development media root
 if os.getenv('DEBUG', 'True') == 'False':
     # Production settings
-    MEDIA_ROOT = '/home/rawstitc/public_html/media'
+    MEDIA_ROOT = os.getenv('PROD_MEDIA_ROOT', os.path.join(BASE_DIR, 'media'))
 else:
     # Development settings
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -224,17 +222,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'authentication.CustomUser'
 
 # CORS settings
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://localhost:3002",
-    "http://127.0.0.1:3000",
-    "https://rawstitch.info",
-    "https://rawstitch.vercel.app",
-    "https://retail-management-sytstem-omega.vercel.app",
-    "https://www.rawstitch.com.bd"
-
-]
+CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000').split(',')
 
 CORS_ALLOW_CREDENTIALS = True
 

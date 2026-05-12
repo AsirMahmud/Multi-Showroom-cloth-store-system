@@ -92,10 +92,6 @@ export default function CartAndCheckout() {
     setSplitPayments([...splitPayments, { method: "cash" as PaymentMethod, amount: "" }]);
   };
 
-  const removeProductGroup = (items: CartRow[]) => {
-    items.forEach((item) => handleRemoveItem(item.id));
-  };
-
   const closeDialog = (dialogElement: HTMLElement) => {
     const closeButton = dialogElement.querySelector(
       'button[data-state="closed"]'
@@ -103,8 +99,12 @@ export default function CartAndCheckout() {
     closeButton?.click();
   };
 
+  const removeProductGroup = (items: CartRow[]) => {
+    items.forEach((item) => handleRemoveItem(item.id));
+  };
+
   return (
-    <div className="flex h-full w-[680px] flex-col overflow-hidden border-l bg-white">
+    <div className="flex h-full w-full flex-col overflow-hidden border-l bg-white shadow-premium transition-all duration-300">
       <div className="flex h-full flex-col overflow-hidden p-4">
         <div className="flex items-center justify-between border-b px-2 pb-3">
           <h2 className="flex items-center text-sm font-semibold text-slate-900">

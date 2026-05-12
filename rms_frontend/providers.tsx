@@ -1,6 +1,8 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ThemeProvider } from "next-themes";
+import { ColorProvider } from "@/contexts/color-context";
 import { useState } from "react";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -17,6 +19,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <ColorProvider>
+          {children}
+        </ColorProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }

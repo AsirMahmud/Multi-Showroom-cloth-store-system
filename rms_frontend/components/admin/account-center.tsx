@@ -116,13 +116,16 @@ export function AccountCenter() {
 
   const deactivateMutation = useMutation({
     mutationFn: (id: number) => accountsApi.deactivate(id),
-    onSuccess: () => {
-      toast({ title: "Account deactivated" });
+    onSuccess: (result) => {
+      toast({ 
+        title: "Account Deactivated",
+        description: `Personnel identity for ${result.username} has been revoked.`
+      });
       qc.invalidateQueries({ queryKey: ["admin-accounts"] });
     },
-    onError: (e: Error & { response?: { data?: { detail?: string } } }) => {
+    onError: (e: any) => {
       toast({
-        title: "Could not deactivate",
+        title: "Deactivation Failed",
         description: e.response?.data?.detail ?? e.message,
         variant: "destructive",
       });
@@ -131,10 +134,20 @@ export function AccountCenter() {
 
   const activateMutation = useMutation({
     mutationFn: (id: number) => accountsApi.activate(id),
-    onSuccess: () => {
-      toast({ title: "Account reactivated" });
+    onSuccess: (result) => {
+      toast({ 
+        title: "Account Reactivated",
+        description: `Personnel identity for ${result.username} has been restored to active status.`
+      });
       qc.invalidateQueries({ queryKey: ["admin-accounts"] });
     },
+    onError: (e: any) => {
+      toast({
+        title: "Reactivation Failed",
+        description: e.response?.data?.detail ?? e.message,
+        variant: "destructive",
+      });
+    }
   });
 
   const counts = useMemo(() => {
@@ -452,15 +465,30 @@ function EditAccountDialog({
         managed_branch:
           role === "branch_manager" && managedBranch ? Number(managedBranch) : null,
       }),
-    onSuccess: () => {
-      toast({ title: "Account updated" });
+    onSuccess: (result) => {
+      toast({ 
+        title: "Identity Synchronized",
+        description: `Operational profile for ${result.username} has been successfully updated.`
+      });
       onSaved();
     },
-    onError: (e: Error & { response?: { data?: Record<string, string[]> } }) => {
+    onError: (e: any) => {
+      const errorData = e.response?.data;
+      let errorMessage = "Synchronization fault: Unable to update identity.";
+      
+      if (errorData) {
+        if (typeof errorData === 'object') {
+          errorMessage = Object.entries(errorData)
+            .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(", ") : value}`)
+            .join(" | ");
+        } else if (typeof errorData === 'string') {
+          errorMessage = errorData;
+        }
+      }
+
       toast({
-        title: "Update failed",
-        description:
-          Object.values(e.response?.data ?? {}).flat().join(" ") || e.message,
+        title: "Update Error",
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -569,18 +597,21 @@ function ResetPasswordDialog({
   const reset = useMutation({
     mutationFn: () => accountsApi.resetPassword(account!.id, pw),
     onSuccess: () => {
-      toast({ title: "Password updated" });
+      toast({ 
+        title: "Credential Reset Successful",
+        description: "The security hash has been updated and propagated."
+      });
       setPw("");
       setPw2("");
       onClose();
     },
-    onError: (e: Error & { response?: { data?: Record<string, string[]> } }) =>
+    onError: (e: any) => {
       toast({
-        title: "Reset failed",
-        description:
-          Object.values(e.response?.data ?? {}).flat().join(" ") || e.message,
+        title: "Reset Failed",
+        description: e.response?.data?.detail ?? e.message,
         variant: "destructive",
-      }),
+      });
+    },
   });
 
   const valid = pw.length >= 6 && pw === pw2;

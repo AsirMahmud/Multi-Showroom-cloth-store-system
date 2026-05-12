@@ -67,13 +67,13 @@ export function BranchSelectorModal() {
         <DialogPrimitive.Content
           aria-describedby={undefined}
           onEscapeKeyDown={(e) => {
-            if (!selectionMade) e.preventDefault();
+            if (!selectionMade && !isAdmin) e.preventDefault();
           }}
           onPointerDownOutside={(e) => {
-            if (!selectionMade) e.preventDefault();
+            if (!selectionMade && !isAdmin) e.preventDefault();
           }}
           onInteractOutside={(e) => {
-            if (!selectionMade) e.preventDefault();
+            if (!selectionMade && !isAdmin) e.preventDefault();
           }}
           className={cn(
             "fixed left-1/2 top-1/2 z-50 flex flex-col w-[95vw] max-w-6xl -translate-x-1/2 -translate-y-1/2",
@@ -109,7 +109,7 @@ export function BranchSelectorModal() {
                 </p>
               </div>
               
-              {selectionMade && (
+              {(selectionMade || isAdmin) && (
                 <DialogPrimitive.Close
                   className="rounded-xl p-2 text-slate-300 hover:bg-slate-50 hover:text-brand-primary transition-all border border-slate-100"
                   aria-label="Close"

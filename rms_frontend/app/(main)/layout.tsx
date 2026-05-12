@@ -14,7 +14,7 @@ import { BismillahLogo } from "@/components/bismillah-logo";
 import { BranchSelectorModal } from "@/components/branch/branch-selector-modal";
 import { ViewingBranchRibbon } from "@/components/branch/viewing-branch-ribbon";
 
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarInset, useSidebar } from "@/components/ui/sidebar";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -30,19 +30,7 @@ export default function MainLayout({
           <ThemeProvider attribute="class" defaultTheme="light">
             <BismillahProvider>
               <SidebarProvider>
-                <div className="flex min-h-screen w-full selection:bg-brand-secondary selection:text-brand-primary">
-                  <SideNav />
-                  <SidebarInset className="flex flex-col min-w-0 flex-1">
-                    <UpperNav />
-                    <div className="flex-1 flex flex-col relative">
-                      <ViewingBranchRibbon />
-                      <BismillahLogo />
-                      <main className="flex-1 p-4 md:p-8 transition-all duration-500 ease-in-out">
-                        {children}
-                      </main>
-                    </div>
-                  </SidebarInset>
-                </div>
+                <MainShell>{children}</MainShell>
               </SidebarProvider>
               <Toaster />
               <BranchSelectorModal />
@@ -51,5 +39,26 @@ export default function MainLayout({
         </TaskProvider>
       </BranchProvider>
     </AuthProvider>
+  );
+}
+
+function MainShell({ children }: { children: React.ReactNode }) {
+  const { state } = useSidebar();
+  const sidebarOffset = state === "collapsed" ? "md:ml-[72px]" : "md:ml-[280px]";
+
+  return (
+    <div className="flex min-h-screen w-full selection:bg-brand-secondary selection:text-brand-primary">
+      <SideNav />
+      <SidebarInset className={`flex flex-col min-w-0 flex-1 transition-[margin] duration-300 ease-in-out ${sidebarOffset}`}>
+        <UpperNav />
+        <div className="flex-1 flex flex-col relative">
+          <ViewingBranchRibbon />
+          <BismillahLogo />
+          <main className="flex-1 p-4 md:p-8 transition-all duration-500 ease-in-out">
+            {children}
+          </main>
+        </div>
+      </SidebarInset>
+    </div>
   );
 }

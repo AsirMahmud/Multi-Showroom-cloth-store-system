@@ -19,10 +19,10 @@ def send_admin_order_notification(order_id):
         try:
             home_settings = HomePageSettings.load()
             admin_email = home_settings.footer_email or settings.DEFAULT_FROM_EMAIL
-            support_email = home_settings.footer_email or "support@rawstitch.info"
+            support_email = home_settings.footer_email or settings.DEFAULT_FROM_EMAIL
         except Exception:
             admin_email = settings.DEFAULT_FROM_EMAIL
-            support_email = "support@rawstitch.info"
+            support_email = settings.DEFAULT_FROM_EMAIL
 
         # Prepare context for templates
         context = {
@@ -37,7 +37,7 @@ def send_admin_order_notification(order_id):
             'shipping_address': order.shipping_address or {},
             'support_email': support_email,
             'item_count': len(order.items),
-            'admin_url': f"https://rawstitch.info/admin/online-orders/{order.id}"
+            'admin_url': f"#/admin/online-orders/{order.id}"
         }
 
         # Send Email to Admin
@@ -76,9 +76,11 @@ def send_customer_order_confirmation(order_id):
         # Get settings for contact info
         try:
             home_settings = HomePageSettings.load()
-            support_email = home_settings.footer_email or "support@rawstitch.info"
+            support_email = home_settings.footer_email or settings.DEFAULT_FROM_EMAIL
+            shop_name = home_settings.logo_text or "Our Shop"
         except Exception:
-            support_email = "support@rawstitch.info"
+            support_email = settings.DEFAULT_FROM_EMAIL
+            shop_name = "Our Shop"
 
         # Prepare context for templates
         context = {
@@ -100,7 +102,7 @@ def send_customer_order_confirmation(order_id):
             text_content = strip_tags(html_content)
             
             msg = EmailMultiAlternatives(
-                subject=f"Order Confirmation # {order.id} - Raw Stitch",
+                subject=f"Order Confirmation # {order.id} - {shop_name}",
                 body=text_content,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 to=[order.customer_email]
@@ -130,9 +132,11 @@ def send_customer_order_received(order_id):
         # Get settings for contact info
         try:
             home_settings = HomePageSettings.load()
-            support_email = home_settings.footer_email or "support@rawstitch.info"
+            support_email = home_settings.footer_email or settings.DEFAULT_FROM_EMAIL
+            shop_name = home_settings.logo_text or "Our Shop"
         except Exception:
-            support_email = "support@rawstitch.info"
+            support_email = settings.DEFAULT_FROM_EMAIL
+            shop_name = "Our Shop"
 
         # Prepare context for templates
         context = {
@@ -154,7 +158,7 @@ def send_customer_order_received(order_id):
             text_content = strip_tags(html_content)
             
             msg = EmailMultiAlternatives(
-                subject=f"Order Received # {order.id} - Raw Stitch",
+                subject=f"Order Received # {order.id} - {shop_name}",
                 body=text_content,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 to=[order.customer_email]
@@ -185,9 +189,11 @@ def send_delivery_notification(order_id):
         # Get settings for contact info
         try:
             home_settings = HomePageSettings.load()
-            support_email = home_settings.footer_email or "support@rawstitch.info"
+            support_email = home_settings.footer_email or settings.DEFAULT_FROM_EMAIL
+            shop_name = home_settings.logo_text or "Our Shop"
         except Exception:
-            support_email = "support@rawstitch.info"
+            support_email = settings.DEFAULT_FROM_EMAIL
+            shop_name = "Our Shop"
 
         # Prepare context for template
         context = {
@@ -203,7 +209,7 @@ def send_delivery_notification(order_id):
             text_content = strip_tags(html_content)
             
             msg = EmailMultiAlternatives(
-                subject=f"Your order # {order.id} has been delivered! - Raw Stitch",
+                subject=f"Your order # {order.id} has been delivered! - {shop_name}",
                 body=text_content,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 to=[order.customer_email]

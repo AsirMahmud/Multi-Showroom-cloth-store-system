@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next'
 import { ecommerceApi } from '@/lib/api'
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://rawstitch.com.bd'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://example.com'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const routes: MetadataRoute.Sitemap = [

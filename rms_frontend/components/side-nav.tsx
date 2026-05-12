@@ -33,6 +33,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useSidebar } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/auth-context";
 import { homePageSettingsApi, HomePageSettings } from "@/lib/api/ecommerce";
 import { useEffect } from "react";
@@ -163,7 +164,7 @@ const mainNavItems: NavItem[] = [
       { title: "Product Status", icon: Globe, href: "/ecommerce-settings/product-status", anyPermission: ["manage_product_status"] },
       { title: "Delivery Charges", icon: Globe, href: "/ecommerce-settings/delivery-charges", anyPermission: ["manage_settings"] },
       { title: "Promotional Modals", icon: Globe, href: "/ecommerce-settings/promotional-modals", anyPermission: ["manage_promotional_modals"] },
-      { title: "Open Ecommerce Site", icon: Globe, href: "https:/rawstitch.com.bd" },
+      { title: "Open Ecommerce Site", icon: Globe, href: "#" },
     ],
   },
 ];
@@ -190,6 +191,8 @@ export function SideNav() {
   const { logout, user } = useAuth();
   const { selectedBranchId, availableBranches, openBranchSelector } = useBranch();
   const [branding, setBranding] = useState<HomePageSettings | null>(null);
+  const { state } = useSidebar();
+  const isCollapsed = state === "collapsed";
 
   const currentBranch = availableBranches.find(b => b.id === selectedBranchId);
 
@@ -472,9 +475,14 @@ export function SideNav() {
         </SheetContent>
       </Sheet>
 
-      <div className="hidden md:flex flex-col w-[280px] h-screen fixed border-r border-brand-primary/5 bg-white/60 backdrop-blur-xl text-slate-600 shadow-xl">
-        <div className="p-8">
-          <Link href="/" className="flex items-center gap-4 group">
+      <div
+        className={cn(
+          "z-30 hidden md:flex flex-col h-screen fixed left-0 top-0 border-r border-brand-primary/5 bg-white/80 backdrop-blur-xl text-slate-600 shadow-xl transition-[width] duration-300 ease-in-out",
+          isCollapsed ? "w-[72px]" : "w-[280px]"
+        )}
+      >
+        <div className={cn("p-8 transition-all duration-300", isCollapsed && "px-3 py-5")}>
+          <Link href="/" className={cn("flex items-center gap-4 group", isCollapsed && "justify-end")}>
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-primary text-brand-secondary shadow-lg shadow-brand-primary/20 transition-all duration-500 group-hover:rotate-12 group-hover:scale-110 flex-shrink-0">
               {branding?.logo_image_url ? (
                 <img src={branding.logo_image_url} alt="Logo" className="h-7 w-7 object-contain" />
@@ -482,7 +490,7 @@ export function SideNav() {
                 <Store className="h-7 w-7" />
               )}
             </div>
-            <div className="flex flex-col min-w-0">
+            <div className={cn("flex flex-col min-w-0", isCollapsed && "hidden")}>
               <span className="text-xl font-black tracking-tight text-brand-primary group-hover:text-emerald-700 transition-colors uppercase truncate">
                 {branding?.logo_text || "RMS Admin"}
               </span>
@@ -493,7 +501,7 @@ export function SideNav() {
           </Link>
         </div>
 
-        <ScrollArea className="flex-1 px-4">
+        <ScrollArea className={cn("flex-1 transition-all duration-300", isCollapsed ? "px-2" : "px-4")}>
           <nav className="grid gap-1.5 mb-6">
             {visibleMainNavItems.map((item) =>
               item.subItems ? (
@@ -506,42 +514,47 @@ export function SideNav() {
                     <button
                       className={cn(
                         "flex w-full items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm font-bold transition-all duration-300",
+                        isCollapsed && "h-12 justify-end px-2.5",
                         isActive(item.href)
                           ? "bg-brand-secondary/80 text-brand-primary shadow-md shadow-brand-primary/5"
                           : "text-slate-500 hover:bg-slate-50 hover:text-brand-primary"
                       )}
+                      title={isCollapsed ? item.title : undefined}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className={cn("flex items-center gap-3", isCollapsed && "justify-end")}>
                         <item.icon
                           className={cn(
                             "h-5 w-5 transition-colors",
+                            isCollapsed && "h-7 w-7",
                             isActive(item.href) ? "text-brand-primary" : "text-slate-400"
                           )}
                         />
-                        {item.title}
+                        {!isCollapsed && item.title}
                       </div>
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className={cn(
-                          "transition-transform duration-300",
-                          openCollapsibles[item.title] || isActive(item.href)
-                            ? "rotate-180"
-                            : ""
-                        )}
-                      >
-                        <polyline points="6 9 12 15 18 9" />
-                      </svg>
+                      {!isCollapsed && (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className={cn(
+                            "transition-transform duration-300",
+                            openCollapsibles[item.title] || isActive(item.href)
+                              ? "rotate-180"
+                              : ""
+                          )}
+                        >
+                          <polyline points="6 9 12 15 18 9" />
+                        </svg>
+                      )}
                     </button>
                   </CollapsibleTrigger>
-                  <CollapsibleContent>
+                  {!isCollapsed && <CollapsibleContent>
                     <div className="ml-9 mt-1 space-y-1 border-l-2 border-brand-primary/5 pl-4">
                       {item.subItems.map((subItem) => {
                         const isExternal = subItem.href.startsWith("http")
@@ -572,7 +585,7 @@ export function SideNav() {
                         )
                       })}
                     </div>
-                  </CollapsibleContent>
+                  </CollapsibleContent>}
                 </Collapsible>
               ) : (
                 <Link
@@ -580,23 +593,26 @@ export function SideNav() {
                   href={item.href}
                   className={cn(
                     "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold transition-all duration-300",
+                    isCollapsed && "h-12 justify-end px-2.5",
                     isActive(item.href)
                       ? "bg-brand-secondary/80 text-brand-primary shadow-md shadow-brand-primary/5"
                       : "text-slate-500 hover:bg-slate-50 hover:text-brand-primary"
                   )}
+                  title={isCollapsed ? item.title : undefined}
                 >
                   <item.icon
                     className={cn(
                       "h-5 w-5 transition-colors",
+                      isCollapsed && "h-7 w-7",
                       isActive(item.href) ? "text-brand-primary" : "text-slate-400"
                     )}
                   />
-                  {item.title}
+                  {!isCollapsed && item.title}
                 </Link>
               )
             )}
           </nav>
-          <Separator className="my-6 mx-4 bg-slate-100" />
+          <Separator className={cn("my-6 bg-slate-100", isCollapsed ? "mx-2" : "mx-4")} />
           <nav className="grid gap-1.5 px-0">
             {utilityNavItems.map((item) => (
               <Link
@@ -604,29 +620,32 @@ export function SideNav() {
                 href={item.href}
                 className={cn(
                   "flex items-center gap-3 rounded-2xl px-4 py-2.5 text-sm font-bold transition-all duration-300",
+                  isCollapsed && "h-12 justify-end px-2.5",
                   isActive(item.href)
                     ? "bg-brand-secondary/50 text-brand-primary shadow-sm"
                     : "text-slate-500 hover:bg-slate-50 hover:text-brand-primary"
                 )}
+                title={isCollapsed ? item.title : undefined}
               >
                 <item.icon
                   className={cn(
                     "h-5 w-5 transition-colors",
+                    isCollapsed && "h-7 w-7",
                     isActive(item.href) ? "text-brand-primary" : "text-slate-400"
                   )}
                 />
-                {item.title}
+                {!isCollapsed && item.title}
               </Link>
             ))}
           </nav>
         </ScrollArea>
 
-        <div className="p-6 bg-slate-50/50 backdrop-blur-md border-t border-slate-100 mx-4 mb-6 rounded-3xl shadow-premium">
-          <div className="flex items-center gap-4 px-2 mb-5">
+        <div className={cn("bg-slate-50/50 backdrop-blur-md border-t border-slate-100 rounded-3xl shadow-premium transition-all duration-300", isCollapsed ? "mx-2 mb-4 p-2" : "mx-4 mb-6 p-6")}>
+          <div className={cn("flex items-center gap-4 px-2", isCollapsed ? "justify-end mb-0 px-1" : "mb-5")}>
             <div className="h-12 w-12 rounded-2xl bg-brand-primary text-brand-secondary flex items-center justify-center font-black shadow-lg">
               {user?.username?.slice(0, 2).toUpperCase() || "U"}
             </div>
-            <div className="flex flex-col min-w-0">
+            <div className={cn("flex flex-col min-w-0", isCollapsed && "hidden")}>
               <span className="text-sm font-bold text-slate-900 truncate leading-none mb-1">
                 {user?.username || "User"}
               </span>
@@ -635,14 +654,16 @@ export function SideNav() {
               </span>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            onClick={handleLogout}
-            className="w-full h-12 text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-all rounded-2xl flex items-center justify-center gap-3 border border-slate-100 font-bold"
-          >
-            <LogOut className="h-5 w-5" />
-            Sign Out
-          </Button>
+          {!isCollapsed && (
+            <Button
+              variant="ghost"
+              onClick={handleLogout}
+              className="w-full h-12 text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-all rounded-2xl flex items-center justify-center gap-3 border border-slate-100 font-bold"
+            >
+              <LogOut className="h-5 w-5" />
+              Sign Out
+            </Button>
+          )}
         </div>
       </div>
     </>

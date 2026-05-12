@@ -116,6 +116,23 @@ export interface SalesHistory {
     payment_method: string;
 }
 
+export interface WholesalePricingSettings {
+    global_wholesale_cutoff: number;
+    updated_at?: string;
+}
+
+export const wholesaleSettingsApi = {
+    get: async (): Promise<WholesalePricingSettings> => {
+        const { data } = await axiosInstance.get('/inventory/wholesale-settings/');
+        return data;
+    },
+
+    update: async (payload: Pick<WholesalePricingSettings, 'global_wholesale_cutoff'>): Promise<WholesalePricingSettings> => {
+        const { data } = await axiosInstance.post('/inventory/wholesale-settings/', payload);
+        return data;
+    },
+};
+
 // Categories API
 export const categoriesApi = {
     getAll: async (): Promise<Category[]> => {

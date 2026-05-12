@@ -144,6 +144,7 @@ class SaleSerializer(serializers.ModelSerializer):
     due_payments = DuePaymentSerializer(many=True, read_only=True)
     returns = ReturnSerializer(many=True, read_only=True)
     customer = CustomerSerializer(read_only=True)
+    branch_name = serializers.CharField(source='branch.name', read_only=True, default=None)
     customer_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
     customer_phone = serializers.CharField(write_only=True, required=False, allow_blank=True)
     customer_name = serializers.CharField(write_only=True, required=False, allow_blank=True)
@@ -197,13 +198,13 @@ class SaleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Sale
         fields = [
-            'id', 'invoice_number', 'customer', 'customer_id', 'customer_phone', 'customer_name',
+            'id', 'invoice_number', 'branch', 'branch_name', 'customer', 'customer_id', 'customer_phone', 'customer_name',
             'date', 'sale_type', 'subtotal', 'tax', 'discount', 'total', 'total_profit', 'total_loss',
             'payment_method', 'status', 'amount_paid', 'amount_due', 'gift_amount',
             'is_fully_paid', 'payment_status', 'notes', 'items', 'payments', 'sale_payments',
             'due_payments', 'returns', 'payment_data'
         ]
-        read_only_fields = ['invoice_number', 'total', 'total_profit', 'total_loss', 
+        read_only_fields = ['invoice_number', 'branch', 'branch_name', 'total', 'total_profit', 'total_loss',
                            'amount_paid', 'amount_due', 'gift_amount', 'is_fully_paid', 'payment_status']
 
     def validate(self, data):

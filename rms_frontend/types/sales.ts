@@ -56,6 +56,8 @@ export interface DuePayment {
 export interface Sale {
     id?: number;
     invoice_number?: string;
+    branch?: number | null;
+    branch_name?: string | null;
     customer?: (
         | number
         | null

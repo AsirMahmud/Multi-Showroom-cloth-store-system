@@ -245,7 +245,7 @@ export default function ProductsPage() {
 
     onlineProducts.forEach((product: Product) => {
       // Base URL for links
-      const ecomBaseUrl = "https://www.rawstitch.com.bd";
+      const ecomBaseUrl = ""; // Dynamic base URL should be used here
 
       // If the product has galleries (color variants), create a row for each
       if (product.galleries && product.galleries.length > 0) {
