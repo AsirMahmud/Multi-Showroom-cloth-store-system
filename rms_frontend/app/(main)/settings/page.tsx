@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,8 +21,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useFlushDatabase } from "@/hooks/queries/use-settings";
 import { useBismillah } from "@/contexts/bismillah-context";
+import { useBranch } from "@/contexts/branch-context";
 import { AppearanceSettings } from "@/components/settings/appearance-settings";
 import { wholesaleSettingsApi } from "@/lib/api/inventory";
+import { branchesApi } from "@/lib/api/branches";
+import { resolveReceiptSettings } from "@/lib/receipt-settings";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2, Save, Tags, Trash2, Settings, ShieldAlert } from "lucide-react";
 import { motion } from "framer-motion";
@@ -109,6 +113,7 @@ export default function SettingsPage() {
           </DataPanel>
 
           <WholesalePricingSettingsPanel />
+          <ReceiptSettingsPanel />
         </motion.div>
 
         <motion.div variants={item} className="space-y-8">
@@ -313,6 +318,214 @@ function WholesalePricingSettingsPanel() {
         <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
           Priority: product cutoff, then category cutoff, then this global cutoff.
         </p>
+      </div>
+    </DataPanel>
+  );
+}
+
+function ReceiptSettingsPanel() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const { selectedBranchId, availableBranches } = useBranch();
+  const [form, setForm] = useState({
+    receipt_header_title: "",
+    receipt_header_subtitle: "",
+    receipt_address: "",
+    receipt_phone: "",
+    receipt_footer_message: "",
+    receipt_return_policy: "",
+  });
+
+  const selectedBranch = availableBranches.find((branch) => branch.id === selectedBranchId) ?? null;
+  const { data: branchSettings, isLoading } = useQuery({
+    queryKey: ["branch-receipt-settings", selectedBranchId],
+    queryFn: () => branchesApi.getBranch(selectedBranchId as number),
+    enabled: selectedBranchId !== null,
+  });
+
+  useEffect(() => {
+    if (!branchSettings) return;
+    setForm({
+      receipt_header_title: branchSettings.receipt_header_title || "",
+      receipt_header_subtitle: branchSettings.receipt_header_subtitle || "",
+      receipt_address: branchSettings.receipt_address || "",
+      receipt_phone: branchSettings.receipt_phone || "",
+      receipt_footer_message: branchSettings.receipt_footer_message || "",
+      receipt_return_policy: branchSettings.receipt_return_policy || "",
+    });
+  }, [branchSettings]);
+
+  const saveSettings = useMutation({
+    mutationFn: () =>
+      branchesApi.updateBranch(selectedBranchId as number, {
+        receipt_header_title: form.receipt_header_title.trim(),
+        receipt_header_subtitle: form.receipt_header_subtitle.trim(),
+        receipt_address: form.receipt_address.trim(),
+        receipt_phone: form.receipt_phone.trim(),
+        receipt_footer_message: form.receipt_footer_message.trim(),
+        receipt_return_policy: form.receipt_return_policy.trim(),
+      }),
+    onSuccess: (updatedBranch) => {
+      qc.invalidateQueries({ queryKey: ["branch-receipt-settings", selectedBranchId] });
+      qc.invalidateQueries({ queryKey: ["branches"] });
+      toast({
+        title: "Receipt settings saved",
+        description: `${updatedBranch.name} receipt branding has been updated.`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Unable to save receipt settings",
+        description: "Please try again or check your branch access.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  if (selectedBranchId === null) {
+    return (
+      <DataPanel
+        title="Receipt Settings"
+        description="Receipt branding is managed per branch."
+      >
+        <div className="rounded-2xl border border-dashed border-brand-primary/10 bg-slate-50 p-5 text-sm text-slate-500">
+          Select a branch first to edit its receipt header, footer, and thermal print layout text.
+        </div>
+      </DataPanel>
+    );
+  }
+
+  const previewSettings = resolveReceiptSettings({
+    ...(branchSettings ?? selectedBranch ?? {
+      id: selectedBranchId,
+      name: selectedBranch?.name || `Branch #${selectedBranchId}`,
+      address: selectedBranch?.address || "",
+      phone: "",
+      is_active: true,
+    }),
+    ...form,
+  });
+
+  const updateField = (field: keyof typeof form, value: string) => {
+    setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  return (
+    <DataPanel
+      title="Receipt Settings"
+      description={`Control the printed header and footer for ${selectedBranch?.name || `Branch #${selectedBranchId}`}.`}
+    >
+      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-brand-primary">Header Title</Label>
+              <Input
+                value={form.receipt_header_title}
+                onChange={(e) => updateField("receipt_header_title", e.target.value)}
+                placeholder={branchSettings?.name || "Branch name"}
+                disabled={isLoading || saveSettings.isPending}
+                className="h-12 rounded-xl border-none bg-slate-50 font-bold text-brand-primary"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-brand-primary">Header Subtitle</Label>
+              <Input
+                value={form.receipt_header_subtitle}
+                onChange={(e) => updateField("receipt_header_subtitle", e.target.value)}
+                placeholder="Location or short branch descriptor"
+                disabled={isLoading || saveSettings.isPending}
+                className="h-12 rounded-xl border-none bg-slate-50 font-bold text-brand-primary"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-[10px] font-black uppercase tracking-widest text-brand-primary">Receipt Address</Label>
+            <Textarea
+              value={form.receipt_address}
+              onChange={(e) => updateField("receipt_address", e.target.value)}
+              placeholder={branchSettings?.address || "Branch address"}
+              disabled={isLoading || saveSettings.isPending}
+              className="min-h-[100px] rounded-xl border-none bg-slate-50 font-medium"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-[10px] font-black uppercase tracking-widest text-brand-primary">Receipt Phone</Label>
+            <Input
+              value={form.receipt_phone}
+              onChange={(e) => updateField("receipt_phone", e.target.value)}
+              placeholder={branchSettings?.phone || "+880..."}
+              disabled={isLoading || saveSettings.isPending}
+              className="h-12 rounded-xl border-none bg-slate-50 font-bold text-brand-primary"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-[10px] font-black uppercase tracking-widest text-brand-primary">Footer Message</Label>
+            <Input
+              value={form.receipt_footer_message}
+              onChange={(e) => updateField("receipt_footer_message", e.target.value)}
+              placeholder="Thanks for your purchase"
+              disabled={isLoading || saveSettings.isPending}
+              className="h-12 rounded-xl border-none bg-slate-50 font-bold text-brand-primary"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-[10px] font-black uppercase tracking-widest text-brand-primary">Return Policy</Label>
+            <Textarea
+              value={form.receipt_return_policy}
+              onChange={(e) => updateField("receipt_return_policy", e.target.value)}
+              placeholder="Return policy shown at the bottom of the receipt"
+              disabled={isLoading || saveSettings.isPending}
+              className="min-h-[110px] rounded-xl border-none bg-slate-50 font-medium"
+            />
+          </div>
+
+          <div className="flex justify-end">
+            <Button
+              onClick={() => saveSettings.mutate()}
+              disabled={isLoading || saveSettings.isPending}
+              className="h-12 rounded-xl bg-brand-primary px-6 font-black text-brand-secondary hover:bg-emerald-900"
+            >
+              {saveSettings.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}
+              Save Receipt Settings
+            </Button>
+          </div>
+        </div>
+
+        <div className="rounded-[28px] border border-brand-primary/10 bg-slate-950 p-4 text-white shadow-xl">
+          <div className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">
+            Thermal Preview
+          </div>
+          <div className="mx-auto w-full max-w-[240px] rounded-[24px] bg-white p-4 text-slate-900 shadow-lg">
+            <div className="mb-3 h-1 rounded-full bg-gradient-to-r from-slate-900 to-emerald-500" />
+            <div className="text-center">
+              <div className="text-sm font-black uppercase tracking-[0.18em]">
+                {previewSettings.headerTitle}
+              </div>
+              {previewSettings.headerSubtitle ? (
+                <div className="mt-1 text-[10px] text-slate-500">{previewSettings.headerSubtitle}</div>
+              ) : null}
+              {previewSettings.address ? (
+                <div className="mt-1 whitespace-pre-line text-[10px] text-slate-500">{previewSettings.address}</div>
+              ) : null}
+              {previewSettings.phone ? (
+                <div className="mt-1 text-[10px] text-slate-500">Phone: {previewSettings.phone}</div>
+              ) : null}
+            </div>
+            <div className="my-3 border-t border-dashed border-slate-200" />
+            <div className="text-[10px] text-slate-500">Receipt footer preview</div>
+            <div className="mt-2 text-center text-[10px] text-slate-600">{previewSettings.footerMessage}</div>
+            <div className="mt-2 whitespace-pre-line text-center text-[10px] text-slate-500">{previewSettings.returnPolicy}</div>
+          </div>
+        </div>
       </div>
     </DataPanel>
   );

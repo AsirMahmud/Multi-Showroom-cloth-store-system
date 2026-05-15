@@ -10,7 +10,21 @@ from .models import AttendanceRecord, Branch, Employee, PayrollRecord
 class BranchSerializer(serializers.ModelSerializer):
     class Meta:
         model = Branch
-        fields = ["id", "name", "address", "is_active", "created_at", "updated_at"]
+        fields = [
+            "id",
+            "name",
+            "address",
+            "phone",
+            "receipt_header_title",
+            "receipt_header_subtitle",
+            "receipt_address",
+            "receipt_phone",
+            "receipt_footer_message",
+            "receipt_return_policy",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
 
 
 class EmployeeSerializer(serializers.ModelSerializer):

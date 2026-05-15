@@ -2,6 +2,13 @@ export interface Branch {
   id: number;
   name: string;
   address: string;
+  phone: string;
+  receipt_header_title?: string;
+  receipt_header_subtitle?: string;
+  receipt_address?: string;
+  receipt_phone?: string;
+  receipt_footer_message?: string;
+  receipt_return_policy?: string;
   is_active: boolean;
 }
 

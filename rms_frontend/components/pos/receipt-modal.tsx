@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +14,9 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Printer, Mail, ShoppingCart } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { useBranch } from "@/contexts/branch-context";
+import { branchesApi } from "@/lib/api/branches";
+import { resolveReceiptSettings } from "@/lib/receipt-settings";
 
 interface ReceiptModalProps {
   isOpen: boolean;
@@ -27,6 +31,14 @@ export function ReceiptModal({
   receiptData,
   onNewSale,
 }: ReceiptModalProps) {
+  const { selectedBranchId } = useBranch();
+  const { data: branch } = useQuery({
+    queryKey: ["branch-receipt-settings", selectedBranchId],
+    queryFn: () => branchesApi.getBranch(selectedBranchId as number),
+    enabled: selectedBranchId !== null,
+  });
+  const receiptSettings = resolveReceiptSettings(branch);
+
   const handlePrint = () => {
     // TODO: Implement thermal printer integration
     window.print();
@@ -52,13 +64,22 @@ export function ReceiptModal({
           <div className="bg-gray-50 p-4 rounded-md space-y-4">
             {/* Store Info */}
             <div className="text-center">
-              <h3 className="font-bold text-lg">RETAIL STORE</h3>
-              <p className="text-sm text-muted-foreground">
-                123 Main Street, City
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Tel: (555) 123-4567
-              </p>
+              <h3 className="font-bold text-lg">{receiptSettings.headerTitle}</h3>
+              {receiptSettings.headerSubtitle ? (
+                <p className="text-sm text-muted-foreground whitespace-pre-line">
+                  {receiptSettings.headerSubtitle}
+                </p>
+              ) : null}
+              {receiptSettings.address ? (
+                <p className="text-sm text-muted-foreground whitespace-pre-line">
+                  {receiptSettings.address}
+                </p>
+              ) : null}
+              {receiptSettings.phone ? (
+                <p className="text-sm text-muted-foreground">
+                  Tel: {receiptSettings.phone}
+                </p>
+              ) : null}
               <p className="text-xs mt-2">
                 {new Date(receiptData.date).toLocaleDateString()}{" "}
                 {new Date(receiptData.date).toLocaleTimeString()}
@@ -184,9 +205,9 @@ export function ReceiptModal({
             )}
 
             <div className="text-center text-xs text-muted-foreground mt-4">
-              <p>Thank you for your purchase!</p>
-              <p>
-                Return policy: Items can be returned within 30 days with receipt
+              <p className="whitespace-pre-line">{receiptSettings.footerMessage}</p>
+              <p className="whitespace-pre-line">
+                Return policy: {receiptSettings.returnPolicy}
               </p>
             </div>
           </div>

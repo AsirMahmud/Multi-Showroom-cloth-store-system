@@ -9,6 +9,10 @@ export interface ReceiptPrintData {
   branchAddress?: string;
   branchPhone?: string;
   branchLogoUrl?: string;
+  receiptHeaderTitle?: string;
+  receiptHeaderSubtitle?: string;
+  receiptFooterMessage?: string;
+  receiptReturnPolicy?: string;
 
   // Receipt info
   invoiceNumber: string;
@@ -62,9 +66,13 @@ function bdt(amount: number): string {
 export function printReceipt(data: ReceiptPrintData) {
   const win = window.open("", "_blank", "width=400,height=700");
   if (!win) return;
+  const headerTitle = data.receiptHeaderTitle || data.branchName;
+  const headerSubtitle = data.receiptHeaderSubtitle || "";
+  const footerMessage = data.receiptFooterMessage || "Thank you for your purchase!";
+  const returnPolicy = data.receiptReturnPolicy || "Return within 30 days with receipt.";
 
   const logoHtml = data.branchLogoUrl
-    ? `<img src="${data.branchLogoUrl}" alt="${data.branchName}" style="max-width:120px;max-height:60px;object-fit:contain;margin-bottom:8px;" />`
+    ? `<img src="${data.branchLogoUrl}" alt="${headerTitle}" style="max-width:120px;max-height:60px;object-fit:contain;margin-bottom:8px;" />`
     : "";
 
   const itemRows = data.items
@@ -108,6 +116,7 @@ export function printReceipt(data: ReceiptPrintData) {
         .center { text-align: center; }
         .divider { border-top: 1px dashed #999; margin: 8px 0; }
         table { width: 100%; border-collapse: collapse; }
+        .wrap { white-space: pre-line; word-break: break-word; overflow-wrap: anywhere; }
         @media print {
           body { margin: 0; padding: 10px; }
         }
@@ -116,8 +125,9 @@ export function printReceipt(data: ReceiptPrintData) {
     <body>
       <div class="center">
         ${logoHtml}
-        <h2 style="margin:4px 0;font-size:16px;">${data.branchName}</h2>
-        ${data.branchAddress ? `<p style="margin:2px 0;font-size:11px;color:#555;">${data.branchAddress}</p>` : ""}
+        <h2 style="margin:4px 0;font-size:16px;">${headerTitle}</h2>
+        ${headerSubtitle ? `<p class="wrap" style="margin:2px 0;font-size:11px;color:#555;">${headerSubtitle}</p>` : ""}
+        ${data.branchAddress ? `<p class="wrap" style="margin:2px 0;font-size:11px;color:#555;">${data.branchAddress}</p>` : ""}
         ${data.branchPhone ? `<p style="margin:2px 0;font-size:11px;color:#555;">Tel: ${data.branchPhone}</p>` : ""}
       </div>
 
@@ -168,8 +178,8 @@ export function printReceipt(data: ReceiptPrintData) {
       <div class="divider"></div>
 
       <div class="center" style="margin-top:12px;">
-        <p style="font-size:11px;color:#555;">Thank you for your purchase!</p>
-        <p style="font-size:10px;color:#888;">Return within 30 days with receipt.</p>
+        <p class="wrap" style="font-size:11px;color:#555;">${footerMessage}</p>
+        <p class="wrap" style="font-size:10px;color:#888;">${returnPolicy}</p>
       </div>
     </body>
     </html>

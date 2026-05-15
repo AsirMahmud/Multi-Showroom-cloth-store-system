@@ -23,8 +23,19 @@ export const branchesApi = {
     const { data } = await axiosInstance.get("/branches/branches/");
     return data;
   },
-  createBranch: async (payload: { name: string; address?: string; is_active?: boolean }): Promise<Branch> => {
+  getBranch: async (branchId: number): Promise<Branch> => {
+    const { data } = await axiosInstance.get(`/branches/branches/${branchId}/`);
+    return data;
+  },
+  createBranch: async (payload: { name: string; address?: string; phone?: string; is_active?: boolean }): Promise<Branch> => {
     const { data } = await axiosInstance.post("/branches/branches/", payload);
+    return data;
+  },
+  updateBranch: async (
+    branchId: number,
+    payload: Partial<Branch>
+  ): Promise<Branch> => {
+    const { data } = await axiosInstance.patch(`/branches/branches/${branchId}/`, payload);
     return data;
   },
   getFinancialOverview: async (branchId?: number): Promise<FinancialOverview> => {

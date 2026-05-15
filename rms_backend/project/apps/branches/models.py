@@ -10,6 +10,12 @@ class Branch(models.Model):
     address = models.TextField(blank=True)
     phone = models.CharField(max_length=30, blank=True)
     logo = models.ImageField(upload_to="branch_logos/", null=True, blank=True)
+    receipt_header_title = models.CharField(max_length=200, blank=True)
+    receipt_header_subtitle = models.CharField(max_length=255, blank=True)
+    receipt_address = models.TextField(blank=True)
+    receipt_phone = models.CharField(max_length=30, blank=True)
+    receipt_footer_message = models.CharField(max_length=255, blank=True)
+    receipt_return_policy = models.TextField(blank=True)
     invoice_prefix = models.CharField(
         max_length=10,
         blank=True,

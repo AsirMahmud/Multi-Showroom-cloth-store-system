@@ -299,7 +299,7 @@ export function SideNav() {
                   setOpen(false);
                   openBranchSelector();
                 }}
-                className="w-full text-left bg-slate-50 border border-slate-100 rounded-2xl p-4 hover:bg-slate-100 transition-all group"
+                className="w-full text-left bg-slate-50/50 backdrop-blur-sm border border-brand-primary/5 rounded-[24px] p-5 hover:bg-white hover:shadow-premium transition-all group"
               >
                 <div className="text-[9px] uppercase tracking-widest text-slate-400 font-bold mb-1">
                   Active Workspace
