@@ -77,7 +77,7 @@ export default function LoginPage() {
               />
             ) : (
               <span className="text-4xl font-bold tracking-tighter text-blue-900 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-                {branding.logo_text || "Raw Stitch"}
+                {branding.logo_text || "Ferdous Textile"}
               </span>
             )}
 
@@ -99,7 +99,7 @@ export default function LoginPage() {
                 />
               ) : (
                 <span className="text-xl font-bold tracking-tight text-blue-900 mb-4 block">
-                  {branding.logo_text || "Raw Stitch"}
+                  {branding.logo_text || "Ferdous Textile"}
                 </span>
               )}
             </div>

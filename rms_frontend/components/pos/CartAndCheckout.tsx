@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Percent, ShoppingCart, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,8 @@ export default function CartAndCheckout() {
 
   const cartGroups = useMemo(() => groupCartItems(cart), [cart]);
 
+  const [openDiscountDialogId, setOpenDiscountDialogId] = useState<number | null>(null);
+
   const cartTotals = useMemo(
     () => calculateCartTotals(cart, cartDiscount),
     [cart, cartDiscount]
@@ -78,13 +80,6 @@ export default function CartAndCheckout() {
 
   const addSplitPaymentMethod = () => {
     setSplitPayments([...splitPayments, { method: "cash" as PaymentMethod, amount: "" }]);
-  };
-
-  const closeDialog = (dialogElement: HTMLElement) => {
-    const closeButton = dialogElement.querySelector(
-      'button[data-state="closed"]'
-    ) as HTMLButtonElement | null;
-    closeButton?.click();
   };
 
   const removeProductGroup = (items: CartRow[]) => {
@@ -302,7 +297,10 @@ export default function CartAndCheckout() {
                                         </Button>
                                       </div>
                                     ) : (
-                                      <Dialog>
+                                      <Dialog
+                                        open={openDiscountDialogId === item.id}
+                                        onOpenChange={(open) => setOpenDiscountDialogId(open ? item.id : null)}
+                                      >
                                         <DialogTrigger asChild>
                                           <Button
                                             variant="ghost"
@@ -354,7 +352,7 @@ export default function CartAndCheckout() {
                                                 </div>
                                                 <Button
                                                   className="h-7 w-full text-xs"
-                                                  onClick={(e) => {
+                                                  onClick={() => {
                                                     const input = document.getElementById(
                                                       `percentage-${item.id}`
                                                     ) as HTMLInputElement | null;
@@ -363,10 +361,7 @@ export default function CartAndCheckout() {
                                                       "percentage",
                                                       Number(input?.value || 0)
                                                     );
-                                                    const dialogElement = (e.target as HTMLElement).closest("dialog");
-                                                    if (dialogElement) {
-                                                      closeDialog(dialogElement);
-                                                    }
+                                                    setOpenDiscountDialogId(null);
                                                   }}
                                                 >
                                                   Apply Percentage Discount
@@ -388,7 +383,7 @@ export default function CartAndCheckout() {
                                                 </div>
                                                 <Button
                                                   className="h-7 w-full text-xs"
-                                                  onClick={(e) => {
+                                                  onClick={() => {
                                                     const input = document.getElementById(
                                                       `fixed-${item.id}`
                                                     ) as HTMLInputElement | null;
@@ -397,10 +392,7 @@ export default function CartAndCheckout() {
                                                       "fixed",
                                                       Number(input?.value || 0)
                                                     );
-                                                    const dialogElement = (e.target as HTMLElement).closest("dialog");
-                                                    if (dialogElement) {
-                                                      closeDialog(dialogElement);
-                                                    }
+                                                    setOpenDiscountDialogId(null);
                                                   }}
                                                 >
                                                   Apply Fixed Discount

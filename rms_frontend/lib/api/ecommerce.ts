@@ -73,6 +73,30 @@ export interface HomePageSettings {
   stat_brands: string;
   stat_products: string;
   stat_customers: string;
+  collage_enabled?: boolean;
+  collage_badge_text?: string;
+  collage_heading?: string;
+  collage_description?: string;
+  collage_card_1_title?: string;
+  collage_card_1_subtitle?: string;
+  collage_card_1_link?: string;
+  collage_card_1_image?: File | string;
+  collage_card_1_image_url?: string;
+  collage_card_2_title?: string;
+  collage_card_2_subtitle?: string;
+  collage_card_2_link?: string;
+  collage_card_2_image?: File | string;
+  collage_card_2_image_url?: string;
+  collage_card_3_title?: string;
+  collage_card_3_subtitle?: string;
+  collage_card_3_link?: string;
+  collage_card_3_image?: File | string;
+  collage_card_3_image_url?: string;
+  collage_card_4_title?: string;
+  collage_card_4_subtitle?: string;
+  collage_card_4_link?: string;
+  collage_card_4_image?: File | string;
+  collage_card_4_image_url?: string;
   created_at: string;
   updated_at: string;
 }
@@ -340,6 +364,10 @@ export const heroSlidesApi = {
   },
 
   create: async (slide: CreateHeroSlideDTO): Promise<HeroSlide> => {
+    if (!(slide.image instanceof File)) {
+      throw new Error('Please select a hero image before creating the slide.');
+    }
+
     const formData = new FormData();
     formData.append('title', slide.title);
     if (slide.subtitle) formData.append('subtitle', slide.subtitle);
@@ -353,9 +381,7 @@ export const heroSlidesApi = {
     if (slide.display_order !== undefined) formData.append('display_order', slide.display_order.toString());
     if (slide.is_active !== undefined) formData.append('is_active', slide.is_active.toString());
 
-    const { data } = await axiosInstance.post('/ecommerce/hero-slides/', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const { data } = await axiosInstance.post('/ecommerce/hero-slides/', formData);
     return data;
   },
 
@@ -373,9 +399,7 @@ export const heroSlidesApi = {
     if (slide.display_order !== undefined) formData.append('display_order', slide.display_order.toString());
     if (slide.is_active !== undefined) formData.append('is_active', slide.is_active.toString());
 
-    const { data } = await axiosInstance.patch(`/ecommerce/hero-slides/${id}/`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const { data } = await axiosInstance.patch(`/ecommerce/hero-slides/${id}/`, formData);
     return data;
   },
 

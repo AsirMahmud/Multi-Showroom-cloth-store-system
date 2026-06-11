@@ -20,7 +20,7 @@ export async function generateMetadata(
   } catch (error) {
     // Fallback metadata if product not found
     return {
-      title: "Product Not Found | Raw Stitch",
+      title: "Product Not Found | Ferdous Textile",
       description: "The product you're looking for is not available.",
       robots: {
         index: false,

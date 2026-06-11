@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { SiteHeader } from "@/components/site-header"
 import { PromoBanner } from "@/components/promo-banner"
 import { HeroSection } from "@/components/hero-section"
+import { CategoryCollageSection } from "@/components/category-collage-section"
 import { BrandShowcase } from "@/components/brand-showcase"
 import { ProductSection } from "@/components/product-section"
 import { FeaturesSection } from "@/components/features-section"
@@ -16,17 +17,46 @@ import { useLoading } from "@/hooks/useLoading"
 
 export default function HomePageClient() {
   const [showcaseData, setShowcaseData] = useState<ShowcaseResponse | null>(null);
+  const [catalogFallback, setCatalogFallback] = useState<ProductByColorEntry[]>([]);
   const { startLoading, stopLoading } = useLoading();
 
   useEffect(() => {
     const fetchShowcaseData = async () => {
       try {
         startLoading();
-        // Remove artificial limit to fetch all products according to status
-        const data = await ecommerceApi.getShowcase({ limit: 50 });
+        let data: ShowcaseResponse = {};
+
+        try {
+          data = await ecommerceApi.getShowcase({ limit: 50 });
+        } catch (error) {
+          console.error("Failed to fetch showcase data:", error);
+        }
+
         setShowcaseData(data);
-      } catch (error) {
-        console.error('Failed to fetch showcase data:', error);
+
+        const hasShowcaseProducts = Object.values(data).some((section) => (
+          section &&
+          typeof section === "object" &&
+          "products" in section &&
+          Array.isArray(section.products) &&
+          section.products.length > 0
+        ))
+
+        if (!hasShowcaseProducts) {
+          try {
+            const catalog = await ecommerceApi.getProductsByColorPaginated({
+              page: 1,
+              page_size: 8,
+              only_in_stock: true,
+            })
+            setCatalogFallback(catalog.results)
+          } catch (error) {
+            console.error("Failed to fetch catalog fallback:", error);
+            setCatalogFallback([])
+          }
+        } else {
+          setCatalogFallback([])
+        }
       } finally {
         stopLoading();
       }
@@ -58,6 +88,7 @@ export default function HomePageClient() {
       <SiteHeader />
       <main className="flex-1">
         <HeroSection />
+        <CategoryCollageSection />
         <BrandShowcase />
         {showcaseData ? (
           <>
@@ -74,6 +105,13 @@ export default function HomePageClient() {
                 )}
               </div>
             ))}
+            {catalogFallback.length > 0 ? (
+              <ProductSection
+                title="SHOP THE COLLECTION"
+                products={catalogFallback.map(toCard)}
+                viewAllHref="/products"
+              />
+            ) : null}
           </>
         ) : (
           <>
@@ -104,7 +142,7 @@ function ColorSection({ title, baseProducts, toCard, statusSlug }: {
         if (ids.length === 0) { setEntries([]); return }
         const data = await ecommerceApi.getProductsByColor({ product_ids: ids })
         setEntries(data)
-      } catch (e) {
+      } catch {
         setEntries([])
       }
     }
@@ -120,4 +158,3 @@ function ColorSection({ title, baseProducts, toCard, statusSlug }: {
     />
   )
 }
-

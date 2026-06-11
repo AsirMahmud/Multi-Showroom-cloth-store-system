@@ -417,7 +417,7 @@ export default function CategoriesPage() {
                 <div className="bg-slate-50/50 rounded-[24px] p-6 border border-slate-100 shadow-inner">
                   <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Dimensional Availability</h3>
                   <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
-                    {statsCategory.detailed_stats.size_breakdown.map((item) => (
+                    {statsCategory.detailed_stats.size_breakdown?.map((item) => (
                       <div key={item.size} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col items-center justify-center group hover:border-brand-primary transition-all">
                         <span className="text-sm font-black text-slate-900 uppercase">{item.size}</span>
                         <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-1">{item.total_stock} SKUs</span>
@@ -447,7 +447,7 @@ export default function CategoriesPage() {
                             </td>
                             <td className="px-6 py-4">
                               <div className="flex flex-wrap gap-2">
-                                {product.size_breakdown.map((sb) => (
+                                {product.size_breakdown?.map((sb) => (
                                   <div key={sb.size} className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
                                     <span className="text-[8px] font-bold text-slate-400 uppercase">{sb.size}:</span>
                                     <span className="text-[10px] font-black text-slate-900">{sb.total_stock}</span>

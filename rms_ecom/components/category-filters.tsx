@@ -1,11 +1,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ChevronRight, ChevronDown, SlidersHorizontal, X, Check, RotateCcw, ArrowRight } from "lucide-react"
+import { ChevronDown, X, Check, RotateCcw, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { ecommerceApi } from "@/lib/api"
+import { formatCurrency } from "@/lib/utils"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
@@ -16,7 +16,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 interface CategoryFiltersProps {
   onCategoryChange?: (categorySlug: string | null) => void;
   onColorChange?: (color: string | null) => void;
-  onSizeChange?: (size: string | null) => void;
   onPriceChange?: (priceRange: [number, number]) => void;
   onGenderChange?: (gender: string | null) => void;
   onApplyFilters?: () => void;
@@ -24,7 +23,6 @@ interface CategoryFiltersProps {
   onClose?: () => void;
   selectedCategory?: string | null;
   selectedColor?: string | null;
-  selectedSize?: string | null;
   selectedGender?: string | null;
   priceRange?: [number, number];
 }
@@ -39,12 +37,6 @@ interface Category {
   gender: 'MALE' | 'FEMALE' | 'UNISEX';
 }
 
-const genders = [
-  { label: "Men", value: "men" },
-  { label: "Women", value: "women" },
-  { label: "Unisex", value: "unisex" },
-]
-
 const colors = [
   { name: "White", value: "white", hex: "#FFFFFF" },
   { name: "Black", value: "black", hex: "#000000" },
@@ -57,12 +49,9 @@ const colors = [
   { name: "Orange", value: "orange", hex: "#FFA500" },
 ]
 
-const sizes = ["XS", "S", "M", "L", "XL", "XXL", "3XL", "4XL"]
-
 export function CategoryFilters({
   onCategoryChange,
   onColorChange,
-  onSizeChange,
   onPriceChange,
   onGenderChange,
   onApplyFilters,
@@ -70,25 +59,21 @@ export function CategoryFilters({
   onClose,
   selectedCategory: externalSelectedCategory,
   selectedColor: externalSelectedColor,
-  selectedSize: externalSelectedSize,
   selectedGender: externalSelectedGender,
   priceRange: externalPriceRange,
 }: CategoryFiltersProps) {
   const [priceRange, setPriceRange] = useState<[number, number]>(externalPriceRange || [0, 10000])
   const [selectedColor, setSelectedColor] = useState<string | null>(externalSelectedColor || null)
-  const [selectedSize, setSelectedSize] = useState<string | null>(externalSelectedSize || null)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(externalSelectedCategory || null)
   const [selectedGender, setSelectedGender] = useState<string | null>(externalSelectedGender || null)
   const [categories, setCategories] = useState<Category[]>([])
   const [expandedCategories, setExpandedCategories] = useState<Set<number>>(new Set())
   const [loading, setLoading] = useState(true)
-  const [expandedSections, setExpandedSections] = useState<string[]>([
+  const expandedSections = [
     "categories",
-    "gender",
     "price",
     "colors",
-    "sizes",
-  ])
+  ]
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -149,10 +134,6 @@ export function CategoryFilters({
   }, [externalSelectedColor])
 
   useEffect(() => {
-    if (externalSelectedSize !== undefined) setSelectedSize(externalSelectedSize)
-  }, [externalSelectedSize])
-
-  useEffect(() => {
     if (externalPriceRange) setPriceRange(externalPriceRange)
   }, [externalPriceRange])
 
@@ -161,13 +142,6 @@ export function CategoryFilters({
     const newVal = selectedColor === color ? null : color
     setSelectedColor(newVal)
     onColorChange?.(newVal)
-    onApplyFilters?.()
-  }
-
-  const handleSizeSelect = (size: string | null) => {
-    const newVal = selectedSize === size ? null : size
-    setSelectedSize(newVal)
-    onSizeChange?.(newVal)
     onApplyFilters?.()
   }
 
@@ -181,7 +155,6 @@ export function CategoryFilters({
   const handleReset = () => {
     setPriceRange([0, 10000])
     setSelectedColor(null)
-    setSelectedSize(null)
     setSelectedCategory(null)
     setSelectedGender(null)
     onResetFilters?.()
@@ -200,20 +173,10 @@ export function CategoryFilters({
     })
   }
 
-  const toggleSection = (section: string) => {
-    setExpandedSections(prev =>
-      prev.includes(section)
-        ? prev.filter(s => s !== section)
-        : [...prev, section]
-    )
-  }
-
-
   const activeFiltersCount = [
     selectedCategory,
     selectedGender,
     selectedColor,
-    selectedSize,
     (priceRange[0] > 0 || priceRange[1] < 10000)
   ].filter(Boolean).length
 
@@ -417,12 +380,12 @@ export function CategoryFilters({
               <div className="flex items-center justify-between gap-4">
                 <div className="flex-1 space-y-1.5 text-center">
                   <div className="text-[10px] uppercase font-bold text-muted-foreground/60 tracking-tighter">Min Price</div>
-                  <div className="bg-secondary/50 rounded-lg py-1.5 font-bold text-sm tabular-nums">৳{priceRange[0]}</div>
+                  <div className="bg-secondary/50 py-1.5 text-sm font-semibold tabular-nums">{formatCurrency(priceRange[0])}</div>
                 </div>
                 <div className="w-4 h-px bg-border mt-4" />
                 <div className="flex-1 space-y-1.5 text-center">
                   <div className="text-[10px] uppercase font-bold text-muted-foreground/60 tracking-tighter">Max Price</div>
-                  <div className="bg-secondary/50 rounded-lg py-1.5 font-bold text-sm tabular-nums">৳{priceRange[1]}</div>
+                  <div className="bg-secondary/50 py-1.5 text-sm font-semibold tabular-nums">{formatCurrency(priceRange[1])}</div>
                 </div>
               </div>
 
@@ -433,7 +396,7 @@ export function CategoryFilters({
                     onClick={() => handlePriceChange(0, price)}
                     className="text-[10px] font-bold py-1.5 px-3 bg-secondary/50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border border-transparent shadow-sm"
                   >
-                    Under ৳{price}
+                    Under {formatCurrency(price)}
                   </button>
                 ))}
               </div>
@@ -492,34 +455,6 @@ export function CategoryFilters({
                 })}
               </div>
             </TooltipProvider>
-          </AccordionContent>
-        </AccordionItem>
-
-        {/* Sizes Section */}
-        <AccordionItem value="sizes" className="border-none">
-          <AccordionTrigger className="hover:no-underline py-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/80">
-            Sizes
-          </AccordionTrigger>
-          <AccordionContent className="pt-2">
-            <div className="grid grid-cols-4 gap-2">
-              {sizes.map((size) => {
-                const isSelected = selectedSize === size
-                return (
-                  <button
-                    key={size}
-                    onClick={() => handleSizeSelect(size)}
-                    className={cn(
-                      "h-10 rounded-xl border text-xs font-bold transition-all flex items-center justify-center shadow-sm",
-                      isSelected
-                        ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20 scale-105 z-10"
-                        : "bg-white text-muted-foreground border-border hover:border-primary/50 hover:text-primary"
-                    )}
-                  >
-                    {size}
-                  </button>
-                )
-              })}
-            </div>
           </AccordionContent>
         </AccordionItem>
       </Accordion>

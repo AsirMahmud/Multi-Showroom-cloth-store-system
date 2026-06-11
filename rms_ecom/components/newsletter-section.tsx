@@ -4,12 +4,12 @@ import { Mail } from "lucide-react"
 
 export function NewsletterSection() {
   return (
-    <section className="w-full py-16">
-      <div className="container px-4">
-        <div className="bg-primary text-primary-foreground rounded-2xl p-8 md:p-12">
+    <section className="w-full py-16 md:py-24">
+      <div className="container">
+        <div className="border border-border bg-[#f4f3f4] p-8 md:p-14">
           <div className="max-w-2xl mx-auto text-center">
             <h2 className="text-3xl md:text-4xl font-bold mb-4 tracking-tight text-balance">
-              STAY UPTO DATE ABOUT OUR LATEST OFFERS
+              Notes from the studio
             </h2>
             <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto mt-8">
               <div className="relative flex-1">
@@ -17,13 +17,13 @@ export function NewsletterSection() {
                 <Input
                   type="email"
                   placeholder="Enter your email address"
-                  className="pl-10 bg-background text-foreground h-12"
+                  className="h-12 bg-white pl-10 text-foreground"
                 />
               </div>
               <Button
                 size="lg"
                 variant="secondary"
-                className="h-12 px-8 bg-background text-foreground hover:bg-background/90"
+                className="h-12 bg-primary px-8 text-white hover:bg-[#842500]"
               >
                 Subscribe to Newsletter
               </Button>

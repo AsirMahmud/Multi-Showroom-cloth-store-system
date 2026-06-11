@@ -84,8 +84,8 @@ export function SalesReport({
       <div className="grid gap-4 md:grid-cols-3">
         <motion.div variants={item}>
           <MetricCard
-            label="Gross Sales"
-            value={formatCurrency(parseFloat(salesData.total_sales))}
+            label="Net Sales"
+            value={formatCurrency(parseFloat(salesData.net_sales))}
             icon={<DollarSign className="h-5 w-5" />}
             tone="brand"
             helper={`${salesData.total_orders} total orders`}
@@ -93,11 +93,11 @@ export function SalesReport({
         </motion.div>
         <motion.div variants={item}>
           <MetricCard
-            label="Total Items Sold"
-            value={salesData.total_items_sold.toString()}
-            icon={<Package className="h-5 w-5" />}
+            label="Approved Returns"
+            value={formatCurrency(parseFloat(salesData.returns_total))}
+            icon={<TrendingUp className="h-5 w-5" />}
             tone="emerald"
-            helper="Units sold"
+            helper={formatCurrency(parseFloat(salesData.gross_sales)) + " gross sales"}
           />
         </motion.div>
         <motion.div variants={item}>
@@ -129,6 +129,22 @@ export function SalesReport({
 
         <TabsContent value="trend" className="m-0 focus-visible:outline-none">
           <DataPanel title="Sales Performance" description="Daily revenue tracking across the selected period.">
+            <div className="mb-4 grid gap-4 md:grid-cols-2">
+              <MetricCard
+                label="Gross Sales"
+                value={formatCurrency(parseFloat(salesData.gross_sales))}
+                icon={<ShoppingCart className="h-5 w-5" />}
+                tone="indigo"
+                helper={`${salesData.total_items_sold} units sold`}
+              />
+              <MetricCard
+                label="Total Items Sold"
+                value={salesData.total_items_sold.toString()}
+                icon={<Package className="h-5 w-5" />}
+                tone="emerald"
+                helper="Before return quantity analysis"
+              />
+            </div>
             <div className="h-[400px] w-full pt-4">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={salesData.sales_by_date}>
@@ -160,7 +176,7 @@ export function SalesReport({
                       fontWeight: 700
                     }}
                   />
-                  <Area type="monotone" dataKey={(data) => parseFloat(data.total)} stroke="#163625" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" name="Gross Sales" />
+                  <Area type="monotone" dataKey={(data) => parseFloat(data.net_sales)} stroke="#163625" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" name="Net Sales" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>

@@ -5,6 +5,7 @@ from apps.customer.serializers import CustomerSerializer
 from apps.customer.models import Customer
 from apps.inventory.models import Product, ProductVariation, StockMovement
 from django.core.exceptions import ValidationError
+from django.db.models import Sum
 from decimal import Decimal
 
 class SaleItemSerializer(serializers.ModelSerializer):
@@ -109,31 +110,83 @@ class ReturnItemSerializer(serializers.ModelSerializer):
             'id', 'return_order', 'sale_item', 'sale_item_id',
             'quantity', 'reason', 'created_at'
         ]
-        read_only_fields = ['created_at']
+        read_only_fields = ['created_at', 'return_order', 'sale_item']
 
 class ReturnSerializer(serializers.ModelSerializer):
-    items = ReturnItemSerializer(many=True, read_only=True)
+    items = ReturnItemSerializer(many=True, required=False)
+    sale = serializers.PrimaryKeyRelatedField(read_only=True)
     sale_id = serializers.PrimaryKeyRelatedField(
         queryset=Sale.objects.all(),
         source='sale',
-        write_only=True
+        write_only=True,
+        required=False
     )
+    sale_invoice_number = serializers.CharField(source='sale.invoice_number', read_only=True)
+    sale_branch_name = serializers.CharField(source='sale.branch.name', read_only=True, allow_null=True)
+    sale_customer_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Return
         fields = [
             'id', 'sale', 'sale_id', 'return_number', 'reason', 'status',
-            'refund_amount', 'processed_date', 'items', 'created_at', 'updated_at'
+            'refund_amount', 'processed_date', 'items', 'created_at', 'updated_at',
+            'sale_invoice_number', 'sale_branch_name', 'sale_customer_name'
         ]
         read_only_fields = ['return_number', 'created_at', 'updated_at']
 
+    def get_sale_customer_name(self, obj):
+        if obj.sale.customer:
+            first_name = getattr(obj.sale.customer, 'first_name', '') or ''
+            last_name = getattr(obj.sale.customer, 'last_name', '') or ''
+            full_name = f"{first_name} {last_name}".strip()
+            return full_name or obj.sale.customer_phone or 'Guest'
+        return obj.sale.customer_phone or 'Guest'
+
+    def validate(self, attrs):
+        sale = attrs.get('sale') or self.context.get('sale')
+        items_data = self.initial_data.get('items', [])
+
+        if sale is None:
+            raise serializers.ValidationError({'sale_id': 'Sale is required.'})
+
+        if not items_data:
+            raise serializers.ValidationError({'items': 'At least one return item is required.'})
+
+        sale_items = {item.id: item for item in sale.items.all()}
+        rejected_statuses = {'rejected'}
+
+        for item_data in items_data:
+            sale_item_id = item_data.get('sale_item_id')
+            quantity = int(item_data.get('quantity') or 0)
+
+            if sale_item_id not in sale_items:
+                raise serializers.ValidationError({'items': f'Sale item {sale_item_id} does not belong to the selected sale.'})
+
+            if quantity <= 0:
+                raise serializers.ValidationError({'items': 'Return quantity must be greater than zero.'})
+
+            sale_item = sale_items[sale_item_id]
+            returned_quantity = ReturnItem.objects.filter(
+                sale_item=sale_item,
+                return_order__status__in=[status for status, _ in Return.STATUS_CHOICES if status not in rejected_statuses],
+            ).exclude(
+                return_order=self.instance
+            ).aggregate(total=Sum('quantity'))['total'] or 0
+
+            available_quantity = sale_item.quantity - returned_quantity
+            if quantity > available_quantity:
+                raise serializers.ValidationError({
+                    'items': f'Cannot return {quantity} units for sale item {sale_item_id}. Only {available_quantity} available.'
+                })
+
+        return attrs
+
     def create(self, validated_data):
-        items_data = self.context.get('items', [])
+        items_data = validated_data.pop('items', [])
         return_order = Return.objects.create(**validated_data)
         
         for item_data in items_data:
-            item_data['return_order'] = return_order
-            ReturnItem.objects.create(**item_data)
+            ReturnItem.objects.create(return_order=return_order, **item_data)
         
         return return_order
 

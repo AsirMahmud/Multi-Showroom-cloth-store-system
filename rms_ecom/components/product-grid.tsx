@@ -159,9 +159,9 @@ export function ProductGrid({ category, products: propProducts, totalCount, page
   }
 
   return (
-    <div className="space-y-8 min-h-screen">
+    <div className="space-y-8">
       {/* Product Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 md:gap-8">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-2 md:gap-x-6 lg:grid-cols-3">
         {isLoading
           ? Array.from({ length: productsPerPage }).map((_, i) => (
             <ProductCardSkeleton key={i} />
@@ -186,12 +186,12 @@ export function ProductGrid({ category, products: propProducts, totalCount, page
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-3 pt-12 border-t mt-12">
+        <div className="mt-12 flex items-center justify-center gap-2 border-t border-border/70 pt-10">
           <Button
             variant="ghost"
             onClick={() => (isServerPaginated ? onPageChange!(Math.max(1, effectivePage - 1)) : setCurrentPage((prev) => Math.max(1, prev - 1)))}
             disabled={effectivePage === 1}
-            className="rounded-xl h-12 px-6 font-bold uppercase text-[10px] tracking-widest gap-2"
+            className="h-10 px-3 text-[10px] sm:px-5"
           >
             <ChevronLeft className="h-4 w-4" />
             Previous
@@ -206,8 +206,8 @@ export function ProductGrid({ category, products: propProducts, totalCount, page
                 onClick={() => typeof pageNum === "number" && (isServerPaginated ? onPageChange!(pageNum) : setCurrentPage(pageNum))}
                 disabled={pageNum === "..."}
                 className={cn(
-                  "rounded-xl h-10 w-10 font-bold",
-                  pageNum === effectivePage ? "shadow-lg shadow-primary/20" : ""
+                  "h-9 w-9 rounded-none text-xs",
+                  pageNum === effectivePage ? "border-b border-primary bg-transparent text-primary hover:bg-transparent" : ""
                 )}
               >
                 {pageNum}
@@ -223,7 +223,7 @@ export function ProductGrid({ category, products: propProducts, totalCount, page
             variant="ghost"
             onClick={() => (isServerPaginated ? onPageChange!(Math.min(totalPages, effectivePage + 1)) : setCurrentPage((prev) => Math.min(totalPages, prev + 1)))}
             disabled={effectivePage === totalPages}
-            className="rounded-xl h-12 px-6 font-bold uppercase text-[10px] tracking-widest gap-2"
+            className="h-10 px-3 text-[10px] sm:px-5"
           >
             Next
             <ChevronRight className="h-4 w-4" />

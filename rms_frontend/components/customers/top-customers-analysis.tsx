@@ -89,7 +89,7 @@ export function TopCustomersAnalysis() {
     );
   }
 
-  const maxSales = Math.max(...topCustomers.map(c => c.total_sales));
+  const maxSales = Math.max(...topCustomers.map((c: any) => c.total_sales));
 
   return (
     <Card>
@@ -190,13 +190,13 @@ export function TopCustomersAnalysis() {
             <div>
               <div className="text-muted-foreground">Total Revenue</div>
               <div className="font-semibold">
-                ${topCustomers.reduce((sum, c) => sum + c.total_sales, 0).toFixed(2)}
+                ${topCustomers.reduce((sum: number, c: any) => sum + c.total_sales, 0).toFixed(2)}
               </div>
             </div>
             <div>
               <div className="text-muted-foreground">Average Order Value</div>
               <div className="font-semibold">
-                ${(topCustomers.reduce((sum, c) => sum + c.average_order_value, 0) / topCustomers.length).toFixed(2)}
+                ${(topCustomers.reduce((sum: number, c: any) => sum + c.average_order_value, 0) / topCustomers.length).toFixed(2)}
               </div>
             </div>
           </div>

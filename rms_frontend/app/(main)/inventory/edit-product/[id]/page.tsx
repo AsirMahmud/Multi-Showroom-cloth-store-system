@@ -220,9 +220,7 @@ export default function EditProductPage() {
   const [newOnlineCategoryDescription, setNewOnlineCategoryDescription] = useState("");
 
   // Watch form values for dynamic updates
-  const watchedSizeType = form.watch("size_type");
   const watchedGender = form.watch("gender");
-  const watchedSizeCategory = form.watch("size_category");
 
   // Sync galleries with variants
   const syncGalleriesWithVariants = useCallback((currentGalleries: ColorGallery[], currentDesigns: DesignVariant[]) => {
@@ -323,9 +321,6 @@ export default function EditProductPage() {
         minimum_stock: product.minimum_stock,
         gender: (product.gender || "UNISEX") as GenderType,
       });
-
-      // Set size category
-      form.setValue("size_category", product.size_category || "");
 
       // Set designs
       if (product.designs) {

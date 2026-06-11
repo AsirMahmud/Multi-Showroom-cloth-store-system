@@ -112,13 +112,16 @@ export default function SalesOverview() {
   });
 
   const metrics = useMemo(() => ({
-    totalRevenue: stats?.monthly.total_sales || 0,
+    monthlyNetSales: stats?.monthly.net_sales || 0,
+    monthlyGrossSales: stats?.monthly.gross_sales || 0,
+    monthlyReturns: stats?.monthly.returns_total || 0,
     totalOrders: stats?.monthly.total_transactions || 0,
     totalProfit: stats?.monthly.total_profit || 0,
     totalDiscount: stats?.monthly.total_discount || 0,
     avgTransactionValue: stats?.monthly.average_transaction_value || 0,
     totalCustomers: stats?.monthly.total_customers || 0,
-    todayRevenue: stats?.today.total_sales || 0,
+    todayNetSales: stats?.today.net_sales || 0,
+    todayReturns: stats?.today.returns_total || 0,
     todayOrders: stats?.today.total_transactions || 0,
     todayProfit: stats?.today.total_profit || 0,
     todayCustomers: stats?.today.total_customers || 0,
@@ -298,11 +301,11 @@ export default function SalesOverview() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <motion.div variants={item}>
           <MetricCard
-            label="Today's Revenue"
-            value={formatCurrency(metrics.todayRevenue)}
+            label="Today's Net Sales"
+            value={formatCurrency(metrics.todayNetSales)}
             icon={<DollarSign className="h-5 w-5" />}
             tone="brand"
-            helper="Current daily earnings"
+            helper={`${formatCurrency(metrics.todayReturns)} returned today`}
           />
         </motion.div>
         <motion.div variants={item}>
@@ -316,20 +319,20 @@ export default function SalesOverview() {
         </motion.div>
         <motion.div variants={item}>
           <MetricCard
-            label="Total Revenue"
-            value={formatCurrency(metrics.totalRevenue)}
+            label="Monthly Net Sales"
+            value={formatCurrency(metrics.monthlyNetSales)}
             icon={<TrendingUp className="h-5 w-5" />}
             tone="brand"
-            helper="Overall performance"
+            helper={`${formatCurrency(metrics.monthlyGrossSales)} gross sales`}
           />
         </motion.div>
         <motion.div variants={item}>
           <MetricCard
-            label="Avg Transaction"
-            value={formatCurrency(metrics.avgTransactionValue)}
+            label="Approved Returns"
+            value={formatCurrency(metrics.monthlyReturns)}
             icon={<Wallet className="h-5 w-5" />}
             tone="indigo"
-            helper="Value per order"
+            helper="Subtracted from monthly sales"
           />
         </motion.div>
       </div>
@@ -412,7 +415,7 @@ export default function SalesOverview() {
         <motion.div variants={item}>
           <DataPanel
             title="Sales Trend"
-            description="Daily revenue and profit performance"
+            description="Daily net sales after approved returns"
           >
             <div className="h-[350px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -448,7 +451,7 @@ export default function SalesOverview() {
                       fontWeight: 700,
                       fontSize: "12px",
                     }}
-                    formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]}
+                    formatter={(value: number) => [`$${value.toLocaleString()}`, "Net Sales"]}
                   />
                   <Area
                     type="monotone"

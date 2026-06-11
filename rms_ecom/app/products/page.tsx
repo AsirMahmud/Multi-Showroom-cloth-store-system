@@ -30,7 +30,6 @@ function AllProductsContent() {
   const [selectedCategorySlug, setSelectedCategorySlug] = useState<string | null>(null)
   const [selectedGender, setSelectedGender] = useState<string | null>(null)
   const [selectedColor, setSelectedColor] = useState<string | null>(null)
-  const [selectedSize, setSelectedSize] = useState<string | null>(null)
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000])
   const [page, setPage] = useState(1)
   const [pageSize] = useState(24)
@@ -51,7 +50,6 @@ function AllProductsContent() {
           price_min: priceRange[0],
           price_max: priceRange[1],
           colors: selectedColor ? [selectedColor] : undefined,
-          sizes: selectedSize ? [selectedSize] : undefined,
           status: statusFilter || undefined,
         })
         setProducts(res.results)
@@ -63,12 +61,12 @@ function AllProductsContent() {
       }
     }
     fetchProducts()
-  }, [page, pageSize, searchTerm, sortBy, selectedCategorySlug, selectedGender, selectedColor, selectedSize, priceRange, statusFilter, startLoading, stopLoading])
+  }, [page, pageSize, searchTerm, sortBy, selectedCategorySlug, selectedGender, selectedColor, priceRange, statusFilter, startLoading, stopLoading])
 
   // Reset to first page on key changes
   useEffect(() => {
     setPage(1)
-  }, [searchTerm, sortBy, selectedCategorySlug, selectedGender, selectedColor, selectedSize, priceRange, statusFilter])
+  }, [searchTerm, sortBy, selectedCategorySlug, selectedGender, selectedColor, priceRange, statusFilter])
 
   const breadcrumbItems = [
     { label: "Home", href: "/" },
@@ -79,7 +77,6 @@ function AllProductsContent() {
     selectedCategorySlug,
     selectedGender,
     selectedColor,
-    selectedSize,
     (priceRange[0] > 0 || priceRange[1] < 10000),
     statusFilter
   ].filter(Boolean).length
@@ -88,7 +85,6 @@ function AllProductsContent() {
     setSelectedCategorySlug(null)
     setSelectedGender(null)
     setSelectedColor(null)
-    setSelectedSize(null)
     setPriceRange([0, 10000])
     // Note: statusFilter usually comes from URL, resetting might need a router push if we wanted to clear it here.
   }
@@ -98,25 +94,26 @@ function AllProductsContent() {
     : "SHOP ALL"
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F9FBFC]">
+    <div className="flex min-h-screen flex-col bg-background">
       <StructuredData data={generateBreadcrumbStructuredData(breadcrumbItems)} />
       <SiteHeader />
       <main className="flex-1 pb-20">
-        <div className="container mx-auto px-4 py-6">
+        <div className="container py-8 md:py-12">
           <Breadcrumb items={breadcrumbItems} />
 
           {/* Page Header */}
-          <div className="mt-8 mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div className="mb-12 mt-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
             <div>
-              <h1 className="text-4xl font-extrabold tracking-tight mb-2 uppercase">{pageTitle}</h1>
-              <p className="text-muted-foreground font-medium">
-                {totalCount} premium products found
+              <p className="editorial-kicker">The online collection</p>
+              <h1 className="mt-2 font-serif text-4xl md:text-5xl">{pageTitle}</h1>
+              <p className="mt-3 text-sm text-muted-foreground">
+                Showing {totalCount} products
               </p>
             </div>
           </div>
 
           {/* Search and Sort Toolbar */}
-          <div className="sticky top-16 z-40 bg-background/80 backdrop-blur-md -mx-4 px-4 py-4 md:static md:bg-transparent md:backdrop-blur-none mb-8 border-b md:border-none">
+          <div className="sticky top-[72px] z-40 mb-8 border-y border-border/70 bg-background/95 py-4 backdrop-blur md:top-[88px]">
             <div className="flex flex-col sm:flex-row gap-4 items-center">
               <div className="relative w-full sm:flex-1">
                 <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
@@ -125,13 +122,13 @@ function AllProductsContent() {
                   placeholder="What are you looking for?"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-12 h-12 bg-white border-none shadow-sm rounded-xl focus-visible:ring-primary"
+                  className="h-12 border-0 border-b border-input bg-transparent pl-12 shadow-none"
                 />
               </div>
 
               <div className="flex items-center gap-3 w-full sm:w-auto">
                 <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="flex-1 sm:w-[200px] h-12 bg-background border border-border shadow-sm rounded-xl font-bold uppercase text-[10px] tracking-widest px-6">
+                  <SelectTrigger className="h-12 flex-1 rounded border-input bg-white px-5 text-[10px] font-semibold uppercase tracking-widest sm:w-[200px]">
                     <div className="flex items-center gap-2">
                       <span className="text-muted-foreground font-medium">SORT:</span>
                       <SelectValue />
@@ -163,13 +160,11 @@ function AllProductsContent() {
                       onCategoryChange={setSelectedCategorySlug}
                       onGenderChange={setSelectedGender}
                       onColorChange={setSelectedColor}
-                      onSizeChange={setSelectedSize}
                       onPriceChange={setPriceRange}
                       onResetFilters={handleResetFilters}
                       selectedCategory={selectedCategorySlug}
                       selectedGender={selectedGender}
                       selectedColor={selectedColor}
-                      selectedSize={selectedSize}
                       priceRange={priceRange}
                       onClose={() => setIsFilterOpen(false)}
                     />
@@ -182,18 +177,16 @@ function AllProductsContent() {
           <div className="flex flex-col lg:flex-row gap-10">
             {/* Desktop Sidebar */}
             <aside className="hidden lg:block w-72 flex-shrink-0">
-              <div className="sticky top-28 border rounded-2xl p-8 bg-white shadow-sm max-h-[calc(100vh-140px)] overflow-y-auto scrollbar-hide">
+              <div className="sticky top-28 max-h-[calc(100vh-140px)] overflow-y-auto border-r border-border/70 bg-transparent pr-8 scrollbar-hide">
                 <CategoryFilters
                   onCategoryChange={setSelectedCategorySlug}
                   onGenderChange={setSelectedGender}
                   onColorChange={setSelectedColor}
-                  onSizeChange={setSelectedSize}
                   onPriceChange={setPriceRange}
                   onResetFilters={handleResetFilters}
                   selectedCategory={selectedCategorySlug}
                   selectedGender={selectedGender}
                   selectedColor={selectedColor}
-                  selectedSize={selectedSize}
                   priceRange={priceRange}
                 />
               </div>
@@ -205,13 +198,11 @@ function AllProductsContent() {
                 selectedCategory={selectedCategorySlug}
                 selectedGender={selectedGender}
                 selectedColor={selectedColor}
-                selectedSize={selectedSize}
                 priceRange={priceRange}
                 onRemoveFilter={(type) => {
                   if (type === 'category') setSelectedCategorySlug(null)
                   if (type === 'gender') setSelectedGender(null)
                   if (type === 'color') setSelectedColor(null)
-                  if (type === 'size') setSelectedSize(null)
                   if (type === 'price') setPriceRange([0, 10000])
                 }}
                 onClearAll={handleResetFilters}

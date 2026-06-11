@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useMemo } from "react";
 import { PageHeader, MetricCard, DataPanel } from "@/components/ui/professional";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,6 +15,7 @@ import {
   Clock, 
   FileText, 
   Download,
+  Plus,
   Calendar,
   DollarSign,
   Package,
@@ -26,6 +28,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -48,7 +51,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter
 } from "@/components/ui/dialog";
 import { useReturns } from "@/hooks/queries/use-sales";
@@ -84,7 +86,9 @@ export default function SalesReturnsPage() {
     return returns.filter((ret: Return) => {
       const matchesSearch = 
         ret.return_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        ret.reason.toLowerCase().includes(searchQuery.toLowerCase());
+        ret.reason.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        ret.sale_invoice_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        ret.sale_customer_name?.toLowerCase().includes(searchQuery.toLowerCase());
       
       const matchesStatus = statusFilter === "all" || ret.status === statusFilter;
       
@@ -152,6 +156,11 @@ export default function SalesReturnsPage() {
         icon={<RefreshCcw className="h-6 w-6" />}
         actions={
           <div className="flex gap-3">
+            <Button asChild className="h-10 rounded-xl bg-brand-primary text-brand-secondary font-bold text-xs uppercase tracking-widest">
+              <Link href="/sales/returns/new">
+                <Plus className="h-3.5 w-3.5 mr-2" /> New Return
+              </Link>
+            </Button>
             <Button variant="outline" className="h-10 rounded-xl border-slate-200 bg-white/50 backdrop-blur-md font-bold text-xs uppercase tracking-widest">
               <Download className="h-3.5 w-3.5 mr-2" /> Export Logs
             </Button>
@@ -161,31 +170,31 @@ export default function SalesReturnsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
-          title="Total Liability"
+          label="Total Liability"
           value={formatCurrency(stats.value)}
           icon={<DollarSign className="h-5 w-5" />}
-          trend={{ value: 12, isPositive: false }}
-          description="Total processed refunds"
+          tone="rose"
+          helper="Total processed refunds"
         />
         <MetricCard
-          title="Pending Review"
+          label="Pending Review"
           value={stats.pending.toString()}
           icon={<Clock className="h-5 w-5" />}
-          description="Returns awaiting approval"
-          variant="warning"
+          helper="Returns awaiting approval"
+          tone="amber"
         />
         <MetricCard
-          title="Execution Rate"
+          label="Execution Rate"
           value={`${Math.round((stats.approved / (stats.total || 1)) * 100)}%`}
           icon={<CheckCircle2 className="h-5 w-5" />}
-          description="Success clearance rate"
-          variant="success"
+          helper="Success clearance rate"
+          tone="emerald"
         />
         <MetricCard
-          title="Total Returns"
+          label="Total Returns"
           value={stats.total.toString()}
           icon={<RefreshCcw className="h-5 w-5" />}
-          description="All-time return requests"
+          helper="All-time return requests"
         />
       </div>
 
@@ -198,7 +207,7 @@ export default function SalesReturnsPage() {
             <div className="relative flex-1">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
               <Input
-                placeholder="Query by Return ID or Reason..."
+                placeholder="Query by return ID, invoice, customer, or reason..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-12 pl-10 bg-slate-50 border-none rounded-xl font-bold"
@@ -250,7 +259,9 @@ export default function SalesReturnsPage() {
                           </div>
                           <div>
                             <div className="text-xs font-black text-brand-primary uppercase tracking-tighter">{ret.return_number}</div>
-                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sale ID: {ret.sale}</div>
+                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                              {ret.sale_invoice_number ? `Invoice: ${ret.sale_invoice_number}` : `Sale ID: ${ret.sale}`}
+                            </div>
                           </div>
                         </div>
                       </TableCell>
@@ -265,7 +276,9 @@ export default function SalesReturnsPage() {
                       </TableCell>
                       <TableCell className="py-4">
                         <div className="max-w-[200px] truncate">
-                          <span className="text-xs font-bold text-slate-500 uppercase tracking-tighter">{ret.reason}</span>
+                          <span className="text-xs font-bold text-slate-500 uppercase tracking-tighter">
+                            {ret.sale_customer_name ? `${ret.sale_customer_name} · ` : ""}{ret.reason}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell className="py-4">
@@ -378,7 +391,7 @@ export default function SalesReturnsPage() {
                           <div className="h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center">
                             <Package className="h-4 w-4 text-slate-300" />
                           </div>
-                          <span className="text-xs font-black text-brand-primary">Item ID: {item.sale_item}</span>
+                          <span className="text-xs font-black text-brand-primary">Item ID: {typeof item.sale_item === 'object' ? (item.sale_item as any)?.id : item.sale_item}</span>
                         </div>
                         <div className="text-right">
                           <div className="text-xs font-black text-brand-primary">Qty: {item.quantity}</div>

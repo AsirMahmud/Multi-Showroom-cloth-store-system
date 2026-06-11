@@ -8,7 +8,7 @@ import { NewsletterSection } from "@/components/newsletter-section"
 import { ProductGallery } from "@/components/product-gallery"
 import { ProductInfo } from "@/components/product-info"
 import { Breadcrumb } from "@/components/breadcrumb"
-import { ecommerceApi, ProductDetailByColorResponse, EcommerceProduct, ProductByColorEntry } from "@/lib/api"
+import { ecommerceApi, ProductDetailByColorResponse, ProductByColorEntry } from "@/lib/api"
 import { sendGTMEvent } from "@/lib/gtm"
 import { ProductRecommendations } from "@/components/product-recommendations"
 import { ProductTabs } from "@/components/product-tabs"
@@ -26,7 +26,6 @@ export default function ProductByColorPage() {
     const [suggested, setSuggested] = useState<ProductByColorEntry[]>([])
     const [productDescription, setProductDescription] = useState<string>("")
     const [detailExtras, setDetailExtras] = useState<null | {
-        size_chart?: { size: string; chest: string; waist: string; height: string }[]
         material_composition?: { name: string; percentage: string }[]
         who_is_this_for?: { title: string; description: string }[]
         features?: { title: string; description: string }[]
@@ -41,11 +40,18 @@ export default function ProductByColorPage() {
                 startLoading()
                 const response = await ecommerceApi.getProductDetailByColor(productId, colorSlug)
                 setData(response)
-                // Fetch product details for size chart and other extras
-                const showcase = await ecommerceApi.getProductDetail(productId)
+                const categorySlug = response.product.online_categories?.[0]?.slug
+                const [showcase, paginatedResponse] = await Promise.all([
+                    ecommerceApi.getProductDetail(productId),
+                    ecommerceApi.getProductsByColorPaginated({
+                        only_in_stock: true,
+                        page_size: 8,
+                        page: 1,
+                        online_category: categorySlug,
+                    }),
+                ])
                 setProductDescription(showcase.product.description || "")
                 setDetailExtras({
-                    size_chart: showcase.product.size_chart,
                     material_composition: showcase.product.material_composition,
                     who_is_this_for: showcase.product.who_is_this_for,
                     features: showcase.product.features,
@@ -53,15 +59,6 @@ export default function ProductByColorPage() {
 
                 // Fetch products from the same category for "YOU MIGHT ALSO LIKE" section
                 // Try to find a primary category slug from the product details
-                const categorySlug = response.product.online_categories?.[0]?.slug;
-
-                const paginatedResponse = await ecommerceApi.getProductsByColorPaginated({
-                    only_in_stock: true,
-                    page_size: 8,
-                    page: 1,
-                    online_category: categorySlug, // Filter by category if available
-                })
-
                 // Filter out the current product
                 const filteredProducts = paginatedResponse.results.filter(
                     entry => entry.product_id !== productId
@@ -116,8 +113,15 @@ export default function ProductByColorPage() {
 
     if (!data) return null
 
-    const galleryImages = data.images.length > 0
-        ? data.images.map(i => i.url)
+    const images = data.images ?? []
+    const sizes = data.sizes ?? (data.variations ?? []).map((variation) => ({
+        size: variation.size || variation.design_name || "Standard",
+        stock_qty: variation.stock_qty,
+        in_stock: variation.in_stock,
+    }))
+
+    const galleryImages = images.length > 0
+        ? images.map(i => i.url)
         : []
 
     // Prepare ProductInfo props (use current color only to drive size stock)
@@ -128,8 +132,8 @@ export default function ProductByColorPage() {
         discount: data.discount_info?.discount_value,
         description: productDescription,
         colors: [{ name: data.color.name, value: "#000000" }],
-        sizes: data.sizes.map(s => s.size),
-        variants: data.sizes.map(s => ({
+        sizes: sizes.map(s => s.size),
+        variants: sizes.map(s => ({
             size: s.size,
             color: data.color.name,
             color_hex: "#000000",
@@ -152,14 +156,14 @@ export default function ProductByColorPage() {
             <StructuredData data={generateBreadcrumbStructuredData(breadcrumbItems)} />
             <SiteHeader />
             <main className="flex-1">
-                <div className="container px-4 py-4 lg:py-6">
+                <div className="container pt-10 pb-4 md:pt-16 md:pb-8">
                     <Breadcrumb
                         items={breadcrumbItems}
                     />
                 </div>
 
-                <div className="container px-4 pb-12 lg:pb-16">
-                    <div className="grid gap-8 lg:gap-12 grid-cols-1 lg:grid-cols-2">
+                <div className="container pt-4 pb-16 md:pt-8 md:pb-24">
+                    <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1.15fr_.85fr] lg:gap-16">
                         <ProductGallery images={galleryImages} productName={data.product.name} />
                         <div className="flex flex-col gap-4 lg:gap-5">
                             <ProductInfo
@@ -206,11 +210,10 @@ export default function ProductByColorPage() {
                     </div>
                 </div>
 
-                {/* Product details tabs (size chart, materials, audience, features) */}
+                {/* Product details tabs */}
                 <div className="container px-4 pb-12 lg:pb-16">
                     <ProductTabs
                         description={productDescription}
-                        sizeChart={detailExtras?.size_chart || []}
                         materials={detailExtras?.material_composition || []}
                         whoIsThisFor={detailExtras?.who_is_this_for || []}
                         features={detailExtras?.features || []}

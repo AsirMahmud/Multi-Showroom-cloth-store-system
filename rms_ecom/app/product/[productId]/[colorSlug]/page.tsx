@@ -23,10 +23,10 @@ export async function generateMetadata(
 
   return {
     title: `${product.product.name} - ${product.color.name}`,
-    description: `Shop ${product.product.name} in ${product.color.name} at Raw Stitch. Premium quality fashion.`,
+    description: `Shop ${product.product.name} in ${product.color.name} at Ferdous Textile. Premium quality fashion.`,
     openGraph: {
       title: `${product.product.name} - ${product.color.name}`,
-      description: `Shop ${product.product.name} in ${product.color.name} at Raw Stitch. Premium quality fashion.`,
+      description: `Shop ${product.product.name} in ${product.color.name} at Ferdous Textile. Premium quality fashion.`,
       images: images,
     },
     other: {

@@ -14,6 +14,11 @@ const axiosInstance = axios.create({
 // Add request interceptor
 axiosInstance.interceptors.request.use(
     (config) => {
+        if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+            // Let the browser add multipart/form-data with the required boundary.
+            config.headers.delete('Content-Type');
+        }
+
         const token = Cookies.get('token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;

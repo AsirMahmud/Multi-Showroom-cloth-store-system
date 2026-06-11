@@ -87,6 +87,9 @@ class PaymentMethodSerializer(serializers.Serializer):
     items_count = serializers.IntegerField()
 
 class SalesReportSerializer(serializers.Serializer):
+    gross_sales = serializers.DecimalField(max_digits=10, decimal_places=2)
+    returns_total = serializers.DecimalField(max_digits=10, decimal_places=2)
+    net_sales = serializers.DecimalField(max_digits=10, decimal_places=2)
     total_sales = serializers.DecimalField(max_digits=10, decimal_places=2)
     total_orders = serializers.IntegerField()
     total_items_sold = serializers.IntegerField()

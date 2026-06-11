@@ -73,6 +73,7 @@ const mainNavItems: NavItem[] = [
       { title: "Overview", icon: LineChart, href: "/sales" },
       { title: "Sales History", icon: LineChart, href: "/sales/sales-history" },
       { title: "Due", icon: LineChart, href: "/sales/due", anyPermission: ["manage_due_payments"] },
+      { title: "Returns", icon: LineChart, href: "/sales/returns" },
     ],
   },
   {

@@ -9,6 +9,8 @@ import { useCartStore } from "@/hooks/useCartStore"
 import { ecommerceApi, EcommerceProduct } from "@/lib/api"
 import { useLoading } from "@/hooks/useLoading"
 import { sendGTMEvent, normalizeProductId } from "@/lib/gtm"
+import { normalizeCartLine } from "@/lib/utils"
+import { useCheckoutStore } from "@/hooks/useCheckoutStore"
 
 interface CartPricing {
   subtotal: number
@@ -30,7 +32,8 @@ interface CartPricing {
 
 export function CartSummary() {
   const items = useCartStore((s) => s.items)
-  const [shippingMethod, setShippingMethod] = useState<'inside' | 'gazipur' | 'outside'>('inside')
+  const shippingMethod = useCheckoutStore((state) => state.deliveryMethod)
+  const setShippingMethod = useCheckoutStore((state) => state.setDeliveryMethod)
   const [cartPricing, setCartPricing] = useState<CartPricing | null>(null)
   const [localLoading, setLocalLoading] = useState(false)
   const { startLoading, stopLoading } = useLoading()
@@ -49,27 +52,7 @@ export function CartSummary() {
         setLocalLoading(true)
 
         // Normalize items: extract numeric productId and ensure variations are properly set
-        const normalizedItems = items.map((item) => {
-          let productId: string | number = item.productId
-          let variations = item.variations ? { ...item.variations } : {}
-
-          // If productId contains a slash or hyphen (e.g., "141/blue" or "141-blue"), extract the numeric ID and color
-          if (typeof item.productId === 'string' && (item.productId.includes('/') || item.productId.includes('-'))) {
-            const separator = item.productId.includes('/') ? '/' : '-'
-            const parts = item.productId.split(separator)
-            productId = parts[0] // Get the numeric part
-            // If color is not already in variations, extract it from productId
-            if (!variations.color && parts.length > 1) {
-              variations.color = parts.slice(1).join(separator) // Handle multi-part colors
-            }
-          }
-
-          return {
-            productId: productId,
-            quantity: item.quantity,
-            variations: Object.keys(variations).length > 0 ? variations : undefined
-          }
-        })
+        const normalizedItems = items.map(normalizeCartLine)
 
         const response = await ecommerceApi.priceCart(normalizedItems)
         // Convert all values to numbers to ensure proper type handling
@@ -166,16 +149,18 @@ export function CartSummary() {
 
   if (items.length === 0) {
     return (
-      <div className="border rounded-lg p-6 bg-card">
-        <h2 className="text-xl font-bold mb-6">Cart summary</h2>
+      <div className="editorial-surface p-6">
+        <p className="editorial-kicker">Your order</p>
+        <h2 className="mb-6 mt-2 font-serif text-2xl">Cart summary</h2>
         <p className="text-center text-muted-foreground py-8">Your cart is empty.</p>
       </div>
     )
   }
 
   return (
-    <div className="border rounded-lg p-6 bg-card">
-      <h2 className="text-xl font-bold mb-6">Cart summary</h2>
+    <div className="editorial-surface p-6">
+      <p className="editorial-kicker">Your order</p>
+      <h2 className="mb-6 mt-2 font-serif text-2xl">Cart summary</h2>
 
       {/* Delivery Options */}
       <div className="mb-6">

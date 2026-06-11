@@ -18,6 +18,7 @@ from apps.customer.models import Customer
 from decimal import Decimal
 from apps.branches.permissions import get_allowed_branch_ids, get_requested_branch_id, is_admin
 from rest_framework.exceptions import PermissionDenied
+from collections import defaultdict
 
 class StandardResultsSetPagination(PageNumberPagination):
     page_size = 10
@@ -43,6 +44,55 @@ class SaleViewSet(viewsets.ModelViewSet):
         if is_admin(self.request.user):
             return queryset
         return queryset.filter(branch_id__in=get_allowed_branch_ids(self.request.user))
+
+    def _approved_returns(self, sales_queryset, date_from=None, date_to=None):
+        returns = Return.objects.filter(
+            sale__in=sales_queryset,
+            status__in=['approved', 'completed'],
+            processed_date__isnull=False,
+        ).prefetch_related('items__sale_item')
+
+        if date_from and date_to:
+            returns = returns.filter(processed_date__date__range=[date_from, date_to])
+
+        return returns
+
+    def _summarize_returns(self, returns_queryset):
+        refund_total = Decimal('0.00')
+        profit_reversed_total = Decimal('0.00')
+        by_date = defaultdict(
+            lambda: {
+                'returns_total': Decimal('0.00'),
+                'profit_reversed': Decimal('0.00'),
+            }
+        )
+
+        for return_order in returns_queryset:
+            refund_amount = return_order.refund_amount or Decimal('0.00')
+            refund_total += refund_amount
+
+            processed_at = return_order.processed_date
+            if processed_at is None:
+                continue
+
+            processed_date = timezone.localtime(processed_at).date() if timezone.is_aware(processed_at) else processed_at.date()
+            by_date[processed_date]['returns_total'] += refund_amount
+
+            for item in return_order.items.all():
+                sale_item = item.sale_item
+                if not sale_item or not sale_item.quantity:
+                    continue
+
+                line_profit = sale_item.profit or Decimal('0.00')
+                reversed_profit = (line_profit * Decimal(item.quantity)) / Decimal(sale_item.quantity)
+                profit_reversed_total += reversed_profit
+                by_date[processed_date]['profit_reversed'] += reversed_profit
+
+        return {
+            'refund_total': refund_total,
+            'profit_reversed_total': profit_reversed_total,
+            'by_date': by_date,
+        }
 
     def get_queryset(self):
         queryset = self._scoped_queryset(super().get_queryset())
@@ -244,7 +294,7 @@ class SaleViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def create_return(self, request, pk=None):
         sale = self.get_object()
-        serializer = ReturnSerializer(data=request.data)
+        serializer = ReturnSerializer(data=request.data, context={'sale': sale})
         
         if serializer.is_valid():
             return_order = serializer.save(sale=sale)
@@ -362,16 +412,41 @@ class SaleViewSet(viewsets.ModelViewSet):
                 qs = qs.filter(date__date__range=[date_from, date_to])
             return qs
 
+        def with_return_adjustments(sales_qs, date_from, date_to):
+            aggregates = sales_qs.aggregate(
+                gross_sales=Sum('total'),
+                total_transactions=Count('id'),
+                gross_profit=Sum('total_profit'),
+                total_loss=Sum('total_loss'),
+                total_discount=Sum('discount'),
+            )
+            returns_summary = self._summarize_returns(
+                self._approved_returns(sales_qs, date_from, date_to)
+            )
+
+            gross_sales = aggregates['gross_sales'] or Decimal('0.00')
+            returns_total = returns_summary['refund_total']
+            gross_profit = aggregates['gross_profit'] or Decimal('0.00')
+            net_sales = gross_sales - returns_total
+            net_profit = gross_profit - returns_summary['profit_reversed_total']
+            total_transactions = aggregates['total_transactions'] or 0
+
+            return {
+                'gross_sales': gross_sales,
+                'returns_total': returns_total,
+                'net_sales': net_sales,
+                'total_sales': net_sales,
+                'total_transactions': total_transactions,
+                'gross_profit': gross_profit,
+                'total_profit': net_profit,
+                'total_loss': aggregates['total_loss'] or Decimal('0.00'),
+                'total_discount': aggregates['total_discount'] or Decimal('0.00'),
+                'average_transaction_value': (net_sales / total_transactions) if total_transactions > 0 else Decimal('0.00'),
+            }, returns_summary
+
         # Today's sales
         today_sales_qs = filtered_sales(date_from=today, date_to=today)
-        today_sales = today_sales_qs.aggregate(
-            total_sales=Sum('total'),
-            total_transactions=Count('id'),
-            total_profit=Sum('total_profit'),
-            total_loss=Sum('total_loss'),
-            total_discount=Sum('discount'),
-            average_transaction_value=Avg('total')
-        )
+        today_sales, _today_returns_summary = with_return_adjustments(today_sales_qs, today, today)
         
         # Count unique customers for today
         today_customers = today_sales_qs.values('customer').distinct().count()
@@ -379,14 +454,7 @@ class SaleViewSet(viewsets.ModelViewSet):
 
         # Monthly sales
         monthly_sales_qs = filtered_sales(date_from=start_of_month, date_to=today)
-        monthly_sales = monthly_sales_qs.aggregate(
-            total_sales=Sum('total'),
-            total_transactions=Count('id'),
-            total_profit=Sum('total_profit'),
-            total_loss=Sum('total_loss'),
-            total_discount=Sum('discount'),
-            average_transaction_value=Avg('total')
-        )
+        monthly_sales, _monthly_returns_summary = with_return_adjustments(monthly_sales_qs, start_of_month, today)
         
         # Count unique customers for month
         monthly_customers = monthly_sales_qs.values('customer').distinct().count()
@@ -466,13 +534,35 @@ class SaleViewSet(viewsets.ModelViewSet):
                 trend_from = today - timedelta(days=7)
             trend_to = today
             
-        sales_trend = filtered_sales(date_from=trend_from, date_to=trend_to).values(
+        trend_sales_qs = filtered_sales(date_from=trend_from, date_to=trend_to)
+        trend_returns_summary = self._summarize_returns(
+            self._approved_returns(trend_sales_qs, trend_from, trend_to)
+        )
+        raw_sales_trend = trend_sales_qs.values(
             'date__date'
         ).annotate(
             sales=Sum('total'),
             profit=Sum('total_profit'),
             orders=Count('id')
         ).order_by('date__date')
+        sales_trend = []
+        for entry in raw_sales_trend:
+            current_date = entry['date__date']
+            daily_returns = trend_returns_summary['by_date'].get(
+                current_date,
+                {'returns_total': Decimal('0.00'), 'profit_reversed': Decimal('0.00')}
+            )
+            gross_sales = entry['sales'] or Decimal('0.00')
+            gross_profit = entry['profit'] or Decimal('0.00')
+            sales_trend.append({
+                'date__date': current_date,
+                'gross_sales': gross_sales,
+                'returns_total': daily_returns['returns_total'],
+                'sales': gross_sales - daily_returns['returns_total'],
+                'gross_profit': gross_profit,
+                'profit': gross_profit - daily_returns['profit_reversed'],
+                'orders': entry['orders'],
+            })
 
         # Convert Decimal values to float for JSON serialization
         def convert_decimals(data):
@@ -658,28 +748,13 @@ class ReturnViewSet(viewsets.ModelViewSet):
         return queryset
 
     def create(self, request, *args, **kwargs):
-        items_data = request.data.pop('items', [])
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        
-        # Create return with items
-        return_order = serializer.save(items=items_data)
-        
-        # Update product stock
-        for item_data in items_data:
-            sale_item = SaleItem.objects.get(id=item_data['sale_item_id'])
-            product = sale_item.product
-            if sale_item.variation:
-                variation = sale_item.variation
-                variation.stock += item_data['quantity']
-                variation.save()
-            else:
-                product.stock_quantity += item_data['quantity']
-                product.save()
-        
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return_order = serializer.save()
+        return Response(self.get_serializer(return_order).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'])
+    @transaction.atomic
     def approve(self, request, pk=None):
         return_order = self.get_object()
         if return_order.status != 'pending':
@@ -689,9 +764,29 @@ class ReturnViewSet(viewsets.ModelViewSet):
             )
         
         return_order.status = 'approved'
-        return_order.processed_by = request.user
         return_order.processed_date = timezone.now()
         return_order.save()
+
+        for item in return_order.items.select_related('sale_item__product'):
+            sale_item = item.sale_item
+            variation = sale_item.get_variation()
+            if variation:
+                variation.stock = F('stock') + item.quantity
+                variation.save(update_fields=['stock'])
+                variation.refresh_from_db(fields=['stock'])
+
+            sale_item.product.stock_quantity = F('stock_quantity') + item.quantity
+            sale_item.product.save(update_fields=['stock_quantity'])
+
+            StockMovement.objects.create(
+                product=sale_item.product,
+                variation=variation,
+                movement_type='IN',
+                quantity=item.quantity,
+                reference_number=return_order.return_number,
+                notes=f"Approved return item from {return_order.return_number}",
+                branch=getattr(return_order.sale, "branch", None),
+            )
         
         return Response(self.get_serializer(return_order).data)
 
@@ -705,7 +800,6 @@ class ReturnViewSet(viewsets.ModelViewSet):
             )
         
         return_order.status = 'rejected'
-        return_order.processed_by = request.user
         return_order.processed_date = timezone.now()
         return_order.save()
         

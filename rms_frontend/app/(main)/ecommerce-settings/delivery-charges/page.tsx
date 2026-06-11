@@ -131,8 +131,8 @@ export default function DeliveryChargesSettingsPage() {
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
       <PageHeader
-        title="Logistics & Delivery"
-        description="Configure geographic delivery tariffs and regional fulfillment costs."
+        title="Delivery charges"
+        description="Set the shipping fee customers pay in each delivery area."
         icon={<Truck className="h-6 w-6" />}
         actions={
           <Button
@@ -141,7 +141,7 @@ export default function DeliveryChargesSettingsPage() {
             className="h-10 px-6 bg-brand-primary text-brand-secondary hover:bg-emerald-900 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-brand-primary/20"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-            Save Manifest
+            Save charges
           </Button>
         }
       />
@@ -178,8 +178,8 @@ export default function DeliveryChargesSettingsPage() {
 
       <motion.div variants={item}>
         <DataPanel 
-          title="Regional Tariffs" 
-          description="Adjust shipping rates for various fulfillment zones."
+          title="Delivery areas"
+          description="Enter the charge applied to orders in each region."
         >
           <div className="grid gap-8 md:grid-cols-3">
             <div className="space-y-2">

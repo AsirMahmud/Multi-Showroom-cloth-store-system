@@ -367,8 +367,8 @@ export default function DiscountManagementPage() {
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
       <PageHeader
-        title="Promotional Engine"
-        description="Architect and manage discount campaigns across your global retail network."
+        title="Discounts"
+        description="Create and manage storewide, category, and product discounts."
         icon={<Percent className="h-6 w-6" />}
         actions={
           <Button
@@ -391,8 +391,8 @@ export default function DiscountManagementPage() {
       {(isCreating || editingId) && (
         <motion.div variants={item}>
           <DataPanel 
-            title={editingId ? "Modify Campaign" : "Configure Strategy"} 
-            description="Define the scope and magnitude of your promotional event."
+            title={editingId ? "Edit discount" : "Create a discount"}
+            description="Choose where the discount applies, its value, and the active dates."
           >
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="space-y-2">
@@ -606,7 +606,7 @@ export default function DiscountManagementPage() {
       )}
 
       <motion.div variants={item}>
-        <DataPanel title="Campaign Ledger" description={`Active and historical promotional cycles (${discounts.length}).`}>
+        <DataPanel title="Discount campaigns" description={`Active and past discounts (${discounts.length}).`}>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>

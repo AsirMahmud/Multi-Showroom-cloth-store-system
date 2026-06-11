@@ -5,6 +5,49 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
+export const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "")
+
+export function getMediaUrl(
+  value: string | null | undefined,
+  fallback = "/placeholder.jpg",
+): string {
+  if (!value) return fallback
+  if (/^https?:\/\//i.test(value)) return value
+  if (value.startsWith("/")) return `${API_ORIGIN}${value}`
+  return `${API_ORIGIN}/media/${value}`
+}
+
+export function parseProductId(value: string | number): number {
+  const match = String(value).match(/^\d+/)
+  return match ? Number(match[0]) : 0
+}
+
+export function normalizeCartLine(item: {
+  productId: string | number
+  quantity: number
+  variations?: Record<string, string>
+}) {
+  const variations = { ...(item.variations || {}) }
+  const raw = String(item.productId)
+  const slashIndex = raw.indexOf("/")
+  if (!variations.color && slashIndex >= 0) variations.color = raw.slice(slashIndex + 1)
+  return {
+    productId: parseProductId(raw),
+    quantity: Math.max(1, Math.floor(item.quantity)),
+    variations: Object.keys(variations).length ? variations : undefined,
+  }
+}
+
+export function formatCurrency(value: number | string | null | undefined): string {
+  const amount = Number(value)
+  return new Intl.NumberFormat("en-BD", {
+    style: "currency",
+    currency: "BDT",
+    maximumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+  }).format(Number.isFinite(amount) ? amount : 0)
+}
+
 /**
  * Get the full image URL by combining the base URL with the image path
  * @param imagePath - The relative image path from the backend (e.g., "/media/gallery/97/navy/fourth.png")

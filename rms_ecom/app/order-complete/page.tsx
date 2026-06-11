@@ -33,6 +33,13 @@ interface OnlinePreorder {
     city?: string;
     area?: string;
     instructions?: string;
+    city_corporation?: string;
+    thana?: string;
+    place?: string;
+    division?: string;
+    district?: string;
+    upazila?: string;
+    union?: string;
   };
   delivery_charge: number;
   delivery_method?: string;
@@ -295,14 +302,34 @@ export default function OrderCompletePage() {
                     {order.shipping_address ? (
                       <div className="bg-muted/30 p-3 rounded-lg border border-dashed">
                         {order.shipping_address.address && <p className="font-medium">{order.shipping_address.address}</p>}
-                        {(order.shipping_address.area || order.shipping_address.city) && (
-                          <p className="text-muted-foreground">
-                            {order.shipping_address.area}{order.shipping_address.area && order.shipping_address.city ? ', ' : ''}{order.shipping_address.city}
+                        
+                        {/* Display Inside Dhaka address detail */}
+                        {order.shipping_address.place && (
+                          <p className="text-muted-foreground mt-1 text-xs">
+                            {[
+                              order.shipping_address.place,
+                              order.shipping_address.thana,
+                              order.shipping_address.city_corporation
+                            ].filter(Boolean).join(', ')}
                           </p>
                         )}
-                        {order.shipping_address.instructions && (
+
+                        {/* Display Outside Dhaka / Gazipur address detail */}
+                        {order.shipping_address.district && (
+                          <p className="text-muted-foreground mt-1 text-xs">
+                            {[
+                              order.shipping_address.union,
+                              order.shipping_address.upazila,
+                              order.shipping_address.district,
+                              order.shipping_address.division
+                            ].filter(Boolean).join(', ')}
+                          </p>
+                        )}
+
+                        {/* Display Order Notes if present */}
+                        {order.notes && (
                           <p className="mt-2 pt-2 border-t border-muted italic text-xs text-muted-foreground">
-                            Note: {order.shipping_address.instructions}
+                            Note: {order.notes}
                           </p>
                         )}
                       </div>

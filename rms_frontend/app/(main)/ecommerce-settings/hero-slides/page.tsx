@@ -42,6 +42,22 @@ import { useHeroSlides, useCreateHeroSlide, useUpdateHeroSlide, useDeleteHeroSli
 import type { HeroSlide, CreateHeroSlideDTO } from "@/lib/api/ecommerce"
 import { cn } from "@/lib/utils"
 
+const SUPPORTED_HERO_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"]
+const MAX_HERO_IMAGE_SIZE = 10 * 1024 * 1024
+
+const getApiErrorMessage = (error: any, fallback: string) => {
+  const data = error?.response?.data
+  if (typeof data?.detail === "string") return data.detail
+  if (typeof data?.error === "string") return data.error
+
+  if (data && typeof data === "object") {
+    const firstError = Object.values(data).flat().find((value) => typeof value === "string")
+    if (typeof firstError === "string") return firstError
+  }
+
+  return error?.message || fallback
+}
+
 const LAYOUT_OPTIONS = [
   { value: "clean-left", label: "Clean Left" },
   { value: "centered-clean", label: "Centered Clean" },
@@ -1083,6 +1099,15 @@ export default function HeroSlidesPage() {
         return
       }
 
+      if (!editingSlide && !(imageFile instanceof File)) {
+        toast({
+          title: "Image required",
+          description: "Select a JPG, PNG, or WebP hero image before creating the slide.",
+          variant: "destructive",
+        })
+        return
+      }
+
       const slideData: CreateHeroSlideDTO = {
         title: formData.title!,
         subtitle: formData.subtitle,
@@ -1118,7 +1143,7 @@ export default function HeroSlidesPage() {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error?.message || "Failed to save hero slide",
+        description: getApiErrorMessage(error, "Failed to save hero slide"),
         variant: "destructive",
       })
     }
@@ -1203,8 +1228,8 @@ export default function HeroSlidesPage() {
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
       <PageHeader
-        title="Cinematic Storytelling"
-        description="Craft high-impact hero transitions for the global storefront entry point."
+        title="Hero slides"
+        description="Create, preview, order, and publish the large banners on your storefront."
         icon={<ImageIcon className="h-6 w-6" />}
         actions={
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -1232,7 +1257,7 @@ export default function HeroSlidesPage() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Eye className="h-4 w-4 text-brand-primary" />
-                          <Label className="text-xs font-black uppercase tracking-widest">Protocol Preview</Label>
+                          <Label className="text-xs font-black uppercase tracking-widest">Slide preview</Label>
                         </div>
 
                         <div className="flex items-center gap-2">
@@ -1417,22 +1442,59 @@ export default function HeroSlidesPage() {
                           <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Visual Asset</Label>
                           <div className="relative group rounded-[24px] overflow-hidden border-2 border-dashed border-slate-200 hover:border-brand-primary/20 hover:bg-slate-50 transition-all aspect-video flex flex-col items-center justify-center cursor-pointer">
                             {(imageFile || editingSlide?.image_url) ? (
-                              <img
-                                src={imageFile ? URL.createObjectURL(imageFile) : editingSlide?.image_url || ""}
-                                alt=""
-                                className="absolute inset-0 w-full h-full object-cover"
-                              />
+                              <>
+                                <img
+                                  src={imageFile ? URL.createObjectURL(imageFile) : editingSlide?.image_url || ""}
+                                  alt="Hero slide preview"
+                                  className="absolute inset-0 w-full h-full object-cover"
+                                />
+                                <div className="absolute inset-x-3 bottom-3 z-10 rounded-xl bg-black/65 px-3 py-2 text-center text-[9px] font-black uppercase tracking-wider text-white backdrop-blur-sm">
+                                  {imageFile?.name || "Click to replace image"}
+                                </div>
+                              </>
                             ) : (
                               <div className="flex flex-col items-center">
                                 <Upload className="h-8 w-8 text-slate-300 mb-2" />
                                 <span className="text-[9px] font-black uppercase text-slate-400">Initialize Media</span>
+                                <span className="mt-1 text-[9px] font-medium text-slate-300">JPG, PNG or WebP, up to 10 MB</span>
                               </div>
                             )}
                             <Input
                               type="file"
-                              accept="image/*"
-                              onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-                              className="absolute inset-0 opacity-0 cursor-pointer"
+                              accept="image/jpeg,image/png,image/webp"
+                              aria-label={imageFile || editingSlide?.image_url ? "Replace hero image" : "Select hero image"}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0]
+                                if (!file) {
+                                  setImageFile(null)
+                                  return
+                                }
+
+                                if (!SUPPORTED_HERO_IMAGE_TYPES.includes(file.type)) {
+                                  e.target.value = ""
+                                  setImageFile(null)
+                                  toast({
+                                    title: "Unsupported image",
+                                    description: "Use a JPG, PNG, or WebP image.",
+                                    variant: "destructive",
+                                  })
+                                  return
+                                }
+
+                                if (file.size > MAX_HERO_IMAGE_SIZE) {
+                                  e.target.value = ""
+                                  setImageFile(null)
+                                  toast({
+                                    title: "Image too large",
+                                    description: "Hero images must be 10 MB or smaller.",
+                                    variant: "destructive",
+                                  })
+                                  return
+                                }
+
+                                setImageFile(file)
+                              }}
+                              className="absolute inset-0 z-20 h-full w-full cursor-pointer opacity-0"
                             />
                           </div>
                         </div>
@@ -1472,7 +1534,7 @@ export default function HeroSlidesPage() {
       />
 
       <motion.div variants={item}>
-        <DataPanel title="Active Sequence Matrix" description="Manage the sequential flow of high-impact visuals on the global storefront.">
+        <DataPanel title="Published slides" description="Manage the order and visibility of storefront hero banners.">
           {slides && slides.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full">

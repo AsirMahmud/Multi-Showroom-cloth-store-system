@@ -15,6 +15,7 @@ import {
     rejectReturn,
     lookupCustomer,
     getDashboardStats,
+    CreateReturnPayload,
     PaginatedResponse,
     deleteAllSales
 } from '@/lib/api/sales';
@@ -190,7 +191,8 @@ export const useSale = (id: number) => {
     const { selectedBranchId } = useBranch();
     const saleQuery = useQuery({
         queryKey: ['sale', id, selectedBranchId],
-        queryFn: () => getSale(id)
+        queryFn: () => getSale(id),
+        enabled: id > 0,
     });
 
     const addPaymentMutation = useMutation({
@@ -212,9 +214,11 @@ export const useSale = (id: number) => {
     });
 
     const createReturnMutation = useMutation({
-        mutationFn: ({ saleId, data }: { saleId: number; data: Partial<Return> }) => createReturn(saleId, data),
+        mutationFn: ({ saleId, data }: { saleId: number; data: CreateReturnPayload }) => createReturn(saleId, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['sale', id] });
+            queryClient.invalidateQueries({ queryKey: ['returns'] });
+            queryClient.invalidateQueries({ queryKey: ['sales'] });
             toast({
                 title: 'Success',
                 description: 'Return created successfully'

@@ -552,6 +552,7 @@ function EditAccountDialog({
               </SelectContent>
             </Select>
           </div>
+          {role === "branch_manager" && (
             <div className="space-y-1.5">
               <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Assign to Branch</Label>
               <Select value={managedBranch} onValueChange={setManagedBranch}>

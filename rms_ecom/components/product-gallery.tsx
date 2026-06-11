@@ -124,7 +124,7 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
               }
             }}
             className={cn(
-              "relative h-20 w-20 lg:h-28 lg:w-28 overflow-hidden rounded-xl border-2 transition-all flex-shrink-0",
+              "relative h-20 w-20 flex-shrink-0 overflow-hidden border transition-all lg:h-28 lg:w-24",
               selectedImage === index ? "border-foreground" : "border-border hover:border-foreground/50",
             )}
           >
@@ -135,7 +135,7 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
 
       {/* Main image display with slider controls */}
       <div
-        className="relative overflow-hidden rounded-2xl bg-muted order-1 lg:order-2 flex-1 cursor-zoom-in group"
+        className="group relative order-1 flex-1 cursor-zoom-in overflow-hidden bg-muted lg:order-2"
         onClick={() => setIsModalOpen(true)}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}

@@ -15,13 +15,14 @@ from .serializers import (
     CategoryReportSerializer, ProfitLossReportSerializer,
     ProductPerformanceReportSerializer
 )
-from apps.sales.models import Sale, SaleItem
+from apps.sales.models import Sale, SaleItem, Return
 from apps.expenses.models import Expense, ExpenseCategory
 from apps.inventory.models import Product, Category, StockMovement
 from apps.customer.models import Customer
 from apps.preorder.models import Preorder, PreorderProduct
 from apps.online_preorder.models import OnlinePreorder
 import logging
+from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,55 @@ class ReportViewSet(viewsets.ModelViewSet):
 
         return date_from, date_to, None
 
+    def _approved_returns(self, sales_queryset, date_from=None, date_to=None):
+        returns = Return.objects.filter(
+            sale__in=sales_queryset,
+            status__in=['approved', 'completed'],
+            processed_date__isnull=False,
+        ).prefetch_related('items__sale_item')
+
+        if date_from and date_to:
+            returns = returns.filter(processed_date__range=[date_from, date_to])
+
+        return returns
+
+    def _summarize_returns(self, returns_queryset):
+        refund_total = Decimal('0.00')
+        profit_reversed_total = Decimal('0.00')
+        by_date = defaultdict(
+            lambda: {
+                'returns_total': Decimal('0.00'),
+                'profit_reversed': Decimal('0.00'),
+            }
+        )
+
+        for return_order in returns_queryset:
+            refund_amount = return_order.refund_amount or Decimal('0.00')
+            refund_total += refund_amount
+
+            processed_at = return_order.processed_date
+            if processed_at is None:
+                continue
+
+            processed_date = timezone.localtime(processed_at).date() if timezone.is_aware(processed_at) else processed_at.date()
+            by_date[processed_date]['returns_total'] += refund_amount
+
+            for item in return_order.items.all():
+                sale_item = item.sale_item
+                if not sale_item or not sale_item.quantity:
+                    continue
+
+                line_profit = sale_item.profit or Decimal('0.00')
+                reversed_profit = (line_profit * Decimal(item.quantity)) / Decimal(sale_item.quantity)
+                profit_reversed_total += reversed_profit
+                by_date[processed_date]['profit_reversed'] += reversed_profit
+
+        return {
+            'refund_total': refund_total,
+            'profit_reversed_total': profit_reversed_total,
+            'by_date': by_date,
+        }
+
     @action(detail=False, methods=['get'])
     def overview(self, request):
         date_from, date_to, error = self._get_date_range(request)
@@ -53,9 +103,13 @@ class ReportViewSet(viewsets.ModelViewSet):
 
         # Sales data
         sales = Sale.objects.filter(date__range=[date_from, date_to], status='completed')
-        total_sales = sales.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+        gross_sales = sales.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+        returns_summary = self._summarize_returns(self._approved_returns(sales, date_from, date_to))
+        returns_total = returns_summary['refund_total']
+        total_sales = gross_sales
+        net_sales = gross_sales - returns_total
         total_tax = sales.aggregate(total=Sum('tax'))['total'] or Decimal('0.00')
-        net_revenue = total_sales - total_tax
+        net_revenue = net_sales - total_tax
         total_orders = sales.count()
         
         # Expense data
@@ -64,6 +118,7 @@ class ReportViewSet(viewsets.ModelViewSet):
 
         # Profit & Loss data
         gross_profit = sales.aggregate(total=Sum('total_profit'))['total'] or Decimal('0.00')
+        gross_profit -= returns_summary['profit_reversed_total']
         net_profit = gross_profit - total_expenses
         profit_margin = (net_profit / net_revenue * 100) if net_revenue > 0 else Decimal('0.00')
 
@@ -79,10 +134,30 @@ class ReportViewSet(viewsets.ModelViewSet):
         preorder_profit = completed_preorders.aggregate(total=Sum('profit'))['total'] or Decimal('0.00')
 
         # Data for charts
-        sales_by_date = sales.values('date__date').annotate(date=F('date__date'), total=Sum('total')).order_by('date')
+        gross_sales_by_date = sales.values('date__date').annotate(
+            date=F('date__date'),
+            total=Sum('total')
+        ).order_by('date')
+        sales_by_date = []
+        for entry in gross_sales_by_date:
+            current_date = entry['date']
+            daily_returns = returns_summary['by_date'].get(
+                current_date,
+                {'returns_total': Decimal('0.00')}
+            )
+            sales_by_date.append({
+                'date': current_date,
+                'total': entry['total'],
+                'gross_sales': entry['total'],
+                'returns_total': daily_returns['returns_total'],
+                'net_sales': entry['total'] - daily_returns['returns_total'],
+            })
         expenses_by_date = expenses.values('date').annotate(total=Sum('amount')).order_by('date')
 
         data = {
+            "gross_sales": gross_sales,
+            "returns_total": returns_total,
+            "net_sales": net_sales,
             "total_sales": total_sales,
             "total_orders": total_orders,
             "gross_profit": gross_profit,
@@ -113,19 +188,38 @@ class ReportViewSet(viewsets.ModelViewSet):
             status='completed'
         )
 
-        total_sales = sales.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+        gross_sales = sales.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+        returns_summary = self._summarize_returns(self._approved_returns(sales, date_from, date_to))
+        returns_total = returns_summary['refund_total']
+        net_sales = gross_sales - returns_total
+        total_sales = gross_sales
         total_orders = sales.count()
         total_items_sold = sales.aggregate(total_items=Sum('items__quantity'))['total_items'] or 0
 
-        average_order_value = total_sales / total_orders if total_orders > 0 else Decimal('0.00')
-        average_item_price = total_sales / total_items_sold if total_items_sold > 0 else Decimal('0.00')
+        average_order_value = net_sales / total_orders if total_orders > 0 else Decimal('0.00')
+        average_item_price = net_sales / total_items_sold if total_items_sold > 0 else Decimal('0.00')
 
         # Sales by date
-        sales_by_date = sales.values('date__date').annotate(
+        gross_sales_by_date = sales.values('date__date').annotate(
             date=F('date__date'),
             total=Sum('total'),
             items_count=Sum('items__quantity')
         ).order_by('date__date')
+        sales_by_date = []
+        for entry in gross_sales_by_date:
+            current_date = entry['date']
+            daily_returns = returns_summary['by_date'].get(
+                current_date,
+                {'returns_total': Decimal('0.00')}
+            )
+            sales_by_date.append({
+                'date': current_date,
+                'total': entry['total'],
+                'gross_sales': entry['total'],
+                'returns_total': daily_returns['returns_total'],
+                'net_sales': entry['total'] - daily_returns['returns_total'],
+                'items_count': entry['items_count'],
+            })
 
         # Sales by category
         sales_by_category = SaleItem.objects.filter(
@@ -164,6 +258,9 @@ class ReportViewSet(viewsets.ModelViewSet):
         ).order_by('-total')
 
         data = {
+            'gross_sales': gross_sales,
+            'returns_total': returns_total,
+            'net_sales': net_sales,
             'total_sales': total_sales,
             'total_orders': total_orders,
             'total_items_sold': total_items_sold,

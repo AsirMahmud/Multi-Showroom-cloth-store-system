@@ -23,19 +23,27 @@ interface ProductSectionProps {
 
 export function ProductSection({ title, products, viewAllHref = "/products", isLoading = false }: ProductSectionProps) {
   return (
-    <section className="w-full py-16">
-      <div className="container px-4">
-        <h2 className="text-3xl md:text-4xl font-bold text-center mb-12 tracking-tight">{title}</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+    <section className="w-full py-16 md:py-24">
+      <div className="container">
+        <div className="mb-10 flex items-end justify-between gap-6">
+          <div>
+            <p className="editorial-kicker">Curated for you</p>
+            <h2 className="mt-2 font-serif text-3xl md:text-4xl">{title}</h2>
+          </div>
+          <Link href={viewAllHref} className="hidden border-b border-foreground pb-1 text-[10px] font-semibold uppercase tracking-[0.14em] sm:block">
+            View collection
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 md:gap-x-6 lg:grid-cols-4">
           {isLoading
             ? Array.from({ length: 8 }).map((_, i) => <ProductCardSkeleton key={i} />)
             : products.slice(0, 8).map((product) => (
               <ProductCard key={product.id} {...product} />
             ))}
         </div>
-        <div className="flex justify-center mt-12">
+        <div className="mt-12 flex justify-center sm:hidden">
           <Link href={viewAllHref}>
-            <Button variant="outline" size="lg" className="rounded-full px-12 bg-transparent hover:bg-primary hover:text-primary-foreground transition-all">
+            <Button variant="outline" size="lg">
               View All
             </Button>
           </Link>

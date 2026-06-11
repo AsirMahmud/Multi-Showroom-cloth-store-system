@@ -1,7 +1,7 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.utils import timezone
-from pydantic import ValidationError
 from apps.inventory.models import Product, ProductVariation, StockMovement
 from apps.customer.models import Customer
 import uuid
@@ -567,21 +567,3 @@ class ReturnItem(models.Model):
 
     def __str__(self):
         return f"Return Item {self.id} for Return {self.return_order.return_number}"
-
-    def save(self, *args, **kwargs):
-        # Create stock movement record when return is approved
-        if self.return_order.status == 'approved':
-            StockMovement.objects.create(
-                product=self.sale_item.product,
-                movement_type='IN',
-                quantity=self.quantity,
-                reference_number=self.return_order.return_number,
-                notes=f"Return item from {self.return_order.return_number}",
-                branch=getattr(self.return_order.sale, "branch", None),
-            )
-            
-            # Update product stock
-            self.sale_item.product.stock_quantity += self.quantity
-            self.sale_item.product.save()
-        
-        super().save(*args, **kwargs) 

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Home,
@@ -22,7 +23,8 @@ import {
   Trash2,
   Loader2,
   CheckCircle2,
-  Package
+  Package,
+  Grid2x2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useHomePageSettings, useUpdateHomePageSettings } from "@/hooks/queries/useEcommerce";
@@ -56,6 +58,30 @@ interface HomePageSettings {
   stat_brands?: string;
   stat_products?: string;
   stat_customers?: string;
+  collage_enabled?: boolean;
+  collage_badge_text?: string;
+  collage_heading?: string;
+  collage_description?: string;
+  collage_card_1_title?: string;
+  collage_card_1_subtitle?: string;
+  collage_card_1_link?: string;
+  collage_card_1_image?: File | string;
+  collage_card_1_image_url?: string;
+  collage_card_2_title?: string;
+  collage_card_2_subtitle?: string;
+  collage_card_2_link?: string;
+  collage_card_2_image?: File | string;
+  collage_card_2_image_url?: string;
+  collage_card_3_title?: string;
+  collage_card_3_subtitle?: string;
+  collage_card_3_link?: string;
+  collage_card_3_image?: File | string;
+  collage_card_3_image_url?: string;
+  collage_card_4_title?: string;
+  collage_card_4_subtitle?: string;
+  collage_card_4_link?: string;
+  collage_card_4_image?: File | string;
+  collage_card_4_image_url?: string;
 }
 
 // Framer motion variants
@@ -73,6 +99,13 @@ const item = {
   hidden: { opacity: 0, y: 10 },
   show: { opacity: 1, y: 0 },
 };
+
+const collageImageFields = [
+  "collage_card_1_image",
+  "collage_card_2_image",
+  "collage_card_3_image",
+  "collage_card_4_image",
+] as const;
 
 export default function HomePageSettingsPage() {
   const [settings, setSettings] = useState<HomePageSettings>({});
@@ -92,15 +125,30 @@ export default function HomePageSettingsPage() {
     setSaving(true);
     try {
       const formData = new FormData();
-      const helperUrlFields = new Set(["logo_image_url", "hero_primary_image_url", "hero_secondary_image_url"]);
+      const helperUrlFields = new Set([
+        "logo_image_url",
+        "hero_primary_image_url",
+        "hero_secondary_image_url",
+        "collage_card_1_image_url",
+        "collage_card_2_image_url",
+        "collage_card_3_image_url",
+        "collage_card_4_image_url",
+      ]);
 
       Object.keys(settings).forEach((key) => {
         const value = settings[key as keyof HomePageSettings];
         const isHelperUrlField = helperUrlFields.has(key);
-        const isImageField = key === "logo_image" || key === "hero_primary_image" || key === "hero_secondary_image";
+        const isImageField =
+          key === "logo_image" ||
+          key === "hero_primary_image" ||
+          key === "hero_secondary_image" ||
+          collageImageFields.includes(key as typeof collageImageFields[number]);
 
-        if (value && typeof value === "string" && !isHelperUrlField && !isImageField) {
+        if (typeof value === "string" && !isHelperUrlField && !isImageField) {
           formData.append(key, value);
+        }
+        if (typeof value === "boolean") {
+          formData.append(key, value ? "true" : "false");
         }
       });
 
@@ -111,6 +159,10 @@ export default function HomePageSettingsPage() {
       maybeAppendFile("logo_image");
       maybeAppendFile("hero_primary_image");
       maybeAppendFile("hero_secondary_image");
+      maybeAppendFile("collage_card_1_image");
+      maybeAppendFile("collage_card_2_image");
+      maybeAppendFile("collage_card_3_image");
+      maybeAppendFile("collage_card_4_image");
 
       const updated = await updateSettingsMutation.mutateAsync(formData);
       if (updated) setSettings(updated as HomePageSettings);
@@ -123,7 +175,16 @@ export default function HomePageSettingsPage() {
     }
   };
 
-  const handleDeleteImage = async (field: 'logo_image' | 'hero_primary_image' | 'hero_secondary_image') => {
+  const handleDeleteImage = async (
+    field:
+      | 'logo_image'
+      | 'hero_primary_image'
+      | 'hero_secondary_image'
+      | 'collage_card_1_image'
+      | 'collage_card_2_image'
+      | 'collage_card_3_image'
+      | 'collage_card_4_image'
+  ) => {
     setSaving(true);
     try {
       const formData = new FormData();
@@ -131,9 +192,14 @@ export default function HomePageSettingsPage() {
         logo_image: 'remove_logo_image',
         hero_primary_image: 'remove_hero_primary_image',
         hero_secondary_image: 'remove_hero_secondary_image',
+        collage_card_1_image: 'remove_collage_card_1_image',
+        collage_card_2_image: 'remove_collage_card_2_image',
+        collage_card_3_image: 'remove_collage_card_3_image',
+        collage_card_4_image: 'remove_collage_card_4_image',
       };
       formData.append(flagMap[field], 'true');
-      await updateSettingsMutation.mutateAsync(formData);
+      const updated = await updateSettingsMutation.mutateAsync(formData);
+      if (updated) setSettings(updated as HomePageSettings);
       toast({ title: 'Resource Terminated', description: 'Visual asset removed from core stream.' });
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to terminate resource.', variant: 'destructive' });
@@ -173,8 +239,8 @@ export default function HomePageSettingsPage() {
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
       <PageHeader
-        title="Storefront Architect"
-        description="Configure the primary landing page, brand identity, and global footer matrix."
+        title="Home page"
+        description="Update your storefront branding, landing content, business highlights, and footer."
         icon={<Home className="h-6 w-6" />}
         actions={
           <Button
@@ -183,7 +249,7 @@ export default function HomePageSettingsPage() {
             className="h-10 px-6 bg-brand-primary text-brand-secondary hover:bg-emerald-900 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-brand-primary/20"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-            Sync Storefront
+            Save changes
           </Button>
         }
       />
@@ -194,6 +260,7 @@ export default function HomePageSettingsPage() {
             <TabsList className="flex bg-slate-50 p-1.5 rounded-2xl border-none mb-8">
               <TabsTrigger value="logo" className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-md font-black text-[10px] uppercase tracking-widest py-3 transition-all"><ImageIcon className="h-3 w-3 mr-2" /> Identity</TabsTrigger>
               <TabsTrigger value="hero" className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-md font-black text-[10px] uppercase tracking-widest py-3 transition-all"><Layout className="h-3 w-3 mr-2" /> Hero Matrix</TabsTrigger>
+              <TabsTrigger value="collage" className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-md font-black text-[10px] uppercase tracking-widest py-3 transition-all"><Grid2x2 className="h-3 w-3 mr-2" /> Category Collage</TabsTrigger>
               <TabsTrigger value="stats" className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-md font-black text-[10px] uppercase tracking-widest py-3 transition-all"><BarChart3 className="h-3 w-3 mr-2" /> Metrics</TabsTrigger>
               <TabsTrigger value="footer" className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-md font-black text-[10px] uppercase tracking-widest py-3 transition-all"><Globe className="h-3 w-3 mr-2" /> Footer</TabsTrigger>
             </TabsList>
@@ -302,6 +369,180 @@ export default function HomePageSettingsPage() {
                       <Label htmlFor="hero_secondary_image" className="flex flex-col items-center justify-center h-24 border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer hover:bg-slate-50 transition-all"><Upload className="h-4 w-4 text-slate-300" /></Label>
                     </div>
                   </div>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="collage" className="space-y-8 focus-visible:outline-none">
+              <div className="space-y-6">
+                <div className="flex items-center justify-between rounded-3xl border border-brand-primary/10 bg-slate-50 p-6">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Section visibility</Label>
+                    <p className="text-sm font-semibold text-slate-600">Enable the curated category collage on the storefront home page.</p>
+                  </div>
+                  <Switch
+                    checked={Boolean(settings.collage_enabled)}
+                    onCheckedChange={(checked) => setSettings((prev) => ({ ...prev, collage_enabled: checked }))}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Badge text</Label>
+                      <Input
+                        value={settings.collage_badge_text || ""}
+                        onChange={(e) => handleChange("collage_badge_text", e.target.value)}
+                        placeholder="e.g. Curated for you"
+                        className="h-12 rounded-xl bg-slate-50 border-none font-bold"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Section heading</Label>
+                      <Input
+                        value={settings.collage_heading || ""}
+                        onChange={(e) => handleChange("collage_heading", e.target.value)}
+                        placeholder="e.g. Category collage"
+                        className="h-12 rounded-xl bg-slate-50 border-none font-bold"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Section description</Label>
+                      <Textarea
+                        value={settings.collage_description || ""}
+                        onChange={(e) => handleChange("collage_description", e.target.value)}
+                        placeholder="Optional supporting copy for the collage section..."
+                        className="rounded-xl bg-slate-50 border-none font-medium min-h-[110px]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-[32px] border border-brand-primary/5 bg-[#f7f1eb] p-6">
+                    <div className="mb-4">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-[#b7773c]">
+                        {settings.collage_badge_text || "Curated for you"}
+                      </p>
+                      {settings.collage_heading ? (
+                        <h3 className="mt-2 text-2xl font-black tracking-tight text-brand-primary">{settings.collage_heading}</h3>
+                      ) : null}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="relative row-span-2 min-h-[280px] overflow-hidden rounded-[24px] bg-white">
+                        {settings.collage_card_1_image_url ? (
+                          <img src={settings.collage_card_1_image_url} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="h-full w-full bg-slate-200" />
+                        )}
+                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
+                          <p className="text-lg font-black">{settings.collage_card_1_title || "Card one"}</p>
+                          <p className="text-xs uppercase tracking-widest text-white/80">{settings.collage_card_1_subtitle || "Shop now"}</p>
+                        </div>
+                      </div>
+                      <div className="relative min-h-[134px] overflow-hidden rounded-[24px] bg-white">
+                        {settings.collage_card_2_image_url ? (
+                          <img src={settings.collage_card_2_image_url} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="h-full w-full bg-slate-200" />
+                        )}
+                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3 text-white">
+                          <p className="text-sm font-black">{settings.collage_card_2_title || "Card two"}</p>
+                          <p className="text-[10px] uppercase tracking-widest text-white/80">{settings.collage_card_2_subtitle || "Discover"}</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="relative min-h-[134px] overflow-hidden rounded-[24px] bg-white">
+                          {settings.collage_card_3_image_url ? (
+                            <img src={settings.collage_card_3_image_url} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="h-full w-full bg-slate-200" />
+                          )}
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3 text-white">
+                            <p className="text-sm font-black">{settings.collage_card_3_title || "Card three"}</p>
+                            <p className="text-[10px] uppercase tracking-widest text-white/80">{settings.collage_card_3_subtitle || "Explore"}</p>
+                          </div>
+                        </div>
+                        <div className="relative min-h-[134px] overflow-hidden rounded-[24px] bg-white">
+                          {settings.collage_card_4_image_url ? (
+                            <img src={settings.collage_card_4_image_url} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="h-full w-full bg-slate-200" />
+                          )}
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3 text-white">
+                            <p className="text-sm font-black">{settings.collage_card_4_title || "Card four"}</p>
+                            <p className="text-[10px] uppercase tracking-widest text-white/80">{settings.collage_card_4_subtitle || "Browse"}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                  {[
+                    { index: 1, titleField: "collage_card_1_title", subtitleField: "collage_card_1_subtitle", linkField: "collage_card_1_link", imageField: "collage_card_1_image", imageUrlField: "collage_card_1_image_url", label: "Large left card" },
+                    { index: 2, titleField: "collage_card_2_title", subtitleField: "collage_card_2_subtitle", linkField: "collage_card_2_link", imageField: "collage_card_2_image", imageUrlField: "collage_card_2_image_url", label: "Top right card" },
+                    { index: 3, titleField: "collage_card_3_title", subtitleField: "collage_card_3_subtitle", linkField: "collage_card_3_link", imageField: "collage_card_3_image", imageUrlField: "collage_card_3_image_url", label: "Bottom right card A" },
+                    { index: 4, titleField: "collage_card_4_title", subtitleField: "collage_card_4_subtitle", linkField: "collage_card_4_link", imageField: "collage_card_4_image", imageUrlField: "collage_card_4_image_url", label: "Bottom right card B" },
+                  ].map((card) => (
+                    <div key={card.index} className="space-y-4 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+                      <div>
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{card.label}</Label>
+                      </div>
+                      <div className="grid grid-cols-1 gap-4">
+                        <Input
+                          value={settings[card.titleField as keyof HomePageSettings] as string || ""}
+                          onChange={(e) => handleChange(card.titleField as keyof HomePageSettings, e.target.value)}
+                          placeholder="Title"
+                          className="h-11 rounded-xl bg-slate-50 border-none font-bold"
+                        />
+                        <Input
+                          value={settings[card.subtitleField as keyof HomePageSettings] as string || ""}
+                          onChange={(e) => handleChange(card.subtitleField as keyof HomePageSettings, e.target.value)}
+                          placeholder="Subtitle"
+                          className="h-11 rounded-xl bg-slate-50 border-none font-bold"
+                        />
+                        <Input
+                          value={settings[card.linkField as keyof HomePageSettings] as string || ""}
+                          onChange={(e) => handleChange(card.linkField as keyof HomePageSettings, e.target.value)}
+                          placeholder="/category/women or /products?gender=women"
+                          className="h-11 rounded-xl bg-slate-50 border-none font-bold"
+                        />
+                        <div className="space-y-3">
+                          {settings[card.imageUrlField as keyof HomePageSettings] ? (
+                            <div className="relative h-40 overflow-hidden rounded-2xl border border-slate-100 group">
+                              <img
+                                src={settings[card.imageUrlField as keyof HomePageSettings] as string}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
+                              <Button
+                                variant="destructive"
+                                size="icon"
+                                onClick={() => handleDeleteImage(card.imageField as any)}
+                                className="absolute top-2 right-2 h-7 w-7 rounded-lg opacity-0 transition-opacity group-hover:opacity-100"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ) : null}
+                          <input
+                            id={card.imageField}
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleImageChange(card.imageField, e.target.files?.[0] || null)}
+                            className="hidden"
+                          />
+                          <Label
+                            htmlFor={card.imageField}
+                            className="flex h-24 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 transition-all hover:bg-slate-50"
+                          >
+                            <Upload className="h-4 w-4 text-slate-300" />
+                            <span className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-400">Upload image</span>
+                          </Label>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </TabsContent>

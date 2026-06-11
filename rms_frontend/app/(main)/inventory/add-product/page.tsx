@@ -693,11 +693,47 @@ export default function AddProductPage() {
                         <div key={color.id} className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
                           <FormItem>
                             <FormLabel className="text-xs text-slate-500">Color</FormLabel>
-                            <Input
-                              placeholder="Red"
+                            <Select
                               value={color.color}
-                              onChange={(e) => updateColorVariant(design.id, color.id, "color", e.target.value)}
-                            />
+                              onValueChange={(val) => updateColorVariant(design.id, color.id, "color", val)}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select color">
+                                  <span className="flex items-center gap-2">
+                                    <span
+                                      className="inline-block h-3 w-3 rounded-full border border-slate-300 flex-shrink-0"
+                                      style={{ backgroundColor: color.colorHex || '#000' }}
+                                    />
+                                    {color.color || 'Select color'}
+                                  </span>
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent>
+                                {getAvailableColorsForVariant(design.id).map((colorName) => (
+                                  <SelectItem key={colorName} value={colorName}>
+                                    <span className="flex items-center gap-2">
+                                      <span
+                                        className="inline-block h-3 w-3 rounded-full border border-slate-300 flex-shrink-0"
+                                        style={{ backgroundColor: COLORS[colorName as keyof typeof COLORS] || '#000' }}
+                                      />
+                                      {colorName}
+                                    </span>
+                                  </SelectItem>
+                                ))}
+                                {/* Include current color in options even if it's "used" */}
+                                {color.color && !getAvailableColorsForVariant(design.id).includes(color.color) && (
+                                  <SelectItem key={color.color} value={color.color}>
+                                    <span className="flex items-center gap-2">
+                                      <span
+                                        className="inline-block h-3 w-3 rounded-full border border-slate-300 flex-shrink-0"
+                                        style={{ backgroundColor: color.colorHex || '#000' }}
+                                      />
+                                      {color.color}
+                                    </span>
+                                  </SelectItem>
+                                )}
+                              </SelectContent>
+                            </Select>
                           </FormItem>
                           <FormItem>
                             <FormLabel className="text-xs text-slate-500">Stock</FormLabel>

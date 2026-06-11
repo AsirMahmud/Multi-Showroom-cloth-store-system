@@ -8,9 +8,8 @@ interface ActiveFiltersProps {
     selectedCategory: string | null;
     selectedGender: string | null;
     selectedColor: string | null;
-    selectedSize: string | null;
     priceRange: [number, number];
-    onRemoveFilter: (type: 'category' | 'gender' | 'color' | 'size' | 'price') => void;
+    onRemoveFilter: (type: 'category' | 'gender' | 'color' | 'price') => void;
     onClearAll: () => void;
 }
 
@@ -18,14 +17,13 @@ export function ActiveFilters({
     selectedCategory,
     selectedGender,
     selectedColor,
-    selectedSize,
     priceRange,
     onRemoveFilter,
     onClearAll,
 }: ActiveFiltersProps) {
     const hasPriceFilter = priceRange[0] > 0 || priceRange[1] < 10000
 
-    if (!selectedCategory && !selectedGender && !selectedColor && !selectedSize && !hasPriceFilter) {
+    if (!selectedCategory && !selectedGender && !selectedColor && !hasPriceFilter) {
         return null
     }
 
@@ -62,18 +60,6 @@ export function ActiveFilters({
                     <span className="text-xs">Color: {selectedColor}</span>
                     <button
                         onClick={() => onRemoveFilter('color')}
-                        className="p-0.5 rounded-full hover:bg-secondary transition-colors"
-                    >
-                        <X className="h-3 w-3" />
-                    </button>
-                </Badge>
-            )}
-
-            {selectedSize && (
-                <Badge variant="secondary" className="pl-3 pr-1 py-1 rounded-full bg-white border-border text-foreground font-medium flex items-center gap-1 group hover:border-primary/50 transition-colors">
-                    <span className="text-xs">Size: {selectedSize}</span>
-                    <button
-                        onClick={() => onRemoveFilter('size')}
                         className="p-0.5 rounded-full hover:bg-secondary transition-colors"
                     >
                         <X className="h-3 w-3" />

@@ -502,7 +502,7 @@ function DashboardContent() {
               margin: Math.floor(Math.random() * 15) + 15 // Mocked for now
             })),
             profitByCategory: safeStats.expense_categories.slice(0, 5).map(c => ({
-              name: c.category_name,
+            name: (c as any).category_name ?? c.name,
               profit: Math.floor(c.amount * 0.4) // Mocked estimation
             })),
             overallMargin: 24.5,

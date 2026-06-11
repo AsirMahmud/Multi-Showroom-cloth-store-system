@@ -131,29 +131,61 @@ export function CheckoutForm() {
         throw new Error("Phone number is required.")
       }
 
-      // Validate phone number format (basic validation)
-      if (customer_phone.length < 10) {
-        throw new Error("Please enter a valid phone number.")
+      // Validate phone number format (Bangladeshi mobile regex)
+      const bdPhoneRegex = /^(?:\+88|88)?(01[3-9]\d{8})$/
+      if (!bdPhoneRegex.test(customer_phone)) {
+        throw new Error("Please enter a valid 11-digit Bangladeshi mobile number (e.g., 01712345678).")
       }
+
       // Build shipping address based on delivery method
       let shipping_address: any = {}
 
       if (deliveryMethod === 'inside') {
+        if (!selectedCityCorp) {
+          throw new Error("City Corporation is required.")
+        }
+        if (!selectedThana) {
+          throw new Error("Thana is required.")
+        }
+        if (!selectedPlace) {
+          throw new Error("Place is required.")
+        }
+
         // Inside Dhaka address structure
         shipping_address = {
-          city_corporation: String(formData.get("cityCorp") || ""),
-          thana: String(formData.get("thana") || ""),
-          place: String(formData.get("place") || ""),
-          address: String(formData.get("address") || ""),
+          city_corporation: selectedCityCorp,
+          thana: selectedThana,
+          place: selectedPlace,
+          address: String(formData.get("address") || "").trim(),
+        }
+        if (!shipping_address.address) {
+          throw new Error("Street / House Address is required.")
         }
       } else {
+        if (!selectedDivision) {
+          throw new Error("Division is required.")
+        }
+        if (!selectedDistrict) {
+          throw new Error("District is required.")
+        }
+        if (!selectedUpazilla) {
+          throw new Error("Upazila / Thana is required.")
+        }
+        // Only require Union if unions are available for this upazila
+        if (unions.length > 0 && !selectedUnion) {
+          throw new Error("Union is required.")
+        }
+
         // Outside Dhaka or Inside Gazipur address structure (both use division/district/upazila/union)
         shipping_address = {
-          division: String(formData.get("division") || ""),
-          district: String(formData.get("district") || ""),
-          upazila: String(formData.get("upazila") || ""),
-          union: String(formData.get("union") || ""),
-          address: String(formData.get("address") || ""),
+          division: selectedDivision,
+          district: selectedDistrict,
+          upazila: selectedUpazilla,
+          union: selectedUnion,
+          address: String(formData.get("address") || "").trim(),
+        }
+        if (!shipping_address.address) {
+          throw new Error("Street / House Address is required.")
         }
       }
       const notes = String(formData.get("notes") || "")
@@ -591,12 +623,12 @@ export function CheckoutForm() {
 
             {/* Union */}
             <div className="space-y-2">
-              <Label htmlFor="union">Union *</Label>
+              <Label htmlFor="union">Union {unions.length > 0 && "*"}</Label>
               <Select
                 value={selectedUnion}
                 onValueChange={setSelectedUnion}
                 disabled={!selectedUpazilla || loadingUnions || unions.length === 0}
-                required
+                required={unions.length > 0}
               >
                 <SelectTrigger id="union">
                   <SelectValue placeholder="Select Union" />

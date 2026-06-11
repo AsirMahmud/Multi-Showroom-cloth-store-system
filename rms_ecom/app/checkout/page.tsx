@@ -10,9 +10,10 @@ export default function CheckoutPage() {
       <SiteHeader />
 
       <main className="flex-1">
-        <div className="container px-4 py-8">
+        <div className="container py-10 md:py-16">
           <div className="text-center mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-6">Checkout</h1>
+            <p className="editorial-kicker">Secure checkout</p>
+            <h1 className="mb-7 mt-2 font-serif text-4xl md:text-5xl">Checkout</h1>
             <CheckoutProgress currentStep={2} />
           </div>
 
@@ -23,7 +24,7 @@ export default function CheckoutPage() {
             </div>
 
             {/* Order Summary - Takes 1 column. Order 1 on mobile (before form), Order 2 on desktop (after form) */}
-            <div className="lg:col-span-1 order-1 lg:order-2 hidden lg:block">
+            <div className="lg:col-span-1 order-1 lg:order-2">
               <CheckoutSummary />
             </div>
           </div>

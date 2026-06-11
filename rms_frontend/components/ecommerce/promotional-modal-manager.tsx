@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
     Dialog,
     DialogContent,
@@ -240,8 +241,8 @@ export function PromotionalModalManager() {
     return (
         <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
             <PageHeader
-                title="Promotions"
-                description="Create and manage popups to boost sales and engage customers."
+                title="Promotional popups"
+                description="Create and schedule customer-facing popups for offers and announcements."
                 icon={<Target className="h-6 w-6" />}
                 actions={
                     <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
@@ -254,7 +255,7 @@ export function PromotionalModalManager() {
                         <DialogContent className="max-w-2xl rounded-[32px] border-brand-primary/5 shadow-2xl p-0 overflow-hidden">
                             <DialogHeader className="p-8 bg-slate-50 border-b border-slate-100">
                                 <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-brand-primary">
-                                    {editingId ? "Edit Popup" : "Create New Popup"}
+                                    {editingId ? "Edit popup" : "Create a popup"}
                                 </DialogTitle>
                                 <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                                     Set how and when your popup appears.
@@ -410,7 +411,7 @@ export function PromotionalModalManager() {
             />
 
             <motion.div variants={item}>
-                <DataPanel title="Our Promotions" description="List of all active and past promotional popups.">
+                <DataPanel title="Popup campaigns" description="Active, scheduled, and past promotional popups.">
                     {isLoading ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-64 rounded-[32px]" />)}
@@ -462,7 +463,7 @@ export function PromotionalModalManager() {
                                                         <span className="text-[9px] font-black uppercase tracking-widest text-slate-300">Frequency</span>
                                                         <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
                                                             <Clock className="h-3 w-3 text-brand-primary" />
-                                                            {modal.display_rules.frequency.split('_').join(' ')}
+                                                            {(modal.display_rules?.frequency || "once_per_session").split("_").join(" ")}
                                                         </div>
                                                     </div>
                                                 </div>

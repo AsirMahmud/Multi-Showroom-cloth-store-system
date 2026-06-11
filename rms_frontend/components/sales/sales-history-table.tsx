@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect, useMemo } from "react";
 import { PageHeader, MetricCard, DataPanel } from "@/components/ui/professional";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -578,6 +579,15 @@ export default function SalesHistory() {
                   <span className="text-sm font-black text-slate-700">Total Settlement</span>
                   <span className="text-xl font-black text-brand-primary">{formatCurrency(selectedOrder.total)}</span>
                 </div>
+                {selectedOrder.id && selectedOrder.status === "completed" && (
+                  <div className="pt-2">
+                    <Button asChild className="w-full h-12 bg-brand-primary text-brand-secondary rounded-xl font-bold text-xs uppercase tracking-widest">
+                      <Link href={`/sales/returns/new?sale=${selectedOrder.id}&invoice=${selectedOrder.invoice_number || ""}`}>
+                        Create Return From Invoice
+                      </Link>
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           )}

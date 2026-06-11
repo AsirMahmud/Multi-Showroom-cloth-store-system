@@ -214,8 +214,8 @@ export default function ProductStatusPage() {
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
       <PageHeader
-        title="Visual Merchandising"
-        description="Curate home page sections and manage high-priority product visibility."
+        title="Product sections"
+        description="Create storefront collections and choose which products appear in each one."
         icon={<Layout className="h-6 w-6" />}
         actions={
           <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) { setEditingStatus(null); resetStatusForm(); } }}>
@@ -258,7 +258,7 @@ export default function ProductStatusPage() {
       />
 
       <motion.div variants={item}>
-        <DataPanel title="Active Segments" description="Configured dynamic blocks for the storefront landing page.">
+        <DataPanel title="Storefront sections" description="Collections currently configured for the home page.">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <AnimatePresence>
               {statuses.map((status: ProductStatus) => (
@@ -295,7 +295,7 @@ export default function ProductStatusPage() {
       </motion.div>
 
       <motion.div variants={item}>
-        <DataPanel title="Product Matrix" description="Map inventory units to specified storefront segments.">
+        <DataPanel title="Product assignments" description="Choose which storefront sections each product belongs to.">
           <div className="flex flex-col md:flex-row gap-4 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />

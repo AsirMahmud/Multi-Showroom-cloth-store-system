@@ -348,7 +348,8 @@ class EcommerceProductDetailSerializer(EcommerceProductSerializer):
     
     class Meta(EcommerceProductSerializer.Meta):
         fields = EcommerceProductSerializer.Meta.fields + [
-            'images', 'material_composition', 'who_is_this_for', 'features'
+            'images', 'material_composition', 'who_is_this_for', 'features',
+            'size_chart',
         ]
     
     def get_image_url(self, obj):
@@ -450,35 +451,128 @@ class EcommerceProductDetailSerializer(EcommerceProductSerializer):
                 features.append({
                     'title': feature.title or '',
                     'description': feature.description or ''
+    
+    def get_image_url(self, obj):
+        if obj.image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+        return None
+    
+    def get_available_colors(self, obj):
+        """Get unique colors from product variations"""
+        colors = obj.variations.filter(is_active=True).values_list('color', 'color_hax').distinct()
+        return [{'name': color_name, 'hex': color_hex} for color_name, color_hex in colors]
+    
+    def get_available_sizes(self, obj):
+        """Get unique design names from product variations"""
+        sizes = obj.variations.filter(is_active=True).values_list('design__name', flat=True).distinct()
+        return list(sizes)
+    
+    def get_primary_image(self, obj):
+        """Get primary image from galleries"""
+        try:
+            primary_gallery = obj.galleries.first()
+            if primary_gallery:
+                primary_img = primary_gallery.images.filter(imageType='PRIMARY').first()
+                if primary_img:
+                    request = self.context.get('request')
+                    if request:
+                        return request.build_absolute_uri(primary_img.image.url)
+                    return primary_img.image.url
+        except:
+            pass
+        return None
+    
+    def get_images(self, obj):
+        """Get all product images from galleries"""
+        images = []
+        try:
+            for gallery in obj.galleries.all():
+                for img in gallery.images.all():
+                    request = self.context.get('request')
+                    if request:
+                        images.append(request.build_absolute_uri(img.image.url))
+                    else:
+                        images.append(img.image.url)
+        except:
+            pass
+        return images
+
+    def get_images_ordered(self, obj):
+        """Get images ordered by type: PRIMARY, SECONDARY, THIRD, FOURTH"""
+        ordered = []
+        try:
+            for gallery in obj.galleries.all():
+                for img_type in ['PRIMARY', 'SECONDARY', 'THIRD', 'FOURTH']:
+                    img = gallery.images.filter(imageType=img_type).first()
+                    if img:
+                        request = self.context.get('request')
+                        if request:
+                            ordered.append(request.build_absolute_uri(img.image.url))
+                        else:
+                            ordered.append(img.image.url)
+        except:
+            pass
+        return ordered
+    
+    def get_material_composition(self, obj):
+        """Get material composition data"""
+        materials = []
+        try:
+            for comp in obj.material_compositions.all():
+                materials.append({
+                    'name': comp.title or 'Unknown',
+                    'percentage': f"{comp.percentige}%"
+                })
+        except:
+            pass
+        return materials
+    
+    def get_who_is_this_for(self, obj):
+        """Get who is this for data"""
+        data = []
+        try:
+            for item in obj.who_is_this_for.all():
+                data.append({
+                    'title': item.title or '',
+                    'description': item.description or ''
+                })
+        except:
+            pass
+        return data
+    
+    def get_features(self, obj):
+        """Get product features"""
+        features = []
+        try:
+            for feature in obj.features.all():
+                features.append({
+                    'title': feature.title or '',
+                    'description': feature.description or ''
                 })
         except:
             pass
         return features
     
     def get_size_chart(self, obj):
-        """Get size chart from variations - deduplicated by size"""
+        """Get size chart from variations - deduplicated by design name (replacing size)"""
         size_chart = []
-        seen_sizes = set()
+        seen_designs = set()
         try:
             variations = obj.variations.filter(is_active=True)
             for var in variations:
-                # Normalize size for comparison (case-insensitive)
-                size_key = var.size.upper().strip() if var.size else ''
-                if size_key and size_key not in seen_sizes:
-                    seen_sizes.add(size_key)
+                # Normalize design name for comparison
+                design_key = var.design.name.upper().strip() if var.design else ''
+                if design_key and design_key not in seen_designs:
+                    seen_designs.add(design_key)
                     size_chart.append({
-                        'size': var.size,
-                        'chest': f"{var.chest_size}" if var.chest_size else 'N/A',
-                        'waist': f"{var.waist_size}" if var.waist_size else 'N/A',
-                        'height': f"{var.height}" if var.height else 'N/A'
+                        'size': var.design.name,
+                        'chest': str(getattr(var, 'chest_size', None) or 'N/A'),
+                        'waist': str(getattr(var, 'waist_size', None) or 'N/A'),
+                        'height': str(getattr(var, 'height', None) or 'N/A'),
                     })
-        except:
-            pass
-        return size_chart
-
-class ProductVariationSerializer(serializers.ModelSerializer):
-
-    class Meta:
         model = ProductVariation
         fields = ['size', 'color', 'color_hax', 'stock', 'waist_size', 'chest_size', 'height', 'is_active']
         extra_kwargs = {

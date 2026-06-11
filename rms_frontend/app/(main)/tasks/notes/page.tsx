@@ -16,7 +16,7 @@ export default function NotesPage() {
         title="Intelligence Logs"
         description="Archive and management of store observations, notices, and internal directives."
         icon={<StickyNote className="h-5 w-5" />}
-        action={<NoteFilterBar />}
+        actions={<NoteFilterBar />}
       />
 
       <NotesList />

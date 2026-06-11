@@ -277,7 +277,7 @@ export default function ReceiptModal({
         <body>
           <div class="topbar"></div>
           <div class="header">
-            <div class="brand">RAW STITCH</div>
+            <div class="brand">FERDOUS TEXTILE</div>
             <div class="label">${receiptLabel}</div>
             <div style="font-size:10px;color:#6b7280;margin-top:2px;">Kapasia, Gazipur</div>
             <div style="font-size:10px;color:#6b7280;">Phone: 01338869901</div>

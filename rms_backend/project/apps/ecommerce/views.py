@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.utils import timezone
 from django.db.models import Q
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from datetime import datetime
 from .models import Discount, Brand, HomePageSettings, DeliverySettings, HeroSlide, PromotionalModal, ProductStatus
 from .serializers import (
@@ -262,6 +262,26 @@ class PublicHomePageSettingsView(APIView):
                 'stat_brands': '200+',
                 'stat_products': '2,000+',
                 'stat_customers': '30,000+',
+                'collage_enabled': False,
+                'collage_badge_text': None,
+                'collage_heading': None,
+                'collage_description': None,
+                'collage_card_1_title': None,
+                'collage_card_1_subtitle': None,
+                'collage_card_1_link': None,
+                'collage_card_1_image_url': None,
+                'collage_card_2_title': None,
+                'collage_card_2_subtitle': None,
+                'collage_card_2_link': None,
+                'collage_card_2_image_url': None,
+                'collage_card_3_title': None,
+                'collage_card_3_subtitle': None,
+                'collage_card_3_link': None,
+                'collage_card_3_image_url': None,
+                'collage_card_4_title': None,
+                'collage_card_4_subtitle': None,
+                'collage_card_4_link': None,
+                'collage_card_4_image_url': None,
             })
 
 
@@ -519,15 +539,36 @@ class PublicProductDetailByColorView(APIView):
             if product.image:
                 images.append({'type': 'PRIMARY', 'url': request.build_absolute_uri(product.image.url)})
 
-        # Variations for current color (formerly sizes)
+        # Variations for current color. Grouped by design (removing size-based logic)
+        # while keeping `sizes` key populated for storefront compatibility.
         variation_entries = []
+        size_entries = []
         current_variations = variations_qs.filter(color__iexact=current_color_name)
+        
+        design_to_variation = {}
         for v in current_variations:
-            variation_entries.append({
-                'id': v.id,
-                'design_name': v.design.name,
-                'stock_qty': max(0, v.stock),
-                'in_stock': v.stock > 0,
+            design_name = v.design.name
+            stock_qty = max(0, v.stock)
+            if design_name not in design_to_variation:
+                design_to_variation[design_name] = {
+                    'id': v.id,
+                    'design_name': design_name,
+                    'size': design_name,  # Map design_name to size for client
+                    'stock_qty': stock_qty,
+                    'in_stock': stock_qty > 0,
+                }
+            else:
+                design_to_variation[design_name]['stock_qty'] += stock_qty
+                design_to_variation[design_name]['in_stock'] = (
+                    design_to_variation[design_name]['stock_qty'] > 0
+                )
+        
+        for design_name, entry in design_to_variation.items():
+            variation_entries.append(entry)
+            size_entries.append({
+                'size': design_name,
+                'stock_qty': entry['stock_qty'],
+                'in_stock': entry['in_stock'],
             })
 
         # Calculate priority-based discount
@@ -551,6 +592,7 @@ class PublicProductDetailByColorView(APIView):
                 'hex': current_color_hex,
             },
             'images': images,
+            'sizes': size_entries,
             'variations': variation_entries,
             'available_colors': list(color_meta.values()),
             'total_stock_for_color': sum(e['stock_qty'] for e in variation_entries),
@@ -689,37 +731,67 @@ class PublicCartPriceView(APIView):
             'supplier'
         ).prefetch_related(
             'online_categories',
-            'galleries__images',
-            'variations'
+            'ecommerce_statuses',
+            'designs__colors',
+            'designs__galleries__images',
         )
         prod_map = {p.id: p for p in products}
 
         result_items = []
-        subtotal = 0
+        errors = []
+        subtotal = Decimal('0.00')
         for line in normalized:
             p = prod_map.get(line['product_id'])
             if not p:
+                errors.append({
+                    'productId': line['product_id'],
+                    'code': 'PRODUCT_UNAVAILABLE',
+                    'detail': 'This product is not available online.',
+                })
                 continue
             
             # Apply priority-based discount (Product > Category > Global)
             discount_info = calculate_discounted_price(p)
-            unit_price = discount_info['final_price']
-            original_price = discount_info['original_price']
+            unit_price = Decimal(str(discount_info['final_price']))
+            original_price = Decimal(str(discount_info['original_price']))
 
-            # Determine available stock based on requested variant
+            # Determine available stock based on requested variant (Design-Color hierarchy)
             max_stock = 0
             variant_color = line.get('color') or None
-            try:
-                q = ProductVariation.objects.filter(design__product=p, is_active=True)
-                if variant_color:
-                    q = q.filter(color__iexact=variant_color)
-                max_stock = max(0, q.aggregate(total=Sum('stock'))['total'] or 0)
-            except Exception:
-                max_stock = max(0, getattr(p, 'stock_quantity', 0))
+            variant_design = line.get('design_name') or line.get('design') or line.get('size') or None
+            q = ProductVariation.objects.filter(design__product=p, is_active=True)
+            if variant_color:
+                q = q.filter(color__iexact=variant_color)
+            if variant_design:
+                q = q.filter(design__name__iexact=variant_design)
+            max_stock = max(0, q.aggregate(total=Sum('stock'))['total'] or 0)
 
-            # Cap effective quantity by stock for pricing summary
-            effective_qty = min(line['quantity'], max_stock) if max_stock > 0 else line['quantity']
-            line_total = unit_price * effective_qty
+            if not variant_color or not variant_design:
+                errors.append({
+                    'productId': p.id,
+                    'code': 'VARIANT_REQUIRED',
+                    'detail': 'Color and design are required.',
+                })
+                continue
+            if max_stock <= 0:
+                errors.append({
+                    'productId': p.id,
+                    'code': 'OUT_OF_STOCK',
+                    'detail': f'{variant_color} / {variant_design} is out of stock.',
+                    'variant': {'color': variant_color, 'size': variant_design},
+                })
+                continue
+            if line['quantity'] > max_stock:
+                errors.append({
+                    'productId': p.id,
+                    'code': 'INSUFFICIENT_STOCK',
+                    'detail': f'Only {max_stock} item(s) are available.',
+                    'max_stock': max_stock,
+                    'variant': {'color': variant_color, 'size': variant_design},
+                })
+                continue
+
+            line_total = unit_price * line['quantity']
             subtotal += line_total
             
             # Get primary image from gallery, fallback to product image
@@ -749,10 +821,12 @@ class PublicCartPriceView(APIView):
                 'original_price': original_price,
                 'discount_info': discount_info if discount_info['discount_type'] else None,
                 'quantity': line['quantity'],
+                'validated_quantity': line['quantity'],
                 'max_stock': max_stock,
                 'variant': {
                     'color': variant_color,
-                    'size': variant_size,
+                    'size': variant_design,
+                    'design_name': variant_design,
                 },
                 'line_total': line_total,
             })
@@ -771,6 +845,7 @@ class PublicCartPriceView(APIView):
             'products': product_serializer.data,  # Array of products with full info
             'subtotal': subtotal,
             'delivery': DeliverySettingsSerializer(delivery).data,
+            'errors': errors,
         })
 
 
@@ -837,15 +912,58 @@ class CreateOnlinePreorderView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Validate each item
+        authoritative_items = []
         for item in items:
-            required_fields = ['product_id', 'size', 'color', 'quantity', 'unit_price', 'discount']
-            for field in required_fields:
-                if field not in item:
-                    return Response(
-                        {'error': f'Each item must include {field} field'},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+            try:
+                product_id = int(item.get('product_id'))
+                quantity = int(item.get('quantity'))
+                design_name = str(item.get('design_name') or item.get('design') or item.get('size') or '').strip()
+                color = str(item.get('color') or '').strip()
+            except (TypeError, ValueError):
+                return Response({'error': 'Invalid order item.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            if quantity <= 0 or not design_name or not color:
+                return Response(
+                    {'error': 'Each item requires a positive quantity, color, and design.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            try:
+                product = Product.objects.get(
+                    id=product_id,
+                    is_active=True,
+                    assign_to_online=True,
+                )
+            except Product.DoesNotExist:
+                return Response(
+                    {'error': f'Product {product_id} is not available.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            stock = ProductVariation.objects.filter(
+                design__product=product,
+                is_active=True,
+                color__iexact=color,
+                design__name__iexact=design_name,
+            ).aggregate(total=Sum('stock'))['total'] or 0
+            if stock < quantity:
+                return Response(
+                    {'error': f'Only {stock} item(s) are available for {product.name} ({color} / {design_name}).'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            discount_info = calculate_discounted_price(product)
+            original_price = Decimal(str(discount_info['original_price']))
+            final_price = Decimal(str(discount_info['final_price']))
+            authoritative_items.append({
+                'product_id': product.id,
+                'design_name': design_name,
+                'size': design_name,  # for backward compatibility
+                'color': color,
+                'quantity': quantity,
+                'unit_price': original_price,
+                'discount': (original_price - final_price) * quantity,
+            })
 
         # Create or get customer
         try:
@@ -913,12 +1031,24 @@ class CreateOnlinePreorderView(APIView):
         # Build shipping address JSON
         shipping_address_data = request.data.get('shipping_address', {})
         
-        # Calculate total amount
+        delivery_settings = DeliverySettings.load()
+        delivery_method = request.data.get('delivery_method', '')
+        delivery_charges = {
+            'Inside Dhaka': delivery_settings.inside_dhaka_charge,
+            'Inside Gazipur': delivery_settings.inside_gazipur_charge,
+            'Outside Dhaka': delivery_settings.outside_dhaka_charge,
+        }
+        if delivery_method not in delivery_charges:
+            return Response(
+                {'error': 'Invalid delivery method.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         items_subtotal = sum(
             float(item.get('quantity', 0)) * float(item.get('unit_price', 0)) - float(item.get('discount', 0) or 0)
-            for item in items
+            for item in authoritative_items
         )
-        delivery_charge = float(request.data.get('delivery_charge', 0) or 0)
+        delivery_charge = float(delivery_charges[delivery_method])
         total_amount = Decimal(str(items_subtotal + delivery_charge))
 
         # Create online preorder (standalone model)
@@ -926,10 +1056,10 @@ class CreateOnlinePreorderView(APIView):
             'customer_name': customer_name,
             'customer_phone': customer_phone,
             'customer_email': customer_email if customer_email else '',
-            'items': items,
+            'items': authoritative_items,
             'shipping_address': shipping_address_data if shipping_address_data else None,
             'delivery_charge': Decimal(str(delivery_charge)),
-            'delivery_method': request.data.get('delivery_method', ''),
+            'delivery_method': delivery_method,
             'total_amount': total_amount,
             'notes': request.data.get('notes', '') or '',
             'status': 'PENDING',
@@ -951,7 +1081,8 @@ class CreateOnlinePreorderView(APIView):
         serializer = OnlinePreorderCreateSerializer(data=preorder_data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        online_preorder = serializer.save()
+        with transaction.atomic():
+            online_preorder = serializer.save()
         
         # Send notification alerts
         try:

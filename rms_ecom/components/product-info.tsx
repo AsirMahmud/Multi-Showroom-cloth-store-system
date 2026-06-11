@@ -10,6 +10,7 @@ import { useCartStore } from "@/hooks/useCartStore"
 import { useGlobalDiscount } from "@/lib/useGlobalDiscount"
 import { useRouter } from "next/navigation"
 import { setDirectCheckoutItems, type CartItem } from "@/lib/cart"
+import { formatCurrency } from "@/lib/utils"
 
 interface ProductInfoProps {
   productId: string | number
@@ -100,9 +101,10 @@ export function ProductInfo({ productId, product, colorLinks, onAddToCart, onBuy
   }, [selectedColor, availableSizesWithStock])
 
   return (
-    <div className="flex flex-col gap-3 lg:gap-5">
+    <div className="flex flex-col gap-5 lg:gap-6">
       <div>
-        <h1 className="text-2xl lg:text-[40px] font-bold mb-2 lg:mb-3 leading-tight">{toTitleCase(product.name)}</h1>
+        <p className="editorial-kicker mb-3">Ferdous Textile collection</p>
+        <h1 className="mb-3 font-serif text-4xl leading-tight lg:text-5xl">{toTitleCase(product.name)}</h1>
 
         {/* Stock Information Badge */}
 
@@ -120,13 +122,13 @@ export function ProductInfo({ productId, product, colorLinks, onAddToCart, onBuy
         )}
 
         <div className="flex items-center gap-3 mb-5">
-          <span className="text-2xl lg:text-[32px] font-bold">৳{Math.round(discounted)}</span>
+          <span className="text-xl lg:text-2xl">{formatCurrency(discounted)}</span>
           {showDiscount && (
             <>
               <span className="text-2xl lg:text-[28px] text-muted-foreground/60 line-through">
-                ৳{Math.round(basePrice)}
+                {formatCurrency(basePrice)}
               </span>
-              <span className="rounded-full bg-red-100 px-3.5 py-1.5 text-xs font-medium text-red-600">
+              <span className="bg-accent px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-accent-foreground">
                 -{finalDiscount}%
               </span>
             </>
@@ -144,7 +146,7 @@ export function ProductInfo({ productId, product, colorLinks, onAddToCart, onBuy
             const swatch = (
               <span
                 className={cn(
-                  "relative h-10 w-10 rounded-full inline-block transition-all",
+                  "relative inline-block h-9 w-9 rounded-full border border-foreground/20 transition-all",
                   (colorLinks ? color.active : selectedColor === index) && "ring-2 ring-foreground ring-offset-2",
                   color.oos && "opacity-50"
                 )}
@@ -204,12 +206,12 @@ export function ProductInfo({ productId, product, colorLinks, onAddToCart, onBuy
               }}
               disabled={!sizeInfo.inStock}
               className={cn(
-                "rounded-full px-6 py-2.5 text-sm font-medium transition-all relative group",
+                "relative min-w-12 border px-4 py-2.5 text-sm font-medium transition-all",
                 !sizeInfo.inStock && "opacity-50 cursor-not-allowed",
                 selectedSize === sizeInfo.index
-                  ? "bg-foreground text-background"
+                  ? "border-primary bg-primary text-white"
                   : sizeInfo.inStock
-                    ? "bg-muted hover:bg-muted/80 text-foreground"
+                    ? "border-input bg-white text-foreground hover:border-primary"
                     : "bg-muted/50 text-muted-foreground"
               )}
               title={sizeInfo.inStock ? `${currentColor.name} ${sizeInfo.size}: ${sizeInfo.stock} in stock` : "Out of stock"}
@@ -229,8 +231,8 @@ export function ProductInfo({ productId, product, colorLinks, onAddToCart, onBuy
       <div className="h-px bg-border" />
 
       <div className="flex flex-col gap-3 pt-2">
-        <div className="flex gap-4">
-          <div className="flex items-center rounded-full bg-muted">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex items-center justify-between border border-input bg-white w-full sm:w-auto">
             <button
               onClick={() => setQuantity(Math.max(1, quantity - 1))}
               className="p-4 hover:bg-muted/80 rounded-l-full transition-colors"
@@ -251,7 +253,7 @@ export function ProductInfo({ productId, product, colorLinks, onAddToCart, onBuy
 
           <Button
             size="lg"
-            className="flex-1 rounded-full h-auto py-4 text-base font-medium"
+            className="h-auto w-full sm:flex-1 py-4"
             disabled={selectedSizeStock === 0}
             onClick={() => {
               if (selectedSizeStock === 0) return
@@ -279,7 +281,7 @@ export function ProductInfo({ productId, product, colorLinks, onAddToCart, onBuy
 
         <Button
           size="lg"
-          className="w-full rounded-full h-auto py-4 text-base font-medium bg-white text-black border-2 border-black hover:bg-black hover:text-white transition-colors"
+          className="h-auto w-full border border-foreground bg-white py-4 text-foreground hover:bg-foreground hover:text-background"
           disabled={selectedSizeStock === 0}
           onClick={() => {
             if (selectedSizeStock === 0) return

@@ -1,13 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  typescript: {
-    // Ignore TypeScript errors during build
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    // Ignore ESLint errors during build
-    ignoreDuringBuilds: true,
-  },
+  outputFileTracingRoot: process.cwd(),
   images: {
     unoptimized: true,
     remotePatterns: (() => {
@@ -46,17 +39,6 @@ const nextConfig = {
   },
   // Skip trailing slash redirect (moved from experimental in Next.js 15+)
   skipTrailingSlashRedirect: true,
-  // Webpack configuration to handle type errors
-  webpack: (config, { isServer }) => {
-    // Ignore type errors in webpack
-    config.ignoreWarnings = [
-      /Failed to parse source map/,
-      /Module not found/,
-      /Can't resolve/,
-    ];
-
-    return config;
-  },
 }
 
 export default nextConfig

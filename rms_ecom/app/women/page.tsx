@@ -47,7 +47,7 @@ export default function WomenCollectionPage() {
       <StructuredData data={generateBreadcrumbStructuredData(breadcrumbItems)} />
       <SiteHeader />
       <main className="flex-1">
-        <div className="container mx-auto px-4 py-6">
+        <div className="container mx-auto px-4 py-10 md:py-16">
           <Breadcrumb items={breadcrumbItems} />
 
           <div className="mt-6 mb-8">

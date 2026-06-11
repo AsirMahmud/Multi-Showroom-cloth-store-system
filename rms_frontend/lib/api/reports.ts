@@ -8,6 +8,9 @@ export interface ReportDateRange {
 }
 
 export interface SalesReport {
+    gross_sales: string;
+    returns_total: string;
+    net_sales: string;
     total_sales: string;
     total_orders: number;
     total_items_sold: number;
@@ -16,6 +19,9 @@ export interface SalesReport {
     sales_by_date: Array<{
         date: string;
         total: string;
+        gross_sales: string;
+        returns_total: string;
+        net_sales: string;
         items_count: number;
     }>;
     sales_by_category: Array<{
@@ -209,6 +215,9 @@ export interface ProductPerformanceReport {
 }
 
 export interface OverviewReport {
+    gross_sales?: string;
+    returns_total?: string;
+    net_sales?: string;
     total_sales: string;
     total_orders: number;
     gross_profit: string;

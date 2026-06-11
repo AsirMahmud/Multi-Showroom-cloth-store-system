@@ -6,3 +6,6 @@ env/
 venv_*/
 *.pyc
 __pycache__/
+
+# User-uploaded and generated media
+/media/

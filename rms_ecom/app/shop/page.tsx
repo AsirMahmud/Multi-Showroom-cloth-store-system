@@ -40,7 +40,7 @@ export default function ShopPage() {
     <div className="min-h-screen flex flex-col">
       <SiteHeader />
       <main className="flex-1">
-        <div className="container mx-auto px-4 py-6">
+        <div className="container mx-auto px-4 py-10 md:py-16">
           <Breadcrumb items={[{ label: "Home", href: "/" }, { label: "Shop", href: "/shop" }]} />
 
           <div className="flex gap-6 mt-6">

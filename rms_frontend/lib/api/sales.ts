@@ -16,6 +16,17 @@ export interface PaginatedResponse<T> {
     results: T[];
 }
 
+export interface CreateReturnPayload {
+    sale_id?: number;
+    reason: string;
+    refund_amount: number;
+    items: Array<{
+        sale_item_id: number;
+        quantity: number;
+        reason: string;
+    }>;
+}
+
 // Sales API
 export const getSales = async (params?: {
     start_date?: string;
@@ -126,11 +137,11 @@ export const getReturns = async (params?: {
     search?: string;
     ordering?: string;
 }) => {
-    const response = await axios.get<Return[]>('/sales/returns/', { params });
-    return response.data;
+    const response = await axios.get<Return[] | PaginatedResponse<Return>>('/sales/returns/', { params });
+    return Array.isArray(response.data) ? response.data : response.data.results;
 };
 
-export const createReturn = async (saleId: number, data: Partial<Return>) => {
+export const createReturn = async (saleId: number, data: CreateReturnPayload) => {
     const response = await axios.post<Return>(`/sales/sales/${saleId}/create_return/`, data);
     return response.data;
 };

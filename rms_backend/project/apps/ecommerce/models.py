@@ -240,6 +240,32 @@ class HomePageSettings(models.Model):
     stat_brands = models.CharField(max_length=50, default="200+")
     stat_products = models.CharField(max_length=50, default="2,000+")
     stat_customers = models.CharField(max_length=50, default="30,000+")
+
+    # Category collage settings
+    collage_enabled = models.BooleanField(default=False)
+    collage_badge_text = models.CharField(max_length=100, null=True, blank=True)
+    collage_heading = models.CharField(max_length=150, null=True, blank=True)
+    collage_description = models.TextField(null=True, blank=True)
+
+    collage_card_1_title = models.CharField(max_length=100, null=True, blank=True)
+    collage_card_1_subtitle = models.CharField(max_length=150, null=True, blank=True)
+    collage_card_1_link = models.CharField(max_length=255, null=True, blank=True)
+    collage_card_1_image = models.ImageField(upload_to='collage/', null=True, blank=True)
+
+    collage_card_2_title = models.CharField(max_length=100, null=True, blank=True)
+    collage_card_2_subtitle = models.CharField(max_length=150, null=True, blank=True)
+    collage_card_2_link = models.CharField(max_length=255, null=True, blank=True)
+    collage_card_2_image = models.ImageField(upload_to='collage/', null=True, blank=True)
+
+    collage_card_3_title = models.CharField(max_length=100, null=True, blank=True)
+    collage_card_3_subtitle = models.CharField(max_length=150, null=True, blank=True)
+    collage_card_3_link = models.CharField(max_length=255, null=True, blank=True)
+    collage_card_3_image = models.ImageField(upload_to='collage/', null=True, blank=True)
+
+    collage_card_4_title = models.CharField(max_length=100, null=True, blank=True)
+    collage_card_4_subtitle = models.CharField(max_length=150, null=True, blank=True)
+    collage_card_4_link = models.CharField(max_length=255, null=True, blank=True)
+    collage_card_4_image = models.ImageField(upload_to='collage/', null=True, blank=True)
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -261,6 +287,16 @@ class HomePageSettings(models.Model):
             
         if self.hero_secondary_image:
             optimize_image(self.hero_secondary_image)
+
+        for field_name in [
+            'collage_card_1_image',
+            'collage_card_2_image',
+            'collage_card_3_image',
+            'collage_card_4_image',
+        ]:
+            image = getattr(self, field_name, None)
+            if image:
+                optimize_image(image)
 
         # Ensure only one instance exists
         self.pk = 1

@@ -119,7 +119,7 @@ export default function OnlinePreordersPage() {
     const averageOrderValue = completedCount > 0 ? totalRevenue / completedCount : 0;
     const totalProfit = rows
       .filter(o => o.status === 'COMPLETED')
-      .reduce((sum, o) => sum + Number(o.profit || 0), 0);
+      .reduce((sum, o) => sum + Number((o as any).profit || 0), 0);
 
     return {
       totalOrders,
@@ -359,7 +359,7 @@ export default function OnlinePreordersPage() {
                                 <DropdownMenuItem className="rounded-xl h-10 font-bold text-[11px] px-3 focus:bg-brand-primary/5 focus:text-brand-primary" onClick={() => { setSelectedOrder(o); setIsSheetOpen(true); }}><Edit className="mr-2 h-3.5 w-3.5" /> Modify Protocol</DropdownMenuItem>
                                 <DropdownMenuItem className="rounded-xl h-10 font-bold text-[11px] px-3 focus:bg-emerald-50 focus:text-emerald-600" onClick={() => handleStartVerification(o)}><Zap className="mr-2 h-3.5 w-3.5" /> Direct Verification</DropdownMenuItem>
                                 <DropdownMenuSeparator className="bg-slate-50" />
-                                <DropdownMenuItem className="rounded-xl h-10 font-bold text-[11px] px-3 focus:bg-rose-50 focus:text-rose-600 text-rose-500" onClick={(e) => openDeleteDialog(o)}><Trash2 className="mr-2 h-3.5 w-3.5" /> Terminate Order</DropdownMenuItem>
+                                <DropdownMenuItem className="rounded-xl h-10 font-bold text-[11px] px-3 focus:bg-rose-50 focus:text-rose-600 text-rose-500" onClick={(e) => { e.stopPropagation(); setOrderToDelete(o); setDeleteDialogOpen(true); }}><Trash2 className="mr-2 h-3.5 w-3.5" /> Terminate Order</DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>
