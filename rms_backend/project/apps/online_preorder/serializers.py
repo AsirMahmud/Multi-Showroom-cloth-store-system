@@ -300,8 +300,17 @@ class OnlinePreorderSerializer(serializers.ModelSerializer):
                         
                         # 1. Try item-specific color primary photo
                         item_color = item.get('color')
+                        item_design = item.get('design_name') or item.get('design') or item.get('size')
                         if item_color:
-                            gallery = Gallery.objects.filter(design__product=product, color__iexact=item_color).first()
+                            gallery_query = Gallery.objects.filter(
+                                design__product=product,
+                                color__iexact=item_color,
+                            )
+                            if item_design:
+                                gallery_query = gallery_query.filter(
+                                    design__name__iexact=item_design,
+                                )
+                            gallery = gallery_query.first()
                             if gallery:
                                 primary_img = Image.objects.filter(gallery=gallery, imageType='PRIMARY').first()
                                 if primary_img and primary_img.image:
@@ -384,6 +393,5 @@ class OnlinePreorderScanResultSerializer(serializers.Serializer):
     result = serializers.ChoiceField(choices=['MATCHED', 'NOT_IN_ORDER', 'OVER_SCAN'])
     message = serializers.CharField()
     verification = OnlinePreorderVerificationSerializer()
-
 
 

@@ -133,7 +133,6 @@ class Product(models.Model):
 
     @property
     def galleries(self):
-        from .models import Gallery
         return Gallery.objects.filter(design__product=self)
 
     @property

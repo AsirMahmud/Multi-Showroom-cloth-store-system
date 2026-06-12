@@ -154,11 +154,11 @@ export function SiteHeader() {
           <CommandGroup heading="Products">
             {results.map((product) => (
               <CommandItem
-                key={`${product.product_id}-${product.color_slug}`}
+                key={product.combination_id}
                 value={`${product.product_name} ${product.color_name}`}
                 onSelect={() => {
                   setSearchOpen(false)
-                  router.push(`/product/${product.product_id}/${product.color_slug}`)
+                  router.push(product.product_url)
                 }}
               >
                 <div className="flex w-full items-center gap-4">

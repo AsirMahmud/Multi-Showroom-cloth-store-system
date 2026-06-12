@@ -12,11 +12,11 @@ Yes, you **DO need** `.htaccess` configuration for your media files to work prop
 ## Files Created
 
 ### 1. Main .htaccess (in project root)
-- **Location**: `/home/username/project/.htaccess`
+- **Location**: `/home/torongox/rv2/.htaccess`
 - **Purpose**: Routes media requests and passes other requests to Django
 
 ### 2. Media .htaccess (in media directory)
-- **Location**: `/home/username/public_html/media/.htaccess`
+- **Location**: `/home/torongox/public_html/media/.htaccess`
 - **Purpose**: Handles media file serving and security
 
 ## Setup Instructions
@@ -32,10 +32,10 @@ Copy the `media/.htaccess` file to your production server:
 
 ```bash
 # Copy the media .htaccess to the media directory
-cp media/.htaccess /home/username/public_html/media/.htaccess
+cp media/.htaccess /home/torongox/public_html/media/.htaccess
 
 # Set proper permissions
-chmod 644 /home/username/public_html/media/.htaccess
+chmod 644 /home/torongox/public_html/media/.htaccess
 ```
 
 ### Step 3: Verify Configuration
@@ -77,10 +77,10 @@ curl -I https://your-domain.com/media/products/test.jpg
 2. **Check File Permissions**:
    ```bash
    # Media directory should be 755
-   chmod 755 /home/username/public_html/media
+   chmod 755 /home/torongox/public_html/media
    
    # .htaccess files should be 644
-   chmod 644 /home/username/public_html/media/.htaccess
+   chmod 644 /home/torongox/public_html/media/.htaccess
    ```
 
 3. **Test Direct Access**:
@@ -109,7 +109,6 @@ curl -I https://your-domain.com/media/products/test.jpg
 - ✅ Faster page load times
 
 Your media files should now work perfectly! 🎉
-
 
 
 

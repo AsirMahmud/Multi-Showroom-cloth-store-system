@@ -89,6 +89,18 @@ export function ProductSizeModal({
     return isNaN(numId) ? null : numId
   }
 
+  const getCombinationSelection = (id: string | number) => {
+    const [path, query = ""] = String(id).split("?")
+    const parts = path.split("/")
+    const params = new URLSearchParams(query)
+    const combinationId = Number(params.get("combination_id"))
+    return {
+      colorSlug: parts[1] || "",
+      designSlug: params.get("design") || undefined,
+      combinationId: combinationId > 0 ? combinationId : undefined,
+    }
+  }
+
   // Fetch product details when modal opens
   useEffect(() => {
     if (isOpen && productId) {
@@ -100,15 +112,34 @@ export function ProductSizeModal({
       }
 
       setLoading(true)
-      ecommerceApi
-        .getProductDetail(numericId)
+      const selection = getCombinationSelection(productId)
+      const detailRequest = selection.colorSlug
+        ? ecommerceApi.getProductDetailByColor(
+            numericId,
+            selection.colorSlug,
+            selection.designSlug,
+            selection.combinationId,
+          ).then((response) => ({
+            colors: [{ name: response.color.name, value: response.color.hex || "#000000" }],
+            sizes: response.variations?.map((variant) => variant.design_name) || [],
+            variants: (response.variations || []).map((variant) => ({
+              size: variant.design_name,
+              color: response.color.name,
+              color_hex: response.color.hex || "#000000",
+              stock: variant.stock_qty,
+              variant_id: variant.id,
+              combination_id: variant.combination_id,
+            })),
+          }))
+        : ecommerceApi.getProductDetail(numericId).then((response) => ({
+            colors: response.product.available_colors.map((c) => ({ name: c.name, value: c.hex })),
+            sizes: response.product.available_sizes || [],
+            variants: response.product.variants || [],
+          }))
+
+      detailRequest
         .then((response) => {
-          const product = response.product
-          setProductData({
-            colors: product.available_colors.map((c) => ({ name: c.name, value: c.hex })),
-            sizes: product.available_sizes || [],
-            variants: product.variants || [],
-          })
+          setProductData(response)
           setLoading(false)
         })
         .catch((error) => {
@@ -186,6 +217,7 @@ export function ProductSizeModal({
 
     const sizeName = availableSizesWithStock[selectedSize]?.size
     const colorName = productData.colors[selectedColor]?.name
+    const combinationId = availableSizesWithStock[selectedSize]?.variant?.combination_id
 
     addToCart({
       productId: String(numericId),
@@ -193,6 +225,8 @@ export function ProductSizeModal({
       variations: {
         color: colorName,
         size: sizeName,
+        design_name: sizeName,
+        combination_id: String(combinationId || ""),
       },
       productDetails: {
         name: productName,
@@ -215,6 +249,7 @@ export function ProductSizeModal({
 
     const sizeName = availableSizesWithStock[selectedSize]?.size
     const colorName = productData.colors[selectedColor]?.name
+    const combinationId = availableSizesWithStock[selectedSize]?.variant?.combination_id
 
     const directCheckoutItem: CartItem = {
       productId: String(numericId),
@@ -222,6 +257,8 @@ export function ProductSizeModal({
       variations: {
         color: colorName,
         size: sizeName,
+        design_name: sizeName,
+        combination_id: String(combinationId || ""),
       },
       addedAt: Date.now(),
     }
@@ -430,4 +467,3 @@ function toTitleCase(input: string): string {
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ")
 }
-

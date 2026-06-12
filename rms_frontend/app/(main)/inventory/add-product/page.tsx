@@ -121,6 +121,9 @@ type GalleryImage = {
 };
 
 type ColorGallery = {
+  designId: string;
+  colorId: string;
+  designName: string;
   color: string;
   colorHex: string;
   images: GalleryImage[];
@@ -180,7 +183,7 @@ export default function AddProductPage() {
   // State for designs
   const [designs, setDesigns] = useState<DesignVariant[]>([]);
 
-  // State for galleries (one per unique color)
+  // State for galleries (one per design-color combination)
   const [galleries, setGalleries] = useState<ColorGallery[]>([]);
 
   // State for additional product information
@@ -272,10 +275,10 @@ export default function AddProductPage() {
   };
 
   // Image handling
-  const handleImageUpload = (color: string, imageId: string, file: File) => {
+  const handleImageUpload = (designId: string, colorId: string, imageId: string, file: File) => {
     const preview = URL.createObjectURL(file);
     setGalleries(galleries.map(g => {
-      if (g.color === color) {
+      if (g.designId === designId && g.colorId === colorId) {
         return {
           ...g,
           images: g.images.map(img => img.id === imageId ? { ...img, file, preview } : img)
@@ -287,46 +290,44 @@ export default function AddProductPage() {
 
 
 
-  // Sync galleries with all design colors
+  // Sync one gallery for every design-color combination.
   const syncGalleriesWithVariants = useCallback(() => {
-    const allColors = new Set<string>();
-    designs.forEach(d => d.colors.forEach(c => allColors.add(c.color.toLowerCase())));
-
-    const updatedGalleries = galleries.filter(g => allColors.has(g.color.toLowerCase()));
-    const newGalleries: ColorGallery[] = [];
-
-    allColors.forEach(colorName => {
-      if (!galleries.some(g => g.color.toLowerCase() === colorName)) {
-        let hex = "#000000";
-        for (const d of designs) {
-          const found = d.colors.find(c => c.color.toLowerCase() === colorName);
-          if (found) { hex = found.colorHex; break; }
-        }
-        newGalleries.push({
-          color: colorName,
-          colorHex: hex,
-          images: [
-            { id: crypto.randomUUID(), file: null, preview: null, imageType: 'PRIMARY' },
-            { id: crypto.randomUUID(), file: null, preview: null, imageType: 'SECONDARY' },
-            { id: crypto.randomUUID(), file: null, preview: null, imageType: 'THIRD' },
-            { id: crypto.randomUUID(), file: null, preview: null, imageType: 'FOURTH' },
-          ]
-        });
-      }
-    });
-
-    if (newGalleries.length > 0 || updatedGalleries.length !== galleries.length) {
-      setGalleries([...updatedGalleries, ...newGalleries]);
-    }
-  }, [designs, galleries]);
+    setGalleries(current => designs.flatMap(design =>
+      design.colors.map(color => {
+        const existing = current.find(
+          gallery => gallery.designId === design.id && gallery.colorId === color.id
+        );
+        return existing
+          ? {
+              ...existing,
+              designName: design.name,
+              color: color.color,
+              colorHex: color.colorHex,
+            }
+          : {
+              designId: design.id,
+              colorId: color.id,
+              designName: design.name,
+              color: color.color,
+              colorHex: color.colorHex,
+              images: [
+                { id: crypto.randomUUID(), file: null, preview: null, imageType: 'PRIMARY' as const },
+                { id: crypto.randomUUID(), file: null, preview: null, imageType: 'SECONDARY' as const },
+                { id: crypto.randomUUID(), file: null, preview: null, imageType: 'THIRD' as const },
+                { id: crypto.randomUUID(), file: null, preview: null, imageType: 'FOURTH' as const },
+              ],
+            };
+      })
+    ));
+  }, [designs]);
 
   useEffect(() => {
     syncGalleriesWithVariants();
   }, [designs]);
 
-    const handleImageRemove = (color: string, imageId: string) => {
+    const handleImageRemove = (designId: string, colorId: string, imageId: string) => {
       setGalleries(galleries.map((gallery) => {
-        if (gallery.color.toLowerCase() === color.toLowerCase()) {
+        if (gallery.designId === designId && gallery.colorId === colorId) {
           return {
             ...gallery,
             images: gallery.images.map((img) => {
@@ -438,13 +439,7 @@ export default function AddProductPage() {
             color: c.color,
             color_hax: c.colorHex,
             stock: c.stock
-          })),
-          galleries: galleries.filter(g => d.colors.some(c => c.color.toLowerCase() === g.color.toLowerCase()))
-            .map(g => ({
-              color: g.color,
-              color_hax: g.colorHex,
-              alt_text: g.color,
-            }))
+          }))
         })),
         material_composition: materialCompositions.map(item => ({ percentige: item.percentage, title: item.title || null })),
         who_is_this_for: whoIsThisFor.map(item => ({ title: item.title || null, description: item.description || null })),
@@ -454,11 +449,20 @@ export default function AddProductPage() {
       const createdProduct = await createProduct.mutateAsync(productData);
 
       if (createdProduct?.id) {
+        const createdDesigns = createdProduct.designs || [];
         for (const gallery of galleries) {
           const imagesToUpload = gallery.images.filter(img => img.file !== null);
           if (imagesToUpload.length > 0) {
+            const createdDesign = createdDesigns.find(
+              design => design.name.trim().toLowerCase() === gallery.designName.trim().toLowerCase()
+            );
+            if (!createdDesign) {
+              throw new Error(`Created design not found for gallery: ${gallery.designName}`);
+            }
             const formData = new FormData();
+            formData.append('design_id', String(createdDesign.id));
             formData.append('color', gallery.color);
+            formData.append('color_hax', gallery.colorHex);
             formData.append('alt_text', gallery.color);
             imagesToUpload.forEach(img => {
               if (img.file) {
@@ -471,7 +475,7 @@ export default function AddProductPage() {
               const { galleriesApi } = await import('@/lib/api/inventory');
               await galleriesApi.uploadColorImages(createdProduct.id, formData);
             } catch (err) {
-              console.error(`Error uploading images for ${gallery.color}:`, err);
+              console.error(`Error uploading images for ${gallery.designName} / ${gallery.color}:`, err);
             }
           }
         }
@@ -756,7 +760,7 @@ export default function AddProductPage() {
               </DataPanel>
 
             {/* Gallery Section - Moved here for better flow */}
-            <DataPanel title="Color Media & Assets" description="Upload product images for each specific color variation. These images will be automatically linked to all designs using these colors.">
+            <DataPanel title="Design & Color Media" description="Upload a separate image gallery for every design and color combination.">
               <div className="space-y-8">
                 {galleries.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-10 text-slate-400 border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/50">
@@ -765,11 +769,13 @@ export default function AddProductPage() {
                   </div>
                 ) : (
                   galleries.map((gallery) => (
-                    <div key={gallery.color} className="space-y-4 p-4 rounded-2xl bg-slate-50/50 border border-brand-primary/5">
+                    <div key={`${gallery.designId}-${gallery.colorId}`} className="space-y-4 p-4 rounded-2xl bg-slate-50/50 border border-brand-primary/5">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="w-6 h-6 rounded-full border-2 border-white shadow-sm" style={{ backgroundColor: gallery.colorHex }} />
-                          <h4 className="font-bold text-lg capitalize text-brand-primary">{gallery.color} Gallery</h4>
+                          <h4 className="font-bold text-lg capitalize text-brand-primary">
+                            {gallery.designName} / {gallery.color}
+                          </h4>
                         </div>
                         <Badge variant="outline" className="bg-brand-primary/5 text-brand-primary border-brand-primary/10">
                           {gallery.images.filter(img => img.file).length} / 4 Images
@@ -784,7 +790,7 @@ export default function AddProductPage() {
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                   <button
                                     type="button"
-                                    onClick={() => handleImageRemove(gallery.color, img.id)}
+                                    onClick={() => handleImageRemove(gallery.designId, gallery.colorId, img.id)}
                                     className="p-2 bg-rose-500 rounded-full text-white shadow-lg hover:bg-rose-600 transform hover:scale-110 transition-all"
                                   >
                                     <X className="h-4 w-4" />
@@ -804,7 +810,7 @@ export default function AddProductPage() {
                                   accept="image/*"
                                   onChange={(e) => {
                                     const file = e.target.files?.[0];
-                                    if (file) handleImageUpload(gallery.color, img.id, file);
+                                    if (file) handleImageUpload(gallery.designId, gallery.colorId, img.id, file);
                                   }}
                                 />
                               </label>

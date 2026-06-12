@@ -109,6 +109,9 @@ type DesignVariant = {
 };
 
 type ColorGallery = {
+  designId: string;
+  colorId: string;
+  designName: string;
   color: string;
   colorHex: string;
   color_hax?: string;
@@ -224,51 +227,14 @@ export default function EditProductPage() {
 
   // Sync galleries with variants
   const syncGalleriesWithVariants = useCallback((currentGalleries: ColorGallery[], currentDesigns: DesignVariant[]) => {
-    const allColors = new Set<string>();
-    currentDesigns.forEach(design => {
-      design.colors.forEach(color => {
-        allColors.add(color.color.toLowerCase());
-      });
-    });
-
-    const newGalleries: ColorGallery[] = [];
-    allColors.forEach(colorName => {
-      const colorExists = currentGalleries.some(
-        (g) => g.color.toLowerCase() === colorName.toLowerCase()
+    return currentDesigns.flatMap(design => design.colors.map(color => {
+      const gallery = currentGalleries.find(
+        item => item.designId === design.id && item.colorId === color.id
       );
-
-      if (!colorExists) {
-        let colorHex = '#000000';
-        for (const design of currentDesigns) {
-          const foundColor = design.colors.find(c => c.color.toLowerCase() === colorName.toLowerCase());
-          if (foundColor) {
-            colorHex = foundColor.colorHex;
-            break;
-          }
-        }
-
-        const newGallery: ColorGallery = {
-          color: colorName,
-          colorHex: colorHex,
-          color_hax: colorHex,
-          images: [
-            { id: Math.floor(Math.random() * 1000000), image: '', image_url: '', alt_text: '', file: null, preview: null, imageType: 'PRIMARY' },
-            { id: Math.floor(Math.random() * 1000000), image: '', image_url: '', alt_text: '', file: null, preview: null, imageType: 'SECONDARY' },
-            { id: Math.floor(Math.random() * 1000000), image: '', image_url: '', alt_text: '', file: null, preview: null, imageType: 'THIRD' },
-            { id: Math.floor(Math.random() * 1000000), image: '', image_url: '', alt_text: '', file: null, preview: null, imageType: 'FOURTH' },
-          ],
-        };
-        newGalleries.push(newGallery);
-      }
-    });
-
-    const updatedGalleries = currentGalleries.filter(gallery =>
-      allColors.has(gallery.color.toLowerCase())
-    ).map(gallery => {
       const imageTypes: ('PRIMARY' | 'SECONDARY' | 'THIRD' | 'FOURTH')[] = ['PRIMARY', 'SECONDARY', 'THIRD', 'FOURTH'];
       const existingImages = new Map();
 
-      gallery.images.forEach(img => {
+      gallery?.images.forEach(img => {
         existingImages.set(img.imageType, img);
       });
 
@@ -285,12 +251,15 @@ export default function EditProductPage() {
       });
 
       return {
-        ...gallery,
+        designId: design.id,
+        colorId: color.id,
+        designName: design.name,
+        color: color.color,
+        colorHex: color.colorHex,
+        color_hax: color.colorHex,
         images: completeImages,
       };
-    });
-
-    return [...updatedGalleries, ...newGalleries];
+    }));
   }, []);
 
   // Sync galleries when designs change
@@ -322,9 +291,7 @@ export default function EditProductPage() {
         gender: (product.gender || "UNISEX") as GenderType,
       });
 
-      // Set designs
-      if (product.designs) {
-        const designVariants: DesignVariant[] = product.designs.map((design: any) => ({
+      const designVariants: DesignVariant[] = (product.designs || []).map((design: any) => ({
           id: design.id.toString(),
           name: design.name,
           description: design.description,
@@ -335,6 +302,9 @@ export default function EditProductPage() {
             stock: color.stock,
           })),
         }));
+
+      // Set designs
+      if (product.designs) {
         setDesigns(designVariants);
       }
 
@@ -376,6 +346,12 @@ export default function EditProductPage() {
           });
 
           return {
+            designId: String(gallery.design),
+            colorId: designVariants
+              .find(design => design.id === String(gallery.design))
+              ?.colors.find(color => color.color.toLowerCase() === gallery.color.toLowerCase())
+              ?.id || `${gallery.design}-${gallery.color}`,
+            designName: gallery.design_name || "",
             color: gallery.color,
             colorHex: gallery.color_hax || "#000000",
             color_hax: gallery.color_hax,
@@ -724,9 +700,11 @@ export default function EditProductPage() {
         is_active: data.status === "active",
         gender: data.gender,
         designs: designs.map((design) => ({
+          id: /^\d+$/.test(design.id) ? Number(design.id) : undefined,
           name: design.name,
           description: design.description || "",
           colors: design.colors.map((color) => ({
+            id: /^\d+$/.test(color.id) ? Number(color.id) : undefined,
             color: color.color,
             color_hax: color.colorHex,
             stock: color.stock,
@@ -749,7 +727,7 @@ export default function EditProductPage() {
       // Update the product with proper typing
       // Note: We don't include galleries data here to avoid deleting all existing galleries
       // Gallery updates (image deletion/upload) are handled separately below
-      await updateProduct.mutateAsync({
+      const updatedProduct = await updateProduct.mutateAsync({
         id: productId,
         ...productData,
       });
@@ -787,7 +765,14 @@ export default function EditProductPage() {
           const imagesToUpload = gallery.images.filter((img) => img.file !== null);
 
           if (imagesToUpload.length > 0) {
+            const persistedDesign = (updatedProduct.designs || []).find(
+              design => design.name.trim().toLowerCase() === gallery.designName.trim().toLowerCase()
+            );
+            if (!persistedDesign) {
+              throw new Error(`Updated design not found for gallery: ${gallery.designName}`);
+            }
             const formData = new FormData();
+            formData.append('design_id', String(persistedDesign.id));
             formData.append('color', gallery.color);
             formData.append('color_hax', gallery.color_hax || gallery.colorHex);
             formData.append('alt_text', gallery.color);
@@ -804,7 +789,7 @@ export default function EditProductPage() {
               const { galleriesApi } = await import('@/lib/api/inventory');
               await galleriesApi.uploadColorImages(productId, formData);
             } catch (uploadError) {
-              console.error(`Error uploading images for ${gallery.color}:`, uploadError);
+                console.error(`Error uploading images for ${gallery.designName} / ${gallery.color}:`, uploadError);
               toast({
                 title: "Image Upload Warning",
                 description: `Product updated but some images for ${gallery.color} failed to upload`,
@@ -1502,19 +1487,19 @@ export default function EditProductPage() {
           <Card>
             <CardHeader>
               <CardTitle>Product Gallery</CardTitle>
-              <CardDescription>
-                Upload images for each color variant (up to 4 images per color)
-              </CardDescription>
+                <CardDescription>
+                  Upload separate images for every design and color combination
+                </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {galleries.map((gallery, galleryIndex) => (
-                <div key={gallery.color} className="space-y-4">
+                <div key={`${gallery.designId}-${gallery.colorId}`} className="space-y-4">
                   <div className="flex items-center gap-2">
                     <div
                       className="w-6 h-6 rounded-full border-2 border-gray-300"
                       style={{ backgroundColor: gallery.color_hax || gallery.colorHex }}
                     />
-                    <h4 className="font-medium">{gallery.color}</h4>
+                    <h4 className="font-medium">{gallery.designName} / {gallery.color}</h4>
                     <span className="text-sm text-muted-foreground">
                       ({gallery.images.filter(img => img.file || img.preview).length}/4 images)
                     </span>

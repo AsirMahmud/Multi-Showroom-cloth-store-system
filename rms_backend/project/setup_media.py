@@ -9,7 +9,7 @@ import stat
 
 def setup_media_directory():
     """Create media directory with proper permissions"""
-    media_root = '/home/rawstitc/public_html/media'
+    media_root = '/home/torongox/public_html/media'
     
     try:
         # Create the media directory if it doesn't exist
@@ -38,14 +38,13 @@ def setup_media_directory():
         print("\nManual setup instructions:")
         print(f"1. Create directory: mkdir -p {media_root}")
         print(f"2. Set permissions: chmod 755 {media_root}")
-        print(f"3. Set ownership: chown -R rawstitc:rawstitc {media_root}")
+        print(f"3. Set ownership: chown -R torongox:torongox {media_root}")
         
     except Exception as e:
         print(f"❌ Error: {e}")
 
 if __name__ == "__main__":
     setup_media_directory()
-
 
 
 

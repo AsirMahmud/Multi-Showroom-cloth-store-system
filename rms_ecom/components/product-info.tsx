@@ -26,12 +26,14 @@ interface ProductInfoProps {
   }
   // Optional: when provided, render color options as links (navigating to other color pages)
   colorLinks?: Array<{ name: string; value: string; href: string; active?: boolean; oos?: boolean }>
+  designLinks?: Array<{ name: string; href: string; active?: boolean; oos?: boolean }>
+  hideVariantSelector?: boolean
   onAddToCart?: (payload: { quantity: number; size?: string; color?: string }) => void
   onBuyNow?: (payload: { quantity: number; size?: string; color?: string }) => void
   discountInfo?: any // Using any to avoid complex import circular deps, but logically matching DiscountInfo
 }
 
-export function ProductInfo({ productId, product, colorLinks, onAddToCart, onBuyNow, discountInfo }: ProductInfoProps) {
+export function ProductInfo({ productId, product, colorLinks, designLinks, hideVariantSelector, onAddToCart, onBuyNow, discountInfo }: ProductInfoProps) {
   const [selectedColor, setSelectedColor] = useState(0)
   const [selectedSize, setSelectedSize] = useState(0)
   const [quantity, setQuantity] = useState(1)
@@ -139,6 +141,32 @@ export function ProductInfo({ productId, product, colorLinks, onAddToCart, onBuy
 
       <div className="h-px bg-border" />
 
+      {designLinks && designLinks.length > 0 && (
+        <>
+          <div>
+            <h3 className="mb-3 text-muted-foreground text-sm lg:text-base">Select Design</h3>
+            <div className="flex flex-wrap gap-2">
+              {designLinks.map((design) => (
+                <a
+                  key={design.href}
+                  href={design.href}
+                  className={cn(
+                    "border px-4 py-2.5 text-sm font-medium transition-all",
+                    design.active
+                      ? "border-primary bg-primary text-white"
+                      : "border-input bg-white text-foreground hover:border-primary",
+                    design.oos && "opacity-50"
+                  )}
+                >
+                  {design.name}
+                </a>
+              ))}
+            </div>
+          </div>
+          <div className="h-px bg-border" />
+        </>
+      )}
+
       <div>
         <h3 className="mb-3 text-muted-foreground text-sm lg:text-base">Select Colors</h3>
         <div className="flex gap-2 lg:gap-4 flex-wrap">
@@ -178,6 +206,7 @@ export function ProductInfo({ productId, product, colorLinks, onAddToCart, onBuy
 
       <div className="h-px bg-border" />
 
+      {!hideVariantSelector && (
       <div>
         <div className="flex items-center justify-between mb-3 lg:mb-4">
           <h3 className="text-muted-foreground text-sm lg:text-base">Choose Size</h3>
@@ -227,6 +256,7 @@ export function ProductInfo({ productId, product, colorLinks, onAddToCart, onBuy
           ))}
         </div>
       </div>
+      )}
 
       <div className="h-px bg-border" />
 
@@ -259,12 +289,15 @@ export function ProductInfo({ productId, product, colorLinks, onAddToCart, onBuy
               if (selectedSizeStock === 0) return
               const sizeName = availableSizesWithStock[selectedSize]?.size
               const colorName = product.colors[selectedColor]?.name
+              const combinationId = availableSizesWithStock[selectedSize]?.variant?.combination_id
               addToCart({
                 productId: String(productId),
                 quantity,
                 variations: {
                   color: colorName,
                   size: sizeName,
+                  design_name: sizeName,
+                  combination_id: String(combinationId || ""),
                 },
                 productDetails: {
                   name: product.name,
@@ -287,6 +320,7 @@ export function ProductInfo({ productId, product, colorLinks, onAddToCart, onBuy
             if (selectedSizeStock === 0) return
             const sizeName = availableSizesWithStock[selectedSize]?.size
             const colorName = product.colors[selectedColor]?.name
+            const combinationId = availableSizesWithStock[selectedSize]?.variant?.combination_id
             // Use direct checkout instead of adding to cart
             const directCheckoutItem: CartItem = {
               productId: String(productId),
@@ -294,6 +328,8 @@ export function ProductInfo({ productId, product, colorLinks, onAddToCart, onBuy
               variations: {
                 color: colorName,
                 size: sizeName,
+                design_name: sizeName,
+                combination_id: String(combinationId || ""),
               },
               addedAt: Date.now(),
             }

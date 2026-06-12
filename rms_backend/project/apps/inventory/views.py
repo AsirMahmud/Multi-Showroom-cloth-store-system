@@ -301,18 +301,25 @@ class ProductViewSet(viewsets.ModelViewSet):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         color = serializer.validated_data['color']
+        design_id = serializer.validated_data['design_id']
         images = serializer.validated_data['images']
         image_types = serializer.validated_data.get('image_types', [])
         color_hax = serializer.validated_data.get('color_hax')
         alt_text = serializer.validated_data.get('alt_text', '')
 
-        # Find a design for this product that has this color
-        design = Design.objects.filter(product=product, colors__color=color).first()
-        if not design:
-            # Fallback to the first design if no specific color design found
-            design = Design.objects.filter(product=product).first()
-            if not design:
-                return Response({'detail': 'No design found for this product'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            design = Design.objects.get(id=design_id, product=product)
+        except Design.DoesNotExist:
+            return Response(
+                {'design_id': 'Design does not belong to this product.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not design.colors.filter(color__iexact=color).exists():
+            return Response(
+                {'color': 'Color does not belong to this design.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # Get or create gallery for this design and color
         gallery, created = Gallery.objects.get_or_create(
@@ -327,6 +334,9 @@ class ProductViewSet(viewsets.ModelViewSet):
         # Update color_hax if gallery already exists
         if not created and color_hax:
             gallery.color_hax = color_hax
+        if not created and alt_text:
+            gallery.alt_text = alt_text
+        if not created:
             gallery.save()
 
         # Use provided image_types if available, otherwise fall back to calculating based on existing count
@@ -1305,9 +1315,12 @@ class GalleryViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = Gallery.objects.all()
         product = self.request.query_params.get('product', None)
+        design = self.request.query_params.get('design', None)
         color = self.request.query_params.get('color', None)
         if product:
-            queryset = queryset.filter(product_id=product)
+            queryset = queryset.filter(design__product_id=product)
+        if design:
+            queryset = queryset.filter(design_id=design)
         if color:
             queryset = queryset.filter(color=color)
         return queryset

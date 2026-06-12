@@ -67,8 +67,8 @@ export default function HomePageClient() {
 
   // Transform API data to match component interface
   const toCard = (entry: ProductByColorEntry) => ({
-    id: `${entry.product_id}/${entry.color_slug}`,
-    name: `${entry.product_name} - ${entry.color_name}`,
+    id: entry.product_url.replace(/^\/product\//, ""),
+    name: entry.display_name,
     price: Number(entry.product_price),
     rating: 4.5,
     image: entry.cover_image_url || "/placeholder.jpg",

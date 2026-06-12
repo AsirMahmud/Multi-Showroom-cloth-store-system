@@ -23,6 +23,8 @@ export default function ProductByColorPage() {
     const colorSlug = params.colorSlug as string
 
     const [data, setData] = useState<ProductDetailByColorResponse | null>(null)
+    const [designSlug, setDesignSlug] = useState("")
+    const [combinationId, setCombinationId] = useState<number | undefined>()
     const [suggested, setSuggested] = useState<ProductByColorEntry[]>([])
     const [productDescription, setProductDescription] = useState<string>("")
     const [detailExtras, setDetailExtras] = useState<null | {
@@ -34,11 +36,23 @@ export default function ProductByColorPage() {
     const productId = Number(productIdParam)
 
     useEffect(() => {
+        const searchParams = new URLSearchParams(window.location.search)
+        setDesignSlug(searchParams.get("design") || "")
+        const rawCombinationId = Number(searchParams.get("combination_id"))
+        setCombinationId(rawCombinationId > 0 ? rawCombinationId : undefined)
+    }, [])
+
+    useEffect(() => {
         const run = async () => {
             try {
                 if (!productId || !colorSlug) return
                 startLoading()
-                const response = await ecommerceApi.getProductDetailByColor(productId, colorSlug)
+                const response = await ecommerceApi.getProductDetailByColor(
+                    productId,
+                    colorSlug,
+                    designSlug || undefined,
+                    combinationId,
+                )
                 setData(response)
                 const categorySlug = response.product.online_categories?.[0]?.slug
                 const [showcase, paginatedResponse] = await Promise.all([
@@ -74,7 +88,7 @@ export default function ProductByColorPage() {
             }
         }
         run()
-    }, [productId, colorSlug, router, startLoading, stopLoading])
+    }, [productId, colorSlug, designSlug, combinationId, router, startLoading, stopLoading])
 
     // Fire view_item event for GTM (GTM handles Facebook Pixel via tags)
     useEffect(() => {
@@ -104,12 +118,23 @@ export default function ProductByColorPage() {
         return available.map(c => ({
             name: c.color_name,
             slug: c.color_slug,
-            href: `/product/${pid}/${c.color_slug}`,
+            href: `/product/${pid}/${c.color_slug}?design=${encodeURIComponent(data?.design.slug || designSlug)}&combination_id=${c.combination_id}`,
             active: c.color_slug === currentSlug,
             oos: (c.total_stock || 0) <= 0,
             hex: c.color_hex || '#000000',
         }))
-    }, [data, colorSlug, productId])
+    }, [data, colorSlug, designSlug, productId])
+
+    const designToggler = useMemo(() => {
+        const available = data?.available_designs ?? []
+        const pid = data?.product.id ?? productId
+        return available.map(design => ({
+            name: design.name,
+            href: `/product/${pid}/${design.color_slug}?design=${encodeURIComponent(design.slug)}&combination_id=${design.combination_id}`,
+            active: design.slug === data?.design.slug,
+            oos: design.total_stock <= 0,
+        }))
+    }, [data, productId])
 
     if (!data) return null
 
@@ -133,12 +158,13 @@ export default function ProductByColorPage() {
         description: productDescription,
         colors: [{ name: data.color.name, value: "#000000" }],
         sizes: sizes.map(s => s.size),
-        variants: sizes.map(s => ({
+        variants: sizes.map((s, index) => ({
             size: s.size,
             color: data.color.name,
             color_hex: "#000000",
             stock: s.stock_qty,
-            variant_id: 0,
+            variant_id: data.variations?.[index]?.id || data.combination_id,
+            combination_id: data.variations?.[index]?.combination_id || data.combination_id,
         }))
     }
 
@@ -170,6 +196,8 @@ export default function ProductByColorPage() {
                                 productId={`${data.product.id}/${data.color.slug}`}
                                 product={productInfo}
                                 discountInfo={data.discount_info}
+                                designLinks={designToggler}
+                                hideVariantSelector
                                 colorLinks={colorToggler.map(c => ({ name: c.name, value: c.hex, href: c.href, active: c.active, oos: c.oos }))}
                                 onAddToCart={(payload) => {
                                     const price = Number(data.product.price) || undefined
@@ -225,8 +253,8 @@ export default function ProductByColorPage() {
                     <div className="container px-4 pb-12">
                         <ProductRecommendations
                             products={suggested.map(entry => ({
-                                id: `${entry.product_id}/${entry.color_slug}`,
-                                name: `${entry.product_name} - ${entry.color_name}`,
+                                id: entry.product_url.replace(/^\/product\//, ""),
+                                name: entry.display_name,
                                 price: Number(entry.product_price),
                                 originalPrice: entry.discount_info?.original_price,
                                 image: entry.cover_image_url || "/placeholder.jpg",

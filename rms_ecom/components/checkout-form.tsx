@@ -270,6 +270,7 @@ export function CheckoutForm() {
         const color = it.variations?.color || ""
         return {
           product_id: pid,
+          combination_id: pricedItem.combination_id,
           size,
           color,
           quantity: it.quantity,

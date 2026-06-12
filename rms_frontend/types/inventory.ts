@@ -121,6 +121,9 @@ export interface ProductVariation {
 // Gallery groups images by color (up to 4 images per color)
 export interface Gallery {
     id: number;
+    design: number;
+    design_name: string;
+    product: number;
     color: string;
     color_hax?: string;
     alt_text?: string;
@@ -182,22 +185,14 @@ export interface CreateProductDTO {
     is_active: boolean;
     gender?: string;
     designs: {
+        id?: number;
         name: string;
         description?: string;
         colors: {
+            id?: number;
             color: string;
             color_hax?: string;
             stock: number;
-        }[];
-        galleries?: {
-            color: string;
-            color_hax?: string;
-            alt_text?: string;
-            images?: {
-                imageType: 'PRIMARY' | 'SECONDARY' | 'THIRD' | 'FOURTH';
-                image: File;
-                alt_text?: string;
-            }[];
         }[];
     }[];
     material_composition?: {
@@ -224,7 +219,7 @@ export interface CreateProductVariationDTO {
 }
 
 export interface CreateGalleryDTO {
-    product: number;
+    design: number;
     color: string;
     color_hax?: string;
     alt_text?: string;

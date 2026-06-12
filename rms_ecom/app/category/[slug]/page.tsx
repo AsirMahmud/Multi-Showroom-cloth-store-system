@@ -88,7 +88,7 @@ export default function CategoryPage() {
       sendGTMEvent('view_item_list', {
         currency: 'BDT',
         items: products.map((p, index) => ({
-          item_id: normalizeProductId(`${p.product_id}/${p.color_slug}`),
+          item_id: String(p.combination_id),
           item_name: p.product_name,
           price: parseFloat(p.product_price),
           item_list_name: categoryName,
@@ -284,8 +284,8 @@ export default function CategoryPage() {
                 <ProductGrid
                   category={categoryName}
                   products={products.map(item => ({
-                    id: `${item.product_id}/${item.color_slug}`,
-                    name: `${item.product_name} - ${item.color_name}`,
+                    id: item.product_url.replace(/^\/product\//, ""),
+                    name: item.display_name,
                     price: Number(item.product_price),
                     rating: 4.5,
                     image: item.cover_image_url || "/placeholder.jpg",

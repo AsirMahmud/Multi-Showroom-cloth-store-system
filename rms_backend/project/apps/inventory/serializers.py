@@ -168,16 +168,24 @@ class ImageSerializer(serializers.ModelSerializer):
 
 class GallerySerializer(serializers.ModelSerializer):
     images = ImageSerializer(many=True, read_only=True)
+    design = serializers.PrimaryKeyRelatedField(queryset=Design.objects.all())
+    design_name = serializers.CharField(source='design.name', read_only=True)
+    product = serializers.IntegerField(source='design.product_id', read_only=True)
     
     class Meta:
         model = Gallery
-        fields = ['id', 'color','color_hax','alt_text', 'images']
+        fields = ['id', 'design', 'design_name', 'product', 'color', 'color_hax', 'alt_text', 'images']
 
 class ColorImagesUploadSerializer(serializers.Serializer):
+    design_id = serializers.IntegerField(min_value=1)
     color = serializers.CharField(max_length=50)
     color_hax = serializers.CharField(max_length=50, required=False, allow_blank=True)
     images = serializers.ListField(child=serializers.ImageField(), min_length=1, max_length=4)
-    image_types = serializers.ListField(child=serializers.CharField(max_length=50), required=False, allow_empty=True)
+    image_types = serializers.ListField(
+        child=serializers.ChoiceField(choices=[choice[0] for choice in Image.IMAGE_TYPES]),
+        required=False,
+        allow_empty=True,
+    )
     alt_text = serializers.CharField(max_length=255, required=False, allow_blank=True)
 
 class MeterialCompositionSerializer(serializers.ModelSerializer):
@@ -197,17 +205,20 @@ class FeaturesSerializer(serializers.ModelSerializer):
 
 # Variation serializer (placed before EcommerceProductSerializer for reference)
 class ProductVariationSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(required=False)
+    combination_id = serializers.IntegerField(source='id', read_only=True)
 
     class Meta:
         model = ProductVariation
-        fields = ['id', 'color', 'color_hax', 'stock', 'is_active']
+        fields = ['id', 'combination_id', 'color', 'color_hax', 'stock', 'is_active']
         extra_kwargs = {
             'is_active': {'required': False, 'default': True},
         }
 
 class DesignSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(required=False)
     colors = ProductVariationSerializer(many=True, required=False)
-    galleries = GallerySerializer(many=True, required=False)
+    galleries = GallerySerializer(many=True, read_only=True)
 
     class Meta:
         model = Design
@@ -451,7 +462,11 @@ class EcommerceProductDetailSerializer(EcommerceProductSerializer):
                 features.append({
                     'title': feature.title or '',
                     'description': feature.description or ''
-    
+                })
+        except:
+            pass
+        return features
+
     def get_image_url(self, obj):
         if obj.image:
             request = self.context.get('request')
@@ -573,14 +588,9 @@ class EcommerceProductDetailSerializer(EcommerceProductSerializer):
                         'waist': str(getattr(var, 'waist_size', None) or 'N/A'),
                         'height': str(getattr(var, 'height', None) or 'N/A'),
                     })
-        model = ProductVariation
-        fields = ['size', 'color', 'color_hax', 'stock', 'waist_size', 'chest_size', 'height', 'is_active']
-        extra_kwargs = {
-            'is_active': {'required': False, 'default': True},
-            'waist_size': {'required': False, 'allow_null': True},
-            'chest_size': {'required': False, 'allow_null': True},
-            'height': {'required': False, 'allow_null': True},
-        }
+        except:
+            pass
+        return size_chart
 
 class ProductSerializer(serializers.ModelSerializer):
     designs = DesignSerializer(many=True, read_only=True)
@@ -850,10 +860,11 @@ class ProductCreateSerializer(serializers.ModelSerializer):
         total_stock = 0
         for design_data in designs_data:
             colors_data = design_data.pop('colors', [])
-            galleries_data = design_data.pop('galleries', [])
+            design_data.pop('id', None)
             design = Design.objects.create(product=product, **design_data)
             
             for color_data in colors_data:
+                color_data.pop('id', None)
                 variation = ProductVariation.objects.create(design=design, **color_data)
                 total_stock += variation.stock
                 if variation.stock and variation.stock > 0:
@@ -865,12 +876,6 @@ class ProductCreateSerializer(serializers.ModelSerializer):
                         reference_number='INIT',
                         notes='Initial stock at product creation'
                     )
-            
-            for gallery_data in galleries_data:
-                images_data = gallery_data.pop('images', [])
-                gallery = Gallery.objects.create(design=design, **gallery_data)
-                for image_data in images_data:
-                    Image.objects.create(gallery=gallery, **image_data)
             
         product.stock_quantity = total_stock
         product.save()
@@ -909,24 +914,51 @@ class ProductCreateSerializer(serializers.ModelSerializer):
             instance.ecommerce_statuses.set(ecommerce_statuses)
         
         if designs_data is not None:
-            instance.designs.all().delete()
-            
             total_stock = 0
+            retained_design_ids = []
             for design_data in designs_data:
                 colors_data = design_data.pop('colors', [])
-                galleries_data = design_data.pop('galleries', [])
-                design = Design.objects.create(product=instance, **design_data)
-                
+                design_id = design_data.pop('id', None)
+                if design_id:
+                    try:
+                        design = instance.designs.get(id=design_id)
+                    except Design.DoesNotExist:
+                        raise serializers.ValidationError({'designs': f'Design {design_id} does not belong to this product.'})
+                    for attr, value in design_data.items():
+                        setattr(design, attr, value)
+                    design.save()
+                else:
+                    design = Design.objects.create(product=instance, **design_data)
+                retained_design_ids.append(design.id)
+
+                retained_color_ids = []
                 for color_data in colors_data:
-                    variation = ProductVariation.objects.create(design=design, **color_data)
+                    variation_id = color_data.pop('id', None)
+                    if variation_id:
+                        try:
+                            variation = design.colors.get(id=variation_id)
+                        except ProductVariation.DoesNotExist:
+                            raise serializers.ValidationError({'designs': f'Variation {variation_id} does not belong to design {design.id}.'})
+                        previous_color = variation.color
+                        for attr, value in color_data.items():
+                            setattr(variation, attr, value)
+                        variation.save()
+                        if previous_color.lower() != variation.color.lower():
+                            design.galleries.filter(color__iexact=previous_color).update(
+                                color=variation.color,
+                                color_hax=variation.color_hax,
+                            )
+                    else:
+                        variation = ProductVariation.objects.create(design=design, **color_data)
+                    retained_color_ids.append(variation.id)
                     total_stock += variation.stock
-                
-                for gallery_data in galleries_data:
-                    images_data = gallery_data.pop('images', [])
-                    gallery = Gallery.objects.create(design=design, **gallery_data)
-                    for image_data in images_data:
-                        Image.objects.create(gallery=gallery, **image_data)
-            
+
+                removed_colors = design.colors.exclude(id__in=retained_color_ids)
+                for removed_color in removed_colors:
+                    design.galleries.filter(color__iexact=removed_color.color).delete()
+                removed_colors.delete()
+
+            instance.designs.exclude(id__in=retained_design_ids).delete()
             instance.stock_quantity = total_stock
 
         if material_data is not None:

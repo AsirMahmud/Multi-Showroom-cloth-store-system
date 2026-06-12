@@ -52,8 +52,8 @@ export default function ShopPage() {
               <ProductGrid
                 category="All"
                 products={products.map(p => ({
-                  id: `${p.product_id}/${p.color_slug}`,
-                  name: `${p.product_name} - ${p.color_name}`,
+                  id: p.product_url.replace(/^\/product\//, ""),
+                  name: p.display_name,
                   price: Number(p.product_price),
                   rating: 4.5,
                   image: p.cover_image_url || "/placeholder.jpg",
@@ -72,5 +72,4 @@ export default function ShopPage() {
     </div>
   )
 }
-
 

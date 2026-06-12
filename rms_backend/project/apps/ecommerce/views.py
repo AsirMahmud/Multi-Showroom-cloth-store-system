@@ -26,6 +26,30 @@ from .discount_utils import calculate_discounted_price
 from apps.authentication.permissions import HasReadWritePermission
 
 
+def resolve_ecommerce_combination(
+    *,
+    combination_id=None,
+    product_id=None,
+    design_name='',
+    color='',
+):
+    """Resolve one active, online design-color combination."""
+    queryset = ProductVariation.objects.select_related('design__product').filter(
+        is_active=True,
+        design__product__is_active=True,
+        design__product__assign_to_online=True,
+    )
+    if combination_id:
+        queryset = queryset.filter(id=combination_id)
+    else:
+        queryset = queryset.filter(
+            design__product_id=product_id,
+            design__name__iexact=design_name,
+            color__iexact=color,
+        )
+    return queryset.first()
+
+
 class DiscountViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing discounts
@@ -297,18 +321,20 @@ class PublicBrandsView(APIView):
 
 
 class PublicProductsByColorView(APIView):
-    """Public API: list products grouped by color as separate entries."""
+    """Public API: list each design-color combination as a separate product."""
     permission_classes = [AllowAny]
 
-    def get_cover_image_url(self, request, product: Product, color: str):
-        try:
-            gallery = Gallery.objects.get(design__product=product, color__iexact=color)
+    def get_cover_image_url(self, request, variation: ProductVariation):
+        product = variation.design.product
+        gallery = Gallery.objects.filter(
+            design=variation.design,
+            color__iexact=variation.color,
+        ).first()
+        if gallery:
             primary = gallery.images.filter(imageType='PRIMARY').first()
             image_obj = primary or gallery.images.first()
             if image_obj and image_obj.image:
                 return request.build_absolute_uri(image_obj.image.url)
-        except Gallery.DoesNotExist:
-            pass
         # Fallback to product.image
         if product.image:
             return request.build_absolute_uri(product.image.url)
@@ -419,46 +445,45 @@ class PublicProductsByColorView(APIView):
         products = products.distinct()
 
         result = []
-        # Prefetch variations to reduce queries
-        for product in products:
-            # Consider all active variations, regardless of assign_to_online
-            variations = ProductVariation.objects.filter(
-                design__product=product,
-                is_active=True,
-            )
-            # group by color
-            color_to_stock = {}
-            for v in variations:
-                key = v.color.strip()
-                color_to_stock.setdefault(key, 0)
-                color_to_stock[key] += max(0, v.stock)
-            # If no variations captured any color, fall back to galleries as color sources
-            if not color_to_stock:
-                for g in Gallery.objects.filter(design__product=product):
-                    color_name = g.color.strip()
-                    # Sum stock for this color if any variations exist; else 0
-                    total_stock = variations.filter(color__iexact=color_name).aggregate(total=Sum('stock'))['total'] or 0
-                    color_to_stock[color_name] = max(0, total_stock)
-            for color_name, total_stock in color_to_stock.items():
-                # Color filter
-                if wanted_colors and color_name.strip().lower() not in wanted_colors:
-                    continue
-                if only_in_stock and total_stock <= 0:
-                    continue
-                # Size filter removed (Design-Color hierarchy)
-                # Calculate priority-based discount for this product
-                discount_info = calculate_discounted_price(product)
-                item = {
-                    'product_id': product.id,
-                    'product_name': product.name,
-                    'product_price': str(product.retail_price),
-                    'discount_info': discount_info if discount_info['discount_type'] else None,
-                    'color_name': color_name,
-                    'color_slug': slugify(color_name),
-                    'total_stock': total_stock,
-                    'cover_image_url': self.get_cover_image_url(request, product, color_name),
-                }
-                result.append(item)
+        variations = ProductVariation.objects.filter(
+            design__product__in=products,
+            is_active=True,
+        ).select_related('design__product').order_by('design__product_id', 'design_id', 'id')
+        for variation in variations:
+            product = variation.design.product
+            color_name = variation.color.strip()
+            design_name = variation.design.name.strip()
+            total_stock = max(0, variation.stock)
+            if wanted_colors and color_name.lower() not in wanted_colors:
+                continue
+            if wanted_sizes and design_name.lower() not in wanted_sizes:
+                continue
+            if only_in_stock and total_stock <= 0:
+                continue
+
+            discount_info = calculate_discounted_price(product)
+            color_slug = slugify(color_name)
+            design_slug = slugify(design_name)
+            result.append({
+                'combination_id': variation.id,
+                'parent_product_id': product.id,
+                'product_id': product.id,
+                'product_name': product.name,
+                'display_name': f'{product.name} - {design_name} - {color_name}',
+                'product_price': str(product.retail_price),
+                'discount_info': discount_info if discount_info['discount_type'] else None,
+                'design_id': variation.design_id,
+                'design_name': design_name,
+                'design_slug': design_slug,
+                'color_name': color_name,
+                'color_slug': color_slug,
+                'total_stock': total_stock,
+                'cover_image_url': self.get_cover_image_url(request, variation),
+                'product_url': (
+                    f'/product/{product.id}/{color_slug}'
+                    f'?design={design_slug}&combination_id={variation.id}'
+                ),
+            })
 
         # Sorting (on resulting flat list)
         sort = request.query_params.get('sort') or ''
@@ -489,7 +514,7 @@ class PublicProductsByColorView(APIView):
 
 
 class PublicProductDetailByColorView(APIView):
-    """Public API: product detail for a given product and color, with sizes/stock/images."""
+    """Public API: product detail for a design-color combination."""
     permission_classes = [AllowAny]
 
     def get(self, request, product_id: int, color_slug: str):
@@ -503,13 +528,16 @@ class PublicProductDetailByColorView(APIView):
         variations_qs = ProductVariation.objects.filter(
             design__product=product,
             is_active=True,
-        )
-        # Build available colors with stock + hex
-        color_meta = {}
+        ).select_related('design')
+        requested_combination_id = request.query_params.get('combination_id')
+        requested_design_slug = slugify(request.query_params.get('design', ''))
+
+        # Build product-wide color metadata for backward-compatible color-only links.
+        product_color_meta = {}
         for v in variations_qs:
             color_name = v.color.strip()
             color_key = slugify(color_name)
-            meta = color_meta.setdefault(color_key, {
+            meta = product_color_meta.setdefault(color_key, {
                 'color_name': color_name,
                 'color_slug': color_key,
                 'total_stock': 0,
@@ -518,15 +546,92 @@ class PublicProductDetailByColorView(APIView):
             meta['total_stock'] += max(0, v.stock)
 
         # Find requested color
-        if color_slug not in color_meta:
+        if color_slug not in product_color_meta:
             return Response({'detail': 'Color not found for this product'}, status=status.HTTP_404_NOT_FOUND)
-        current_color_name = color_meta[color_slug]['color_name']
-        current_color_hex = color_meta[color_slug].get('color_hex')
+        current_color_name = product_color_meta[color_slug]['color_name']
+
+        matching_designs = []
+        for variation in variations_qs.filter(color__iexact=current_color_name).select_related('design'):
+            design_slug = slugify(variation.design.name)
+            if not any(item['slug'] == design_slug for item in matching_designs):
+                matching_designs.append({
+                    'id': variation.design_id,
+                    'name': variation.design.name,
+                    'slug': design_slug,
+                })
+
+        selected_combination = None
+        if requested_combination_id:
+            try:
+                selected_combination = variations_qs.get(
+                    id=int(requested_combination_id),
+                    color__iexact=current_color_name,
+                )
+            except (TypeError, ValueError, ProductVariation.DoesNotExist):
+                return Response(
+                    {'detail': 'Combination not found for this product'},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+        selected_design_meta = (
+            {
+                'id': selected_combination.design_id,
+                'name': selected_combination.design.name,
+                'slug': slugify(selected_combination.design.name),
+            }
+            if selected_combination
+            else next(
+                (item for item in matching_designs if item['slug'] == requested_design_slug),
+                matching_designs[0] if matching_designs and not requested_design_slug else None,
+            )
+        )
+        if not selected_design_meta:
+            return Response({'detail': 'Design not found for this color'}, status=status.HTTP_404_NOT_FOUND)
+
+        selected_design_id = selected_design_meta['id']
+        selected_design_variations = variations_qs.filter(design_id=selected_design_id)
+        current_variations = selected_design_variations.filter(color__iexact=current_color_name)
+        selected_combination = selected_combination or current_variations.first()
+        current_color_hex = current_variations.values_list('color_hax', flat=True).first()
+
+        available_colors = {}
+        for variation in selected_design_variations:
+            variant_color = variation.color.strip()
+            variant_slug = slugify(variant_color)
+            meta = available_colors.setdefault(variant_slug, {
+                'color_name': variant_color,
+                'color_slug': variant_slug,
+                'combination_id': variation.id,
+                'total_stock': 0,
+                'color_hex': variation.color_hax or None,
+            })
+            meta['total_stock'] += max(0, variation.stock)
+
+        available_designs = []
+        for design in product.designs.prefetch_related('colors').all():
+            active_colors = [color for color in design.colors.all() if color.is_active]
+            if not active_colors:
+                continue
+            selected_color = next(
+                (color for color in active_colors if slugify(color.color) == color_slug),
+                active_colors[0],
+            )
+            available_designs.append({
+                'id': design.id,
+                'name': design.name,
+                'slug': slugify(design.name),
+                'color_slug': slugify(selected_color.color),
+                'combination_id': selected_color.id,
+                'total_stock': sum(max(0, color.stock) for color in active_colors),
+            })
 
         # Images for current color
         images = []
-        try:
-            gallery = Gallery.objects.get(design__product=product, color__iexact=current_color_name)
+        gallery = Gallery.objects.filter(
+            design_id=selected_design_id,
+            color__iexact=current_color_name,
+        ).first()
+        if gallery:
             images_qs = gallery.images.order_by('imageType')
             for img in images_qs:
                 if img.image:
@@ -534,17 +639,13 @@ class PublicProductDetailByColorView(APIView):
                         'type': img.imageType,
                         'url': request.build_absolute_uri(img.image.url)
                     })
-        except Gallery.DoesNotExist:
-            # Fallback to product default image
-            if product.image:
-                images.append({'type': 'PRIMARY', 'url': request.build_absolute_uri(product.image.url)})
+        elif product.image:
+            images.append({'type': 'PRIMARY', 'url': request.build_absolute_uri(product.image.url)})
 
         # Variations for current color. Grouped by design (removing size-based logic)
         # while keeping `sizes` key populated for storefront compatibility.
         variation_entries = []
         size_entries = []
-        current_variations = variations_qs.filter(color__iexact=current_color_name)
-        
         design_to_variation = {}
         for v in current_variations:
             design_name = v.design.name
@@ -552,6 +653,7 @@ class PublicProductDetailByColorView(APIView):
             if design_name not in design_to_variation:
                 design_to_variation[design_name] = {
                     'id': v.id,
+                    'combination_id': v.id,
                     'design_name': design_name,
                     'size': design_name,  # Map design_name to size for client
                     'stock_qty': stock_qty,
@@ -575,6 +677,7 @@ class PublicProductDetailByColorView(APIView):
         discount_info = calculate_discounted_price(product)
         
         data = {
+            'combination_id': selected_combination.id if selected_combination else None,
             'product': {
                 'id': product.id,
                 'name': product.name,
@@ -591,10 +694,12 @@ class PublicProductDetailByColorView(APIView):
                 'slug': color_slug,
                 'hex': current_color_hex,
             },
+            'design': selected_design_meta,
             'images': images,
             'sizes': size_entries,
             'variations': variation_entries,
-            'available_colors': list(color_meta.values()),
+            'available_colors': list(available_colors.values()),
+            'available_designs': available_designs,
             'total_stock_for_color': sum(e['stock_qty'] for e in variation_entries),
         }
         return Response(data)
@@ -714,10 +819,23 @@ class PublicCartPriceView(APIView):
                 if qty <= 0:
                     continue
                 variations = line.get('variations') or {}
+                raw_combination_id = (
+                    line.get('combination_id')
+                    or line.get('combinationId')
+                    or (variations.get('combination_id') if isinstance(variations, dict) else None)
+                )
+                combination_id = int(raw_combination_id) if raw_combination_id else None
                 color = (variations.get('color') or '').strip() if isinstance(variations, dict) else ''
-                size = (variations.get('size') or '').strip() if isinstance(variations, dict) else ''
+                design_name = (variations.get('design_name') or variations.get('design') or variations.get('size') or '').strip() if isinstance(variations, dict) else ''
                 product_ids.append(pid)
-                normalized.append({'product_id': pid, 'quantity': qty, 'color': color, 'size': size})
+                normalized.append({
+                    'product_id': pid,
+                    'combination_id': combination_id,
+                    'quantity': qty,
+                    'color': color,
+                    'size': design_name,
+                    'design_name': design_name
+                })
             except Exception:
                 continue
 
@@ -755,24 +873,25 @@ class PublicCartPriceView(APIView):
             unit_price = Decimal(str(discount_info['final_price']))
             original_price = Decimal(str(discount_info['original_price']))
 
-            # Determine available stock based on requested variant (Design-Color hierarchy)
-            max_stock = 0
-            variant_color = line.get('color') or None
-            variant_design = line.get('design_name') or line.get('design') or line.get('size') or None
-            q = ProductVariation.objects.filter(design__product=p, is_active=True)
-            if variant_color:
-                q = q.filter(color__iexact=variant_color)
-            if variant_design:
-                q = q.filter(design__name__iexact=variant_design)
-            max_stock = max(0, q.aggregate(total=Sum('stock'))['total'] or 0)
+            combination = resolve_ecommerce_combination(
+                combination_id=line.get('combination_id'),
+                product_id=p.id,
+                design_name=line.get('design_name'),
+                color=line.get('color'),
+            )
+            if combination and combination.design.product_id != p.id:
+                combination = None
 
-            if not variant_color or not variant_design:
+            if not combination:
                 errors.append({
                     'productId': p.id,
                     'code': 'VARIANT_REQUIRED',
-                    'detail': 'Color and design are required.',
+                    'detail': 'A valid design-color combination is required.',
                 })
                 continue
+            variant_color = combination.color
+            variant_design = combination.design.name
+            max_stock = max(0, combination.stock)
             if max_stock <= 0:
                 errors.append({
                     'productId': p.id,
@@ -798,14 +917,16 @@ class PublicCartPriceView(APIView):
             # Use prefetched galleries to avoid additional queries
             image_url = None
             try:
-                # Try to get primary image from prefetched galleries
-                for gallery in p.galleries.all():
-                    for img in gallery.images.all():
-                        if img.imageType == 'PRIMARY' and img.image:
-                            image_url = request.build_absolute_uri(img.image.url)
-                            break
-                    if image_url:
-                        break
+                gallery = Gallery.objects.filter(
+                    design__product=p,
+                    design__name__iexact=variant_design,
+                    color__iexact=variant_color,
+                ).first()
+                if gallery:
+                    primary = gallery.images.filter(imageType='PRIMARY').first()
+                    image = primary or gallery.images.first()
+                    if image and image.image:
+                        image_url = request.build_absolute_uri(image.image.url)
             except Exception:
                 pass
             
@@ -815,6 +936,7 @@ class PublicCartPriceView(APIView):
             
             result_items.append({
                 'productId': p.id,
+                'combination_id': combination.id,
                 'name': p.name,
                 'image_url': image_url,
                 'unit_price': unit_price,
@@ -824,6 +946,7 @@ class PublicCartPriceView(APIView):
                 'validated_quantity': line['quantity'],
                 'max_stock': max_stock,
                 'variant': {
+                    'combination_id': combination.id,
                     'color': variant_color,
                     'size': variant_design,
                     'design_name': variant_design,
@@ -917,14 +1040,16 @@ class CreateOnlinePreorderView(APIView):
             try:
                 product_id = int(item.get('product_id'))
                 quantity = int(item.get('quantity'))
+                raw_combination_id = item.get('combination_id') or item.get('combinationId')
+                combination_id = int(raw_combination_id) if raw_combination_id else None
                 design_name = str(item.get('design_name') or item.get('design') or item.get('size') or '').strip()
                 color = str(item.get('color') or '').strip()
             except (TypeError, ValueError):
                 return Response({'error': 'Invalid order item.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            if quantity <= 0 or not design_name or not color:
+            if quantity <= 0 or (not combination_id and (not design_name or not color)):
                 return Response(
-                    {'error': 'Each item requires a positive quantity, color, and design.'},
+                    {'error': 'Each item requires a positive quantity and a valid combination.'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -940,12 +1065,21 @@ class CreateOnlinePreorderView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            stock = ProductVariation.objects.filter(
-                design__product=product,
-                is_active=True,
-                color__iexact=color,
-                design__name__iexact=design_name,
-            ).aggregate(total=Sum('stock'))['total'] or 0
+            combination = resolve_ecommerce_combination(
+                combination_id=combination_id,
+                product_id=product.id,
+                design_name=design_name,
+                color=color,
+            )
+            if not combination or combination.design.product_id != product.id:
+                return Response(
+                    {'error': f'Combination is not available for product {product.id}.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            design_name = combination.design.name
+            color = combination.color
+            stock = max(0, combination.stock)
             if stock < quantity:
                 return Response(
                     {'error': f'Only {stock} item(s) are available for {product.name} ({color} / {design_name}).'},
@@ -956,13 +1090,16 @@ class CreateOnlinePreorderView(APIView):
             original_price = Decimal(str(discount_info['original_price']))
             final_price = Decimal(str(discount_info['final_price']))
             authoritative_items.append({
+                'combination_id': combination.id,
                 'product_id': product.id,
+                'product_sku': product.sku,
+                'product_name': product.name,
                 'design_name': design_name,
                 'size': design_name,  # for backward compatibility
                 'color': color,
                 'quantity': quantity,
-                'unit_price': original_price,
-                'discount': (original_price - final_price) * quantity,
+                'unit_price': float(original_price),
+                'discount': float((original_price - final_price) * quantity),
             })
 
         # Create or get customer
