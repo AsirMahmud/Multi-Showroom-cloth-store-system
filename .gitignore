@@ -25,3 +25,7 @@ __pycache__/
 # OS Files
 .DS_Store
 Thumbs.db
+
+# Large files
+rms_backend/project.zip
+*.zip
