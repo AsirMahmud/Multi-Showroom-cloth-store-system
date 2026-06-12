@@ -540,3 +540,110 @@ export const ecommerceApi = {
     return data;
   },
 };
+
+
+// Landing Page Dynamic Organizer APIs
+export interface LandingPageSection {
+  id: number;
+  landing_page: number;
+  section_type: 'HERO' | 'CATEGORY_COLLAGE' | 'AD_BANNER' | 'PRODUCT_SECTION';
+  layout_variant: string;
+  display_order: number;
+  is_active: boolean;
+  status: 'DRAFT' | 'PUBLISHED';
+  start_date?: string | null;
+  end_date?: string | null;
+  config: Record<string, any>;
+  image?: string | null;
+  image_url?: string | null;
+  mobile_image?: string | null;
+  mobile_image_url?: string | null;
+  collage_items?: LandingPageCollageItem[];
+  products_detail?: any[];
+  products?: any[]; // public listing format
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LandingPageCollageItem {
+  id: number;
+  section: number;
+  category?: number | null;
+  category_detail?: { id: number; name: string };
+  online_category?: number | null;
+  online_category_detail?: { id: number; name: string; slug: string };
+  title_override?: string | null;
+  link_override?: string | null;
+  image?: string | null;
+  image_url?: string | null;
+  display_order: number;
+}
+
+export const landingPageApi = {
+  getSections: async (): Promise<LandingPageSection[]> => {
+    const { data } = await axiosInstance.get('/ecommerce/landing-page/sections/');
+    return data.results || data;
+  },
+
+  getPreview: async (): Promise<LandingPageSection[]> => {
+    const { data } = await axiosInstance.get('/ecommerce/landing-page/sections/preview/');
+    return data;
+  },
+
+  createSection: async (section: FormData | Partial<LandingPageSection>): Promise<LandingPageSection> => {
+    const headers = section instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {};
+    const { data } = await axiosInstance.post('/ecommerce/landing-page/sections/', section, { headers });
+    return data;
+  },
+
+  updateSection: async (id: number, section: FormData | Partial<LandingPageSection>): Promise<LandingPageSection> => {
+    const headers = section instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {};
+    const { data } = await axiosInstance.patch(`/ecommerce/landing-page/sections/${id}/`, section, { headers });
+    return data;
+  },
+
+  deleteSection: async (id: number): Promise<void> => {
+    await axiosInstance.delete(`/ecommerce/landing-page/sections/${id}/`);
+  },
+
+  reorderSections: async (orders: Array<number | { id: number; display_order: number }>): Promise<void> => {
+    await axiosInstance.post('/ecommerce/landing-page/sections/reorder/', orders);
+  },
+
+  duplicateSection: async (id: number): Promise<LandingPageSection> => {
+    const { data } = await axiosInstance.post(`/ecommerce/landing-page/sections/${id}/duplicate/`);
+    return data;
+  },
+
+  publish: async (): Promise<void> => {
+    await axiosInstance.post('/ecommerce/landing-page/sections/publish/');
+  },
+};
+
+export const collageItemsApi = {
+  getItems: async (sectionId?: number): Promise<LandingPageCollageItem[]> => {
+    const params = sectionId ? { section_id: sectionId } : {};
+    const { data } = await axiosInstance.get('/ecommerce/landing-page/collage-items/', { params });
+    return data.results || data;
+  },
+
+  createItem: async (item: FormData | Partial<LandingPageCollageItem>): Promise<LandingPageCollageItem> => {
+    const headers = item instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {};
+    const { data } = await axiosInstance.post('/ecommerce/landing-page/collage-items/', item, { headers });
+    return data;
+  },
+
+  updateItem: async (id: number, item: FormData | Partial<LandingPageCollageItem>): Promise<LandingPageCollageItem> => {
+    const headers = item instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {};
+    const { data } = await axiosInstance.patch(`/ecommerce/landing-page/collage-items/${id}/`, item, { headers });
+    return data;
+  },
+
+  deleteItem: async (id: number): Promise<void> => {
+    await axiosInstance.delete(`/ecommerce/landing-page/collage-items/${id}/`);
+  },
+
+  reorderItems: async (orders: Array<number | { id: number; display_order: number }>): Promise<void> => {
+    await axiosInstance.post('/ecommerce/landing-page/collage-items/reorder/', orders);
+  },
+};

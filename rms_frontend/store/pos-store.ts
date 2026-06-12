@@ -4,7 +4,8 @@ import { Product } from '@/types/inventory';
 import { PaymentMethod, Sale } from '@/types/sales';
 import { createSale } from '@/lib/api/sales';
 import { toast } from '@/hooks/use-toast';
-import { calculateCartTotals, sanitizeDiscount } from '@/lib/pos-calculations';
+import { calculateCartTotals, sanitizeDiscount } from '@/utils/pos-calculations';
+import { normalizeProductPrice } from '@/utils/product-price';
 
 export interface CartItem {
     id: number;
@@ -121,7 +122,7 @@ const getResolvedWholesaleCutoff = (product: Product): number => {
 const resolveCartPricing = (retailPrice: number, wholesalePrice: number, wholesaleCutoff: number, quantity: number) => {
     const useWholesale = wholesalePrice > 0 && quantity >= wholesaleCutoff;
     return {
-        price: useWholesale ? wholesalePrice : retailPrice,
+        price: normalizeProductPrice(useWholesale ? wholesalePrice : retailPrice),
         priceType: useWholesale ? 'wholesale' as const : 'retail' as const,
     };
 };

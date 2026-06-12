@@ -3,14 +3,13 @@
 import { useState, useMemo, useEffect } from "react"
 import { Minus, Plus, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { cn, sortSizes } from "@/lib/utils"
+import { cn, formatCurrency, normalizeProductPrice, sortSizes } from "@/lib/utils"
 import { ProductVariant } from "@/lib/api"
 import { Badge } from "@/components/ui/badge"
 import { useCartStore } from "@/hooks/useCartStore"
 import { useGlobalDiscount } from "@/lib/useGlobalDiscount"
 import { useRouter } from "next/navigation"
 import { setDirectCheckoutItems, type CartItem } from "@/lib/cart"
-import { formatCurrency } from "@/lib/utils"
 
 interface ProductInfoProps {
   productId: string | number
@@ -51,12 +50,16 @@ export function ProductInfo({ productId, product, colorLinks, designLinks, hideV
     : Math.max(globalDiscountValue, product.discount || 0)
 
   const showDiscount = finalDiscount > 0
-  const basePrice = product.originalPrice !== undefined ? Number(product.originalPrice) : Number(product.price)
+  const basePrice = normalizeProductPrice(
+    product.originalPrice !== undefined ? product.originalPrice : product.price
+  )
 
   // Use backend final price if available to avoid client-side math discrepancies
-  const discounted = hasBackendInfo
-    ? discountInfo!.final_price
-    : (showDiscount ? basePrice * (1 - finalDiscount / 100) : basePrice)
+  const discounted = normalizeProductPrice(
+    hasBackendInfo
+      ? discountInfo!.final_price
+      : (showDiscount ? basePrice * (1 - finalDiscount / 100) : basePrice)
+  )
 
   // Get current color
   const currentColor = product.colors[selectedColor]

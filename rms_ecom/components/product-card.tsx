@@ -5,7 +5,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { ShoppingBag } from "lucide-react"
 import { type DiscountInfo } from "@/lib/api"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, normalizeProductPrice } from "@/lib/utils"
 import { ProductSizeModal } from "@/components/product-size-modal"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -21,8 +21,10 @@ interface ProductCardProps {
 
 export function ProductCard({ id, name, price, originalPrice, image, discount, discountInfo }: ProductCardProps) {
   const [modalOpen, setModalOpen] = useState(false)
-  const original = Number(discountInfo?.original_price ?? originalPrice ?? price)
-  const final = Number(discountInfo?.final_price ?? (discount ? original * (1 - discount / 100) : price))
+  const original = normalizeProductPrice(discountInfo?.original_price ?? originalPrice ?? price)
+  const final = normalizeProductPrice(
+    discountInfo?.final_price ?? (discount ? original * (1 - discount / 100) : price)
+  )
   const discountValue = Number(discountInfo?.discount_value ?? discount ?? 0)
   const [productName, colorName] = splitProductName(name)
 

@@ -1,5 +1,8 @@
 from django.contrib import admin
-from .models import Discount, Brand, HomePageSettings, ProductStatus
+from .models import (
+    Discount, Brand, HomePageSettings, ProductStatus,
+    LandingPage, LandingPageSection, LandingPageCollageItem, LandingPageProductSelection
+)
 
 
 @admin.register(Discount)
@@ -84,4 +87,32 @@ class HomePageSettingsAdmin(admin.ModelAdmin):
     
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+@admin.register(LandingPage)
+class LandingPageAdmin(admin.ModelAdmin):
+    list_display = ('name', 'is_active', 'created_at')
+    list_filter = ('is_active',)
+    search_fields = ('name',)
+
+
+@admin.register(LandingPageSection)
+class LandingPageSectionAdmin(admin.ModelAdmin):
+    list_display = ('section_type', 'layout_variant', 'display_order', 'status', 'is_active')
+    list_filter = ('section_type', 'status', 'is_active')
+    search_fields = ('section_type', 'layout_variant')
+
+
+@admin.register(LandingPageCollageItem)
+class LandingPageCollageItemAdmin(admin.ModelAdmin):
+    list_display = ('section', 'category', 'online_category', 'title_override', 'display_order')
+    list_filter = ('section',)
+    search_fields = ('title_override',)
+
+
+@admin.register(LandingPageProductSelection)
+class LandingPageProductSelectionAdmin(admin.ModelAdmin):
+    list_display = ('section', 'product', 'display_order')
+    list_filter = ('section',)
+
 

@@ -10,6 +10,7 @@ Priority Order:
 from decimal import Decimal
 from django.utils import timezone
 from django.db.models import Q
+from apps.inventory.pricing import normalize_product_price
 
 
 def get_applicable_discount(product):
@@ -99,14 +100,15 @@ def calculate_discounted_price(product, original_price=None):
     if original_price is None:
         original_price = product.retail_price
     
-    original_price = Decimal(str(original_price))
+    original_price = normalize_product_price(original_price)
     
     discount = get_applicable_discount(product)
     
     if discount:
         discount_value = Decimal(str(discount.value))
-        discount_amount = (original_price * discount_value / Decimal('100')).quantize(Decimal('0.01'))
-        final_price = (original_price - discount_amount).quantize(Decimal('0.01'))
+        discounted_price = original_price * (Decimal('1') - discount_value / Decimal('100'))
+        final_price = normalize_product_price(discounted_price)
+        discount_amount = original_price - final_price
         
         return {
             'original_price': float(original_price),

@@ -93,6 +93,12 @@ class Product(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
+        from .pricing import normalize_product_price
+
+        self.retail_price = normalize_product_price(self.retail_price)
+        if self.wholesale_price is not None:
+            self.wholesale_price = normalize_product_price(self.wholesale_price)
+
         if self.image:
             optimize_image(self.image, max_width=1080, max_height=1080)
             

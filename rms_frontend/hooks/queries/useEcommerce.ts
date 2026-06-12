@@ -7,11 +7,15 @@ import {
   productEcommerceApi,
   heroSlidesApi,
   productStatusesApi,
+  landingPageApi,
+  collageItemsApi,
   Discount,
   Brand,
   HomePageSettings,
   HeroSlide,
   ProductStatus,
+  LandingPageSection,
+  LandingPageCollageItem,
   CreateDiscountDTO,
   UpdateDiscountDTO,
   CreateBrandDTO,
@@ -21,7 +25,7 @@ import {
   UpdateHeroSlideDTO
 } from '@/lib/api/ecommerce';
 
-export type { ProductStatus };
+export type { ProductStatus, LandingPageSection, LandingPageCollageItem };
 
 // Query Keys
 export const ecommerceKeys = {
@@ -330,3 +334,128 @@ export const useDeleteHeroSlide = () => {
     },
   });
 };
+
+
+// Landing Page Hooks
+export const useLandingPagePreview = () => {
+  return useQuery({
+    queryKey: ['ecommerce', 'landing-page', 'preview'],
+    queryFn: landingPageApi.getPreview,
+  });
+};
+
+export const useCreateLandingPageSection = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: landingPageApi.createSection,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ecommerce', 'landing-page', 'preview'] });
+    },
+  });
+};
+
+export const useUpdateLandingPageSection = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, section }: { id: number; section: FormData | Partial<LandingPageSection> }) =>
+      landingPageApi.updateSection(id, section),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ecommerce', 'landing-page', 'preview'] });
+    },
+  });
+};
+
+export const useDeleteLandingPageSection = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: landingPageApi.deleteSection,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ecommerce', 'landing-page', 'preview'] });
+    },
+  });
+};
+
+export const useReorderLandingPageSections = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: landingPageApi.reorderSections,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ecommerce', 'landing-page', 'preview'] });
+    },
+  });
+};
+
+export const useDuplicateLandingPageSection = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: landingPageApi.duplicateSection,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ecommerce', 'landing-page', 'preview'] });
+    },
+  });
+};
+
+export const usePublishLandingPage = () => {
+  return useMutation({
+    mutationFn: landingPageApi.publish,
+  });
+};
+
+// Collage Items Hooks
+export const useCollageItems = (sectionId?: number) => {
+  return useQuery({
+    queryKey: ['ecommerce', 'landing-page', 'collage-items', sectionId],
+    queryFn: () => collageItemsApi.getItems(sectionId),
+    enabled: sectionId !== undefined,
+  });
+};
+
+export const useCreateCollageItem = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: collageItemsApi.createItem,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['ecommerce', 'landing-page', 'collage-items', data.section] });
+      queryClient.invalidateQueries({ queryKey: ['ecommerce', 'landing-page', 'preview'] });
+    },
+  });
+};
+
+export const useUpdateCollageItem = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, item }: { id: number; item: FormData | Partial<LandingPageCollageItem> }) =>
+      collageItemsApi.updateItem(id, item),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['ecommerce', 'landing-page', 'collage-items', data.section] });
+      queryClient.invalidateQueries({ queryKey: ['ecommerce', 'landing-page', 'preview'] });
+    },
+  });
+};
+
+export const useDeleteCollageItem = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: collageItemsApi.deleteItem,
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['ecommerce', 'landing-page', 'collage-items'] });
+      queryClient.invalidateQueries({ queryKey: ['ecommerce', 'landing-page', 'preview'] });
+    },
+  });
+};
+
+export const useReorderCollageItems = (sectionId?: number) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: collageItemsApi.reorderItems,
+    onSuccess: () => {
+      if (sectionId) {
+        queryClient.invalidateQueries({ queryKey: ['ecommerce', 'landing-page', 'collage-items', sectionId] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['ecommerce', 'landing-page', 'collage-items'] });
+      }
+      queryClient.invalidateQueries({ queryKey: ['ecommerce', 'landing-page', 'preview'] });
+    },
+  });
+};
+

@@ -330,12 +330,11 @@ class EcommerceProductSerializer(serializers.ModelSerializer):
     
     def get_original_price(self, obj):
         """Get original price before discount"""
-        # Check for discounts using utility
-        from apps.ecommerce.discount_utils import get_applicable_discount
-        discount = get_applicable_discount(obj)
+        from apps.ecommerce.discount_utils import calculate_discounted_price
+        discount_info = calculate_discounted_price(obj)
         
-        if discount:
-            return obj.retail_price
+        if discount_info['discount_type']:
+            return discount_info['original_price']
         
         return None
     
@@ -348,6 +347,18 @@ class EcommerceProductSerializer(serializers.ModelSerializer):
             return float(discount.value)
         
         return 0
+
+    def to_representation(self, instance):
+        from apps.inventory.pricing import normalize_product_price
+
+        data = super().to_representation(instance)
+        data['retail_price'] = str(normalize_product_price(instance.retail_price))
+        data['wholesale_price'] = (
+            str(normalize_product_price(instance.wholesale_price))
+            if instance.wholesale_price is not None
+            else None
+        )
+        return data
 
 class EcommerceProductDetailSerializer(EcommerceProductSerializer):
     """Comprehensive serializer for detailed product view - extends EcommerceProductSerializer"""
@@ -732,11 +743,8 @@ class ProductSerializer(serializers.ModelSerializer):
         return discount.end_date.isoformat() if discount else None
 
     def get_sale_price(self, obj):
-        discount = self._get_active_discount(obj)
-        if discount:
-            discounted_amount = (float(obj.retail_price) * float(discount.value)) / 100
-            return float(obj.retail_price) - discounted_amount
-        return float(obj.retail_price)
+        from apps.ecommerce.discount_utils import calculate_discounted_price
+        return calculate_discounted_price(obj)['final_price']
 
     def get_first_variation_color(self, obj):
         first_variant = obj.variations.first()
@@ -773,6 +781,18 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def get_resolved_wholesale_cutoff(self, obj):
         return obj.resolve_wholesale_cutoff()
+
+    def to_representation(self, instance):
+        from apps.inventory.pricing import normalize_product_price
+
+        data = super().to_representation(instance)
+        data['retail_price'] = str(normalize_product_price(instance.retail_price))
+        data['wholesale_price'] = (
+            str(normalize_product_price(instance.wholesale_price))
+            if instance.wholesale_price is not None
+            else None
+        )
+        return data
 
 
 

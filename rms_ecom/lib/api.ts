@@ -456,7 +456,7 @@ export const ecommerceApi = {
 
   // Public: Price cart items on the server
   priceCart: async (items: Array<{ productId: string | number; quantity: number; variations?: Record<string, string> }>): Promise<{
-    items: Array<{ productId: number; combination_id: number; name: string; image_url?: string | null; unit_price: number; quantity: number; validated_quantity?: number; line_total: number; max_stock?: number; variant?: { combination_id?: number; color?: string | null; size?: string | null } }>
+    items: Array<{ productId: number; combination_id: number; name: string; image_url?: string | null; unit_price: number; original_price: number; quantity: number; validated_quantity?: number; line_total: number; max_stock?: number; variant?: { combination_id?: number; color?: string | null; size?: string | null } }>
     products: Array<{
       id: number
       name: string
@@ -575,4 +575,14 @@ export const ecommerceApi = {
     if (!response.ok) throw new Error('Failed to fetch promotional modals')
     return response.json()
   },
+
+  // Public: Get landing page published section tree
+  getLandingPageTree: async (): Promise<any[]> => {
+    const response = await fetch(`${API_BASE_URL}/ecommerce/public/landing-page/`, {
+      cache: 'no-store',
+    })
+    if (!response.ok) throw new Error('Failed to fetch landing page tree')
+    return response.json()
+  },
 };
+

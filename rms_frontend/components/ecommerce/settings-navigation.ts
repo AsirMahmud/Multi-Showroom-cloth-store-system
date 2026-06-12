@@ -72,4 +72,13 @@ export const ecommerceSettingsSections = [
     permission: "manage_promotional_modals",
     accent: "from-rose-500 to-pink-700",
   },
+  {
+    title: "Organize Landing Page",
+    shortTitle: "Organizer",
+    description: "Drag, drop, add, remove, and configure storefront layout sections dynamically.",
+    href: "/ecommerce-settings/organize-landing-page",
+    icon: LayoutGrid,
+    permission: "manage_landing_page",
+    accent: "from-blue-500 to-indigo-700",
+  },
 ] as const;

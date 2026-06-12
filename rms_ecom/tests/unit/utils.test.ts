@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest"
-import { formatCurrency, getMediaUrl, normalizeCartLine, parseProductId } from "../../lib/utils"
+import {
+  formatCurrency,
+  getMediaUrl,
+  normalizeCartLine,
+  normalizeProductPrice,
+  parseProductId,
+} from "../../lib/utils"
 
 describe("commerce utilities", () => {
   it("normalizes legacy product/color identifiers", () => {
@@ -21,6 +27,13 @@ describe("commerce utilities", () => {
 
   it("formats authoritative prices as Bangladeshi taka", () => {
     expect(formatCurrency(2450)).toContain("2,450")
+  })
+
+  it("rounds fractional product prices to the nearest whole taka", () => {
+    expect(normalizeProductPrice(120.2)).toBe(120)
+    expect(normalizeProductPrice(123)).toBe(123)
+    expect(normalizeProductPrice(120.5)).toBe(121)
+    expect(normalizeProductPrice(129.9)).toBe(130)
   })
 
   it("keeps absolute media URLs unchanged", () => {

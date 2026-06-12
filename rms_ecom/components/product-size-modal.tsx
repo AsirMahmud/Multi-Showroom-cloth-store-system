@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react"
 import { Minus, Plus, Check, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { cn, sortSizes } from "@/lib/utils"
+import { cn, normalizeProductPrice, sortSizes } from "@/lib/utils"
 import { ProductVariant, ecommerceApi } from "@/lib/api"
 import { Badge } from "@/components/ui/badge"
 import { useCartStore } from "@/hooks/useCartStore"
@@ -71,11 +71,17 @@ export function ProductSizeModal({
     : globalDiscountValue
 
   const showDiscount = finalDiscount > 0
-  const basePrice = productOriginalPrice !== undefined ? Number(productOriginalPrice) : Number(productPrice)
+  const basePrice = normalizeProductPrice(
+    productOriginalPrice !== undefined ? productOriginalPrice : productPrice
+  )
 
   // Use passed price as discounted price if available (it should already be calculated)
   // Otherwise calculate it
-  const discounted = productPrice !== undefined ? Number(productPrice) : (showDiscount ? basePrice * (1 - finalDiscount / 100) : basePrice)
+  const discounted = normalizeProductPrice(
+    productPrice !== undefined
+      ? productPrice
+      : (showDiscount ? basePrice * (1 - finalDiscount / 100) : basePrice)
+  )
 
   // Extract numeric product ID from string (handles formats like "123" or "123/blue")
   const getNumericProductId = (id: string | number): number | null => {

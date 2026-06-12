@@ -20,7 +20,7 @@ import { usePOSStore } from "@/store/pos-store";
 import type { PaymentMethod } from "@/types/sales";
 import { formatCurrency } from "@/lib/utils";
 import PaymentSection from "./PaymentSection";
-import { calculateCartTotals } from "@/lib/pos-calculations";
+import { calculateCartTotals } from "@/utils/pos-calculations";
 
 type CartRow = ReturnType<typeof usePOSStore.getState>["cart"][number];
 

@@ -1,5 +1,8 @@
 from rest_framework import serializers
-from .models import Discount, Brand, HomePageSettings, DeliverySettings, HeroSlide, PromotionalModal, ProductStatus
+from .models import (
+    Discount, Brand, HomePageSettings, DeliverySettings, HeroSlide, PromotionalModal, ProductStatus,
+    LandingPage, LandingPageSection, LandingPageCollageItem, LandingPageProductSelection
+)
 from apps.inventory.serializers import ProductSerializer, CategorySerializer, OnlineCategorySerializer
 
 
@@ -529,3 +532,139 @@ class PromotionalModalSerializer(serializers.ModelSerializer):
                 'end_date': 'End date must be after start date.'
             })
         return data
+
+
+class LandingPageCollageItemSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+    category_detail = CategorySerializer(source='category', read_only=True)
+    online_category_detail = OnlineCategorySerializer(source='online_category', read_only=True)
+
+    class Meta:
+        model = LandingPageCollageItem
+        fields = [
+            'id', 'section', 'category', 'category_detail', 'online_category',
+            'online_category_detail', 'title_override', 'link_override', 'image', 'image_url', 'display_order'
+        ]
+
+    def get_image_url(self, obj):
+        if obj.image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+        return None
+
+
+class LandingPageSectionSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+    mobile_image_url = serializers.SerializerMethodField()
+    collage_items = LandingPageCollageItemSerializer(many=True, read_only=True)
+    product_ids = serializers.ListField(
+        child=serializers.IntegerField(), write_only=True, required=False
+    )
+    products_detail = serializers.SerializerMethodField()
+
+    class Meta:
+        model = LandingPageSection
+        fields = [
+            'id', 'landing_page', 'section_type', 'layout_variant', 'display_order',
+            'is_active', 'status', 'start_date', 'end_date', 'config',
+            'image', 'image_url', 'mobile_image', 'mobile_image_url', 'collage_items',
+            'product_ids', 'products_detail', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+
+    def get_image_url(self, obj):
+        if obj.image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+        return None
+
+    def get_mobile_image_url(self, obj):
+        if obj.mobile_image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.mobile_image.url)
+            return obj.mobile_image.url
+        return None
+
+    def get_products_detail(self, obj):
+        from apps.inventory.serializers import ProductSerializer
+        selections = obj.product_selections.select_related('product').all()
+        products = [selection.product for selection in selections]
+        return ProductSerializer(products, many=True, context=self.context).data
+
+    def validate_config(self, value):
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("Config must be a dictionary.")
+        
+        # YouTube URL normalization for banner sections
+        youtube_url = value.get('youtube_url')
+        if youtube_url:
+            import re
+            # 1. Handle iframe extraction
+            if '<iframe' in youtube_url.lower():
+                match = re.search(r'src=["\']([^"\']+)["\']', youtube_url)
+                if match:
+                    youtube_url = match.group(1)
+            
+            # 2. Extract 11-char video ID
+            video_id = None
+            match_v = re.search(r'(?:v=|\&v=)([a-zA-Z0-9_-]{11})', youtube_url)
+            if match_v:
+                video_id = match_v.group(1)
+            else:
+                match_shorts = re.search(r'shorts/([a-zA-Z0-9_-]{11})', youtube_url)
+                if match_shorts:
+                    video_id = match_shorts.group(1)
+                else:
+                    match_embed = re.search(r'embed/([a-zA-Z0-9_-]{11})', youtube_url)
+                    if match_embed:
+                        video_id = match_embed.group(1)
+                    else:
+                        match_share = re.search(r'youtu\.be/([a-zA-Z0-9_-]{11})', youtube_url)
+                        if match_share:
+                            video_id = match_share.group(1)
+            
+            if video_id:
+                value['youtube_url'] = f"https://www.youtube.com/embed/{video_id}"
+            elif "youtube.com/embed/" in youtube_url:
+                value['youtube_url'] = youtube_url
+            else:
+                raise serializers.ValidationError("Only valid YouTube or YouTube Shorts URLs/embed links are accepted.")
+        return value
+
+    def create(self, validated_data):
+        product_ids = validated_data.pop('product_ids', None)
+        instance = super().create(validated_data)
+        if product_ids is not None:
+            self._save_product_selections(instance, product_ids)
+        return instance
+
+    def update(self, instance, validated_data):
+        product_ids = validated_data.pop('product_ids', None)
+        instance = super().update(instance, validated_data)
+        if product_ids is not None:
+            self._save_product_selections(instance, product_ids)
+        return instance
+
+    def _save_product_selections(self, instance, product_ids):
+        from .models import LandingPageProductSelection
+        instance.product_selections.all().delete()
+        for order, prod_id in enumerate(product_ids):
+            LandingPageProductSelection.objects.create(
+                section=instance,
+                product_id=prod_id,
+                display_order=order
+            )
+
+
+class LandingPageSerializer(serializers.ModelSerializer):
+    sections = LandingPageSectionSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = LandingPage
+        fields = ['id', 'name', 'is_active', 'sections', 'created_at', 'updated_at']
+

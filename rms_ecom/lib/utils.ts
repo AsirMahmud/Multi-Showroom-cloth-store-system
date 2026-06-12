@@ -23,6 +23,11 @@ export function parseProductId(value: string | number): number {
   return match ? Number(match[0]) : 0
 }
 
+export function normalizeProductPrice(value: number | string | null | undefined): number {
+  const amount = Number(value)
+  return Number.isFinite(amount) ? Math.round(amount) : 0
+}
+
 export function normalizeCartLine(item: {
   productId: string | number
   quantity: number

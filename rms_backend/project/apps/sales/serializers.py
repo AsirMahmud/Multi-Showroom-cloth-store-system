@@ -4,6 +4,7 @@ from apps.inventory.serializers import ProductSerializer
 from apps.customer.serializers import CustomerSerializer
 from apps.customer.models import Customer
 from apps.inventory.models import Product, ProductVariation, StockMovement
+from apps.inventory.pricing import normalize_product_price
 from django.core.exceptions import ValidationError
 from django.db.models import Sum
 from decimal import Decimal
@@ -351,7 +352,14 @@ class SaleSerializer(serializers.ModelSerializer):
 
             cutoff = product.resolve_wholesale_cutoff()
             price_type = product.resolve_price_type(quantity)
-            unit_price = product.resolve_unit_price(quantity) or Decimal('0.00')
+            unit_price = normalize_product_price(
+                product.resolve_unit_price(quantity) or Decimal('0.00')
+            )
+            requested_discount = item.get('discount', Decimal('0.00'))
+            discounted_unit_price = normalize_product_price(
+                ((unit_price * quantity) - requested_discount) / quantity
+            )
+            normalized_discount = (unit_price - discounted_unit_price) * quantity
 
             prepared_items.append({
                 **item,
@@ -362,6 +370,7 @@ class SaleSerializer(serializers.ModelSerializer):
                 'retail_price_snapshot': product.retail_price or Decimal('0.00'),
                 'wholesale_price_snapshot': product.wholesale_price or Decimal('0.00'),
                 'wholesale_cutoff_snapshot': cutoff,
+                'discount': normalized_discount,
             })
 
         return prepared_items

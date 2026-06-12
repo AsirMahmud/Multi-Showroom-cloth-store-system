@@ -3,16 +3,20 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.utils import timezone
 from django.db.models import Q
 from django.db import IntegrityError, transaction
 from datetime import datetime
-from .models import Discount, Brand, HomePageSettings, DeliverySettings, HeroSlide, PromotionalModal, ProductStatus
+from .models import (
+    Discount, Brand, HomePageSettings, DeliverySettings, HeroSlide, PromotionalModal, ProductStatus,
+    LandingPage, LandingPageSection, LandingPageCollageItem, LandingPageProductSelection
+)
 from .serializers import (
     DiscountSerializer, DiscountListSerializer, BrandSerializer, 
     HomePageSettingsSerializer, DeliverySettingsSerializer, 
-    HeroSlideSerializer, PromotionalModalSerializer, ProductStatusSerializer
+    HeroSlideSerializer, PromotionalModalSerializer, ProductStatusSerializer,
+    LandingPageSerializer, LandingPageSectionSerializer, LandingPageCollageItemSerializer
 )
 from django.utils.text import slugify
 from apps.inventory.models import Product, ProductVariation, Gallery, Image, OnlineCategory
@@ -470,7 +474,7 @@ class PublicProductsByColorView(APIView):
                 'product_id': product.id,
                 'product_name': product.name,
                 'display_name': f'{product.name} - {design_name} - {color_name}',
-                'product_price': str(product.retail_price),
+                'product_price': str(discount_info['final_price']),
                 'discount_info': discount_info if discount_info['discount_type'] else None,
                 'design_id': variation.design_id,
                 'design_name': design_name,
@@ -681,7 +685,7 @@ class PublicProductDetailByColorView(APIView):
             'product': {
                 'id': product.id,
                 'name': product.name,
-                'price': str(product.retail_price),
+                'price': str(discount_info['final_price']),
                 'category': product.category.name if product.category else None,
                 'online_categories': [
                     {'id': cat.id, 'name': cat.name, 'slug': cat.slug}
@@ -1232,3 +1236,361 @@ class CreateOnlinePreorderView(APIView):
             logger.error(f"Failed to trigger notifications in ecommerce view: {str(e)}")
             
         return Response(OnlinePreorderSerializer(online_preorder).data, status=status.HTTP_201_CREATED)
+
+
+class LandingPageSectionViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing draft LandingPageSection configurations.
+    Allows CRUD on status='DRAFT' sections.
+    """
+    queryset = LandingPageSection.objects.filter(status='DRAFT')
+    serializer_class = LandingPageSectionSerializer
+    permission_classes = [HasReadWritePermission(read=None, write="manage_landing_page")]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get_queryset(self):
+        return LandingPageSection.objects.filter(status='DRAFT').order_by('display_order', 'id')
+
+    @action(detail=False, methods=['post'])
+    def reorder(self, request):
+        """Reorder sections by updating display_order in one batch request"""
+        orders = request.data  # Expected format: [id1, id2, id3] or [{'id': 1, 'display_order': 0}, ...]
+        if not isinstance(orders, list):
+            return Response({"error": "Expected a list of orders"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        with transaction.atomic():
+            for index, item in enumerate(orders):
+                if isinstance(item, dict):
+                    sec_id = item.get('id')
+                    disp_order = item.get('display_order', index)
+                else:
+                    sec_id = item
+                    disp_order = index
+                
+                LandingPageSection.objects.filter(id=sec_id, status='DRAFT').update(display_order=disp_order)
+        
+        return Response({"status": "ordered"})
+
+    @action(detail=True, methods=['post'])
+    def duplicate(self, request, pk=None):
+        """Duplicate a section (including related collage items)"""
+        section = self.get_object()
+        with transaction.atomic():
+            # Create a clone of the section
+            section_clone = LandingPageSection.objects.create(
+                landing_page=section.landing_page,
+                section_type=section.section_type,
+                layout_variant=section.layout_variant,
+                display_order=section.display_order + 1,
+                is_active=section.is_active,
+                status='DRAFT',
+                start_date=section.start_date,
+                end_date=section.end_date,
+                config=section.config,
+                image=section.image,
+                mobile_image=section.mobile_image
+            )
+            # Duplicate collage items
+            for item in section.collage_items.all():
+                LandingPageCollageItem.objects.create(
+                    section=section_clone,
+                    category=item.category,
+                    online_category=item.online_category,
+                    title_override=item.title_override,
+                    link_override=item.link_override,
+                    image=item.image,
+                    display_order=item.display_order
+                )
+            # Duplicate product selections
+            for prod in section.product_selections.all():
+                LandingPageProductSelection.objects.create(
+                    section=section_clone,
+                    product=prod.product,
+                    display_order=prod.display_order
+                )
+                
+        serializer = self.get_serializer(section_clone)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['post'])
+    def publish(self, request):
+        """Publish the current draft sections: overwrites the published storefront."""
+        # Find default landing page
+        landing_page, _ = LandingPage.objects.get_or_create(
+            name="Main Storefront Home",
+            defaults={"is_active": True}
+        )
+        
+        with transaction.atomic():
+            # 1. Clear all currently PUBLISHED sections
+            LandingPageSection.objects.filter(landing_page=landing_page, status='PUBLISHED').delete()
+            
+            # 2. Get all currently DRAFT sections
+            draft_sections = LandingPageSection.objects.filter(landing_page=landing_page, status='DRAFT')
+            
+            # 3. Duplicate drafts to published status
+            for section in draft_sections:
+                published_section = LandingPageSection.objects.create(
+                    landing_page=landing_page,
+                    section_type=section.section_type,
+                    layout_variant=section.layout_variant,
+                    display_order=section.display_order,
+                    is_active=section.is_active,
+                    status='PUBLISHED',
+                    start_date=section.start_date,
+                    end_date=section.end_date,
+                    config=section.config,
+                    image=section.image,
+                    mobile_image=section.mobile_image
+                )
+                # Duplicate collage items
+                for item in section.collage_items.all():
+                    LandingPageCollageItem.objects.create(
+                        section=published_section,
+                        category=item.category,
+                        online_category=item.online_category,
+                        title_override=item.title_override,
+                        link_override=item.link_override,
+                        image=item.image,
+                        display_order=item.display_order
+                    )
+                # Duplicate product selections
+                for prod in section.product_selections.all():
+                    LandingPageProductSelection.objects.create(
+                        section=published_section,
+                        product=prod.product,
+                        display_order=prod.display_order
+                    )
+                    
+        return Response({"status": "published"})
+
+    @action(detail=False, methods=['get'])
+    def preview(self, request):
+        """Preview complete draft tree"""
+        landing_page, _ = LandingPage.objects.get_or_create(
+            name="Main Storefront Home",
+            defaults={"is_active": True}
+        )
+        # Fetch all draft sections, and dynamically resolve product cards for editor preview
+        sections = LandingPageSection.objects.filter(landing_page=landing_page, status='DRAFT').order_by('display_order', 'id')
+        
+        # We can construct the dynamic data here
+        data = self.get_serializer(sections, many=True).data
+        for idx, item in enumerate(data):
+            sec_type = item.get('section_type')
+            if sec_type == 'PRODUCT_SECTION':
+                # Dynamically fetch products by status/category/manual selection
+                sec_id = item.get('id')
+                section_obj = sections[idx]
+                products_qs = _resolve_section_products(section_obj)
+                item['products'] = format_products_by_color(request, products_qs)
+        
+        return Response(data)
+
+
+class LandingPageCollageItemViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing category collage cards under draft sections.
+    """
+    queryset = LandingPageCollageItem.objects.all()
+    serializer_class = LandingPageCollageItemSerializer
+    permission_classes = [HasReadWritePermission(read=None, write="manage_landing_page")]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get_queryset(self):
+        section_id = self.request.query_params.get('section_id')
+        if section_id:
+            return LandingPageCollageItem.objects.filter(section_id=section_id, section__status='DRAFT').order_by('display_order', 'id')
+        return LandingPageCollageItem.objects.filter(section__status='DRAFT').order_by('display_order', 'id')
+
+    @action(detail=False, methods=['post'])
+    def reorder(self, request):
+        orders = request.data
+        if not isinstance(orders, list):
+            return Response({"error": "Expected a list of orders"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        with transaction.atomic():
+            for index, item in enumerate(orders):
+                if isinstance(item, dict):
+                    card_id = item.get('id')
+                    disp_order = item.get('display_order', index)
+                else:
+                    card_id = item
+                    disp_order = index
+                LandingPageCollageItem.objects.filter(id=card_id, section__status='DRAFT').update(display_order=disp_order)
+        return Response({"status": "ordered"})
+
+
+class PublicLandingPageView(APIView):
+    """
+    Public landing page API. Returns active, scheduled, and published section configs.
+    If empty, indicates storefront should fallback to legacy home configuration.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        landing_page = LandingPage.objects.filter(is_active=True).first()
+        if not landing_page:
+            return Response([])
+
+        now = timezone.now()
+        # Find active published sections
+        sections = LandingPageSection.objects.filter(
+            landing_page=landing_page,
+            status='PUBLISHED',
+            is_active=True
+        ).filter(
+            Q(start_date__isnull=True) | Q(start_date__lte=now)
+        ).filter(
+            Q(end_date__isnull=True) | Q(end_date__gte=now)
+        ).order_by('display_order', 'id')
+
+        if not sections.exists():
+            return Response([])
+
+        # Serialize sections
+        data = LandingPageSectionSerializer(sections, many=True, context={'request': request}).data
+
+        # Populate products for PRODUCT_SECTION sections dynamically
+        for idx, item in enumerate(data):
+            sec_type = item.get('section_type')
+            if sec_type == 'PRODUCT_SECTION':
+                section_obj = sections[idx]
+                products_qs = _resolve_section_products(section_obj)
+                item['products'] = format_products_by_color(request, products_qs)
+
+        return Response(data)
+
+
+def _resolve_section_products(section):
+    """
+    Helper to fetch products matching a section's configuration or manual selection.
+    """
+    # 1. Manual products selection override
+    selections = section.product_selections.select_related('product').all()
+    if selections.exists():
+        # Get active products that assign online
+        prod_ids = [s.product_id for s in selections]
+        # Keep original ordering
+        preserved_order = {p_id: i for i, p_id in enumerate(prod_ids)}
+        products = Product.objects.filter(id__in=prod_ids, is_active=True, assign_to_online=True)
+        # Sort by selection display_order
+        return sorted(products, key=lambda p: preserved_order.get(p.id, 0))
+
+    # 2. Config filtering query
+    config = section.config or {}
+    products = Product.objects.filter(is_active=True, assign_to_online=True)
+
+    # Filter status slug
+    status_slug = config.get('status_slug')
+    if status_slug:
+        products = products.filter(ecommerce_statuses__slug=status_slug)
+
+    # Filter category
+    category_slug = config.get('category_slug')
+    if category_slug:
+        products = products.filter(category__slug=category_slug)
+
+    # Filter online category
+    online_category_slug = config.get('online_category_slug')
+    if online_category_slug:
+        try:
+            from apps.inventory.models import OnlineCategory
+            category = OnlineCategory.objects.get(slug=online_category_slug)
+            child_ids = [category.id]
+            children = OnlineCategory.objects.filter(parent=category)
+            child_ids.extend([child.id for child in children])
+            products = products.filter(online_categories__id__in=child_ids)
+        except Exception:
+            pass
+
+    # Filter gender
+    gender = config.get('gender')
+    if gender:
+        gender_upper = gender.strip().upper()
+        # Handle convenience mappings
+        gender_mapping = {
+            'MEN': 'MALE',
+            'WOMEN': 'FEMALE',
+            'MAN': 'MALE',
+            'WOMAN': 'FEMALE',
+            'UNISEX': 'UNISEX',
+        }
+        gender_val = gender_mapping.get(gender_upper, gender_upper)
+        if gender_val in ['MALE', 'FEMALE']:
+            products = products.filter(Q(gender=gender_val) | Q(gender='UNISEX'))
+        elif gender_val == 'UNISEX':
+            products = products.filter(gender='UNISEX')
+
+    # Order distinct queryset
+    products = products.distinct().order_by('-created_at')
+
+    # Apply limit
+    limit = int(config.get('product_limit', 8))
+    return products[:limit]
+
+
+def format_products_by_color(request, products_queryset):
+    """
+    Format products as color-scoped flat listings.
+    """
+    from apps.ecommerce.discount_utils import calculate_discounted_price
+    from django.utils.text import slugify
+    
+    result = []
+    
+    # Resolve design variations for these products
+    from apps.inventory.models import ProductVariation, Gallery
+    variations = ProductVariation.objects.filter(
+        design__product__in=products_queryset,
+        is_active=True,
+    ).select_related('design__product').order_by('design__product_id', 'design_id', 'id')
+    
+    # Sort variation list to group by product matching the ordering of products_queryset if needed,
+    # but let's keep it sorted by variations order.
+    for variation in variations:
+        product = variation.design.product
+        color_name = variation.color.strip()
+        design_name = variation.design.name.strip()
+        total_stock = max(0, variation.stock)
+        
+        # Cover image url
+        cover_image_url = None
+        gallery = Gallery.objects.filter(
+            design=variation.design,
+            color__iexact=variation.color,
+        ).first()
+        if gallery:
+            primary = gallery.images.filter(imageType='PRIMARY').first()
+            image_obj = primary or gallery.images.first()
+            if image_obj and image_obj.image:
+                cover_image_url = request.build_absolute_uri(image_obj.image.url)
+        if not cover_image_url and product.image:
+            cover_image_url = request.build_absolute_uri(product.image.url)
+            
+        discount_info = calculate_discounted_price(product)
+        color_slug = slugify(color_name)
+        design_slug = slugify(design_name)
+        
+        result.append({
+            'combination_id': variation.id,
+            'parent_product_id': product.id,
+            'product_id': product.id,
+            'product_name': product.name,
+            'display_name': f'{product.name} - {design_name} - {color_name}',
+            'product_price': str(discount_info['final_price']),
+            'discount_info': discount_info if discount_info['discount_type'] else None,
+            'design_id': variation.design_id,
+            'design_name': design_name,
+            'design_slug': design_slug,
+            'color_name': color_name,
+            'color_slug': color_slug,
+            'total_stock': total_stock,
+            'cover_image_url': cover_image_url,
+            'product_url': (
+                f'/product/{product.id}/{color_slug}'
+                f'?design={design_slug}&combination_id={variation.id}'
+            ),
+        })
+    return result
+

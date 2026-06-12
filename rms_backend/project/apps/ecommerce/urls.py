@@ -17,6 +17,9 @@ from .views import (
     PromotionalModalViewSet,
     PublicPromotionalModalView,
     ProductStatusViewSet,
+    LandingPageSectionViewSet,
+    LandingPageCollageItemViewSet,
+    PublicLandingPageView,
 )
 
 router = DefaultRouter()
@@ -26,6 +29,8 @@ router.register(r'home-page-settings', HomePageSettingsViewSet, basename='home-p
 router.register(r'hero-slides', HeroSlideViewSet, basename='hero-slide')
 router.register(r'promotional-modals', PromotionalModalViewSet, basename='promotional-modal')
 router.register(r'product-statuses', ProductStatusViewSet, basename='product-status')
+router.register(r'landing-page/sections', LandingPageSectionViewSet, basename='landing-page-sections')
+router.register(r'landing-page/collage-items', LandingPageCollageItemViewSet, basename='landing-page-collage-items')
 
 urlpatterns = [
     path('', include(router.urls)),
@@ -39,5 +44,7 @@ urlpatterns = [
     path('orders/create/', CreateOnlinePreorderView.as_view(), name='create-online-preorder'),
     path('public/hero-slides/', PublicHeroSlidesView.as_view(), name='public-hero-slides'),
     path('public/promotional-modals/', PublicPromotionalModalView.as_view(), name='public-promotional-modals'),
+    path('public/landing-page/', PublicLandingPageView.as_view(), name='public-landing-page'),
 ]
+
 

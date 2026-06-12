@@ -247,20 +247,17 @@ export function CheckoutForm() {
 
         // Get product discount info
         const productInfo = productInfoMap.get(pid)
-        const originalPrice = productInfo?.original_price
-        const discountPercent = productInfo?.discount
-
+        const originalPrice = pricedItem.original_price ?? productInfo?.original_price
         // Calculate unit price and discount amount
         let unit_price = pricedItem.unit_price
         let discountAmount = 0
 
-        // If we have original price and discount percentage, calculate discount amount
-        if (originalPrice && discountPercent && discountPercent > 0) {
-          const discountedPrice = originalPrice * (1 - discountPercent / 100)
+        // Use the authoritative rounded prices returned by cart pricing.
+        if (originalPrice && originalPrice > pricedItem.unit_price) {
           // Backend expects: (quantity * unit_price) - discount = final total
           // So: unit_price should be original_price, discount = (original - discounted) * quantity
           unit_price = originalPrice
-          discountAmount = (originalPrice - discountedPrice) * it.quantity
+          discountAmount = (originalPrice - pricedItem.unit_price) * it.quantity
         } else {
           // No discount, use the unit_price from pricing response (already discounted if applicable)
           unit_price = pricedItem.unit_price
