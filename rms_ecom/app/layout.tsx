@@ -7,7 +7,7 @@ import Script from "next/script"
 import "./globals.css"
 import { Suspense } from "react"
 import { DiscountInitializer } from "@/components/discount-initializer"
-import { LoadingProviderWrapper } from "@/components/loading-provider-wrapper"
+import { LoadingProvider } from "@/contexts/loading-context"
 import { Toaster } from "sonner"
 import { WhatsAppButton } from "@/components/whatsapp-button"
 import { PromotionalModal } from "@/components/promotional-modal"
@@ -93,7 +93,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${hanken.variable} ${playfair.variable} antialiased`} suppressHydrationWarning>
       <body className="bg-background font-sans text-foreground">
-        <LoadingProviderWrapper>
+        <LoadingProvider>
           <Toaster
             position="top-center"
             toastOptions={{
@@ -105,7 +105,7 @@ export default function RootLayout({
           <PromotionalModal />
           <Suspense fallback={null}>{children}</Suspense>
           <Analytics />
-        </LoadingProviderWrapper>
+        </LoadingProvider>
       </body>
     </html>
   )
