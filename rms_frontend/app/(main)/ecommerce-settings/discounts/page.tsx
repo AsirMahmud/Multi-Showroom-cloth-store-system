@@ -64,7 +64,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency, getImageUrl } from "@/lib/utils";
 import {
   useDiscounts,
   useCreateDiscount,
@@ -360,8 +360,7 @@ export default function DiscountManagementPage() {
     if (!product) return "/placeholder.svg";
     const img = product.image || product.first_variation_image;
     if (!img) return "/placeholder.svg";
-    if (img.startsWith("/")) return `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}${img}`;
-    return img;
+    return getImageUrl(img);
   };
 
   return (

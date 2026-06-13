@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { BACKEND_URL } from "@/lib/env"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -37,13 +38,11 @@ export function getImageUrl(imagePath: string | null | undefined): string {
   }
 
   if (imagePath.startsWith('/media/')) {
-    const baseUrl = process.env.NEXT_PUBLIC_IMAGEURL || "http://127.0.0.1:8000";
-    return `${baseUrl}${imagePath}`;
+    return `${BACKEND_URL}${imagePath}`;
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_IMAGEURL || "http://127.0.0.1:8000";
   const cleanPath = imagePath.startsWith('/') ? imagePath.slice(1) : imagePath;
-  return `${baseUrl}/media/${cleanPath}`;
+  return `${BACKEND_URL}/media/${cleanPath}`;
 }
 
 export function slugify(text: string) {

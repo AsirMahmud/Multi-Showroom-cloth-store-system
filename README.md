@@ -131,7 +131,7 @@ npm install
 
 # Copy environment variables
 cp .env.example .env.local
-# Set NEXT_PUBLIC_API_URL=http://localhost:8000
+# Set NEXT_PUBLIC_API_URL=http://localhost:8000/api
 
 # Start the development server
 npm run dev
@@ -151,7 +151,7 @@ npm install
 
 # Copy environment variables
 cp .env.example .env.local
-# Set NEXT_PUBLIC_API_URL=http://localhost:8000
+# Set NEXT_PUBLIC_API_URL=http://localhost:8000/api
 
 # Start the development server
 npm run dev
@@ -176,7 +176,7 @@ CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
 ### Frontend (`rms_frontend/.env.local` and `rms_ecom/.env.local`)
 
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_API_URL=http://localhost:8000/api
 NEXT_PUBLIC_SHOP_NAME=RetailAdmin
 ```
 
@@ -185,6 +185,16 @@ NEXT_PUBLIC_SHOP_NAME=RetailAdmin
 ## 🌐 Deployment
 
 This project is configured for deployment on [Render.com](https://render.com) via `render.yaml`.
+
+For the production `rms_frontend` build, set the public backend URL in the
+hosting provider and redeploy:
+
+```env
+NEXT_PUBLIC_API_URL=https://your-backend.example.com/api
+```
+
+Do not use `localhost` in production. Next.js embeds `NEXT_PUBLIC_*` values
+during `npm run build`, so changing the value requires a new deployment.
 
 ```bash
 # Build and deploy using Render's dashboard or CLI
