@@ -22,6 +22,7 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/', include('apps.authentication.urls')),
+    path('api/branches/', include('apps.branches.urls')),
     path('api/inventory/', include('apps.inventory.urls')),
     path('api/customer/', include('apps.customer.urls')),
     path('api/supplier/', include('apps.supplier.urls')),
@@ -33,6 +34,8 @@ urlpatterns = [
     path('api/preorder/', include('apps.preorder.urls')),
     path('api/ecommerce/', include('apps.ecommerce.urls')),
     path('api/online-preorder/', include('apps.online_preorder.urls')),
+    path('api/notifications/', include('apps.notifications.urls')),
+    path('api/audit-log/', include('apps.auditlog.urls')),
 ]
 
 # Add media URL patterns for both development and production

@@ -39,6 +39,13 @@ class Expense(models.Model):
     reference_number = models.CharField(max_length=100, blank=True)
     notes = models.TextField(blank=True)
     receipt = models.FileField(upload_to='expense_receipts/', blank=True, null=True)
+    branch = models.ForeignKey(
+        "branches.Branch",
+        on_delete=models.PROTECT,
+        related_name="expenses",
+        null=True,
+        blank=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

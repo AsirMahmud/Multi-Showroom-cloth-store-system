@@ -50,7 +50,13 @@ body {
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --brand-primary: 153 42% 15%; /* #163625 */
+    --brand-secondary: 95 85% 91%; /* #E4FCD5 */
+    --brand-accent: 142 71% 45%; /* Emerald 500 */
+    --brand-gradient: linear-gradient(135deg, #f8fafc 0%, hsl(var(--brand-secondary) / 0.2) 40%, hsl(var(--brand-primary) / 0.08) 100%);
   }
+
 
   .dark {
     --background: 0 0% 3.9%;
@@ -85,7 +91,14 @@ body {
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Brand Identity - Dark Mode (Default Emerald) */
+    --brand-primary: 153 42% 20%;
+    --brand-secondary: 95 85% 15%;
+    --brand-accent: 142 71% 40%;
+    --brand-gradient: linear-gradient(135deg, hsl(var(--brand-primary) / 0.2) 0%, hsl(0 0% 4%) 100%);
   }
+
 
   /* Global reset */
   * {
@@ -93,7 +106,9 @@ body {
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply min-h-screen text-foreground;
+    background: var(--brand-gradient);
+    background-attachment: fixed;
   }
 
   /* 🔧 Remove spinner arrows on number inputs - Chrome/Safari */
@@ -107,4 +122,100 @@ body {
   input[type="number"] {
     -moz-appearance: textfield;
   }
+}
+
+/* --- DYNAMIC THEME PRESETS (Global Priority) --- */
+
+/* LIGHT MODE PRESETS */
+html[data-color-preset="blue"], body[data-color-preset="blue"] {
+  --brand-primary: 221 39% 11% !important;
+  --brand-secondary: 214 32% 91% !important;
+  --brand-accent: 221 83% 53% !important;
+}
+html[data-color-preset="rose"], body[data-color-preset="rose"] {
+  --brand-primary: 343 76% 20% !important;
+  --brand-secondary: 340 82% 96% !important;
+  --brand-accent: 341 82% 50% !important;
+}
+html[data-color-preset="indigo"], body[data-color-preset="indigo"] {
+  --brand-primary: 243 47% 20% !important;
+  --brand-secondary: 240 84% 96% !important;
+  --brand-accent: 239 84% 67% !important;
+}
+html[data-color-preset="amber"], body[data-color-preset="amber"] {
+  --brand-primary: 20 80% 15% !important;
+  --brand-secondary: 48 100% 92% !important;
+  --brand-accent: 38 92% 50% !important;
+}
+html[data-color-preset="violet"], body[data-color-preset="violet"] {
+  --brand-primary: 271 81% 20% !important;
+  --brand-secondary: 262 83% 96% !important;
+  --brand-accent: 262 83% 58% !important;
+}
+html[data-color-preset="slate"], body[data-color-preset="slate"] {
+  --brand-primary: 222 47% 11% !important;
+  --brand-secondary: 210 40% 96% !important;
+  --brand-accent: 215 25% 27% !important;
+}
+html[data-color-preset="orange"], body[data-color-preset="orange"] {
+  --brand-primary: 24 94% 15% !important;
+  --brand-secondary: 32 95% 94% !important;
+  --brand-accent: 24 94% 50% !important;
+}
+html[data-color-preset="crimson"], body[data-color-preset="crimson"] {
+  --brand-primary: 347 77% 15% !important;
+  --brand-secondary: 347 100% 96% !important;
+  --brand-accent: 347 77% 50% !important;
+}
+html[data-color-preset="cyan"], body[data-color-preset="cyan"] {
+  --brand-primary: 192 100% 15% !important;
+  --brand-secondary: 187 100% 94% !important;
+  --brand-accent: 188 100% 45% !important;
+}
+
+/* DARK MODE PRESETS */
+html.dark[data-color-preset="blue"], .dark [data-color-preset="blue"], body.dark[data-color-preset="blue"] {
+  --brand-primary: 221 39% 25% !important;
+  --brand-secondary: 214 32% 15% !important;
+  --brand-accent: 221 83% 45% !important;
+}
+html.dark[data-color-preset="rose"], .dark [data-color-preset="rose"], body.dark[data-color-preset="rose"] {
+  --brand-primary: 343 76% 30% !important;
+  --brand-secondary: 340 82% 15% !important;
+  --brand-accent: 341 82% 45% !important;
+}
+html.dark[data-color-preset="indigo"], .dark [data-color-preset="indigo"], body.dark[data-color-preset="indigo"] {
+  --brand-primary: 243 47% 30% !important;
+  --brand-secondary: 240 84% 15% !important;
+  --brand-accent: 239 84% 60% !important;
+}
+html.dark[data-color-preset="amber"], .dark [data-color-preset="amber"], body.dark[data-color-preset="amber"] {
+  --brand-primary: 20 80% 25% !important;
+  --brand-secondary: 48 100% 12% !important;
+  --brand-accent: 38 92% 45% !important;
+}
+html.dark[data-color-preset="violet"], .dark [data-color-preset="violet"], body.dark[data-color-preset="violet"] {
+  --brand-primary: 271 81% 30% !important;
+  --brand-secondary: 262 83% 15% !important;
+  --brand-accent: 262 83% 50% !important;
+}
+html.dark[data-color-preset="slate"], .dark [data-color-preset="slate"], body.dark[data-color-preset="slate"] {
+  --brand-primary: 222 47% 25% !important;
+  --brand-secondary: 210 40% 15% !important;
+  --brand-accent: 215 25% 40% !important;
+}
+html.dark[data-color-preset="orange"], .dark [data-color-preset="orange"], body.dark[data-color-preset="orange"] {
+  --brand-primary: 24 94% 25% !important;
+  --brand-secondary: 32 95% 12% !important;
+  --brand-accent: 24 94% 45% !important;
+}
+html.dark[data-color-preset="crimson"], .dark [data-color-preset="crimson"], body.dark[data-color-preset="crimson"] {
+  --brand-primary: 347 77% 25% !important;
+  --brand-secondary: 347 100% 12% !important;
+  --brand-accent: 347 77% 45% !important;
+}
+html.dark[data-color-preset="cyan"], .dark [data-color-preset="cyan"], body.dark[data-color-preset="cyan"] {
+  --brand-primary: 192 100% 25% !important;
+  --brand-secondary: 187 100% 12% !important;
+  --brand-accent: 188 100% 45% !important;
 }

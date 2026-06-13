@@ -27,7 +27,7 @@ def convert_online_preorder_to_sale(sender, instance: OnlinePreorder, created: b
             subtotal += line_total
             items_payload.append({
                 'product_id': item['product_id'],
-                'size': item.get('size') or '',
+                'design_name': item.get('design_name') or item.get('design') or item.get('size') or '',
                 'color': item.get('color') or '',
                 'quantity': qty,
                 'unit_price': float(unit_price),

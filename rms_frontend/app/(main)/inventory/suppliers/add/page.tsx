@@ -51,7 +51,7 @@ export default function AddSupplierPage() {
         website: data.website || null,
         payment_terms: data.payment_terms || null,
       };
-      await supplierApi.create(transformedData);
+      await supplierApi.create(transformedData as any);
       toast({
         title: "Success",
         description: "Supplier created successfully",

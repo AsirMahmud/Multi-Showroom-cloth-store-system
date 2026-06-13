@@ -1,12 +1,12 @@
-import React, { useMemo, useRef, useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { CheckCircle2, PenLine, Printer, ReceiptText, ScanLine, Sparkles } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
 interface ReceiptModalProps {
@@ -42,68 +42,82 @@ export default function ReceiptModal({
   onNewSale,
   formatCurrency,
 }: ReceiptModalProps) {
-  if (!data) return null;
-
   const qrCodeRef = useRef<HTMLDivElement>(null);
   const [qrCodeDataURL, setQrCodeDataURL] = useState<string>("");
+  const [receiptLabel, setReceiptLabel] = useState("Receipt");
 
-  // Generate compressed cart data for QR code
-  const qrCodeData = useMemo(() => {
-    const cartData = {
-      items: data.items.map((item) => ({
-        productId: String(item.productId),
-        quantity: item.quantity,
-        variations: {
-          color: item.color || "",
-          size: item.size || "",
-        },
-      })),
-    };
-    // Compress by encoding as base64 JSON
-    return btoa(JSON.stringify(cartData));
-  }, [data.items]);
-
-  // Generate QR code as data URL for printing
   useEffect(() => {
     if (!open || !data) {
       setQrCodeDataURL("");
       return;
     }
 
-    // Wait for SVG to be rendered
+    setReceiptLabel("Receipt");
+  }, [open, data]);
+
+  const qrCodeData = useMemo(() => {
+    if (!data) {
+      return "";
+    }
+
+    const cartData = {
+      items: data.items.map((item) => ({
+        productId: String(item.productId),
+        quantity: item.quantity,
+        variations: {
+          color: item.color || "",
+          design: item.design || "",
+        },
+      })),
+    };
+
+    return btoa(JSON.stringify(cartData));
+  }, [data]);
+
+  useEffect(() => {
+    if (!open || !data) {
+      setQrCodeDataURL("");
+      return;
+    }
+
     const timer = setTimeout(() => {
-      if (qrCodeRef.current) {
-        const svgElement = qrCodeRef.current.querySelector("svg");
-        if (svgElement) {
-          const svgData = new XMLSerializer().serializeToString(svgElement);
-          const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-          const url = URL.createObjectURL(svgBlob);
-          
-          const img = new Image();
-          img.onload = () => {
-            const canvas = document.createElement("canvas");
-            canvas.width = 200;
-            canvas.height = 200;
-            const ctx = canvas.getContext("2d");
-            if (ctx) {
-              ctx.drawImage(img, 0, 0);
-              const dataUrl = canvas.toDataURL("image/png");
-              setQrCodeDataURL(dataUrl);
-              URL.revokeObjectURL(url);
-            }
-          };
-          img.onerror = () => {
-            URL.revokeObjectURL(url);
-          };
-          img.src = url;
-        }
+      if (!qrCodeRef.current) {
+        return;
       }
-    }, 200); // Small delay to ensure SVG is rendered
+
+      const svgElement = qrCodeRef.current.querySelector("svg");
+      if (!svgElement) {
+        return;
+      }
+
+      const svgData = new XMLSerializer().serializeToString(svgElement);
+      const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(svgBlob);
+
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 220;
+        canvas.height = 220;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          setQrCodeDataURL(canvas.toDataURL("image/png"));
+        }
+        URL.revokeObjectURL(url);
+      };
+      img.onerror = () => URL.revokeObjectURL(url);
+      img.src = url;
+    }, 180);
 
     return () => clearTimeout(timer);
-  }, [qrCodeData, open, data]); // Regenerate when modal opens or data changes
+  }, [qrCodeData, open, data]);
 
   const handlePrint = () => {
+    if (!data) {
+      return;
+    }
+
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
@@ -111,7 +125,7 @@ export default function ReceiptModal({
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Receipt</title>
+          <title>${receiptLabel}</title>
           <style>
             @page {
               size: 58mm auto;
@@ -120,165 +134,187 @@ export default function ReceiptModal({
             body {
               width: 58mm;
               margin: 0;
-              padding: 5mm;
-              font-family: 'Courier New', monospace;
-              font-size: 15px;
-              line-height: 1.4;
-              color: #000;
-              font-weight: 600;
+              padding: 4.5mm;
+              font-family: Arial, Helvetica, sans-serif;
+              font-size: 12px;
+              line-height: 1.35;
+              color: #111827;
+              background: #fff;
+            }
+            .topbar {
+              height: 4px;
+              border-radius: 999px;
+              background: linear-gradient(90deg, #111827, #34d399);
+              margin-bottom: 8px;
             }
             .header {
               text-align: center;
-              margin-bottom: 15px;
+              margin-bottom: 10px;
             }
-            .store-name {
-              font-size: 18px;
-              font-weight: 800;
+            .brand {
+              font-size: 16px;
+              font-weight: 900;
+              letter-spacing: 0.12em;
+            }
+            .label {
+              margin-top: 2px;
+              font-size: 10px;
+              color: #6b7280;
+              letter-spacing: 0.18em;
+              text-transform: uppercase;
+            }
+            .meta {
+              border: 1px solid #e5e7eb;
+              border-radius: 10px;
+              padding: 7px;
               margin-bottom: 8px;
+              background: #f9fafb;
             }
-            .store-info {
-              font-size: 14px;
-              font-weight: 600;
-              margin-bottom: 8px;
+            .meta-row {
+              display: flex;
+              justify-content: space-between;
+              gap: 6px;
+              margin-bottom: 4px;
+              font-size: 11px;
             }
-            .receipt-details {
-              margin-bottom: 15px;
-              border-bottom: 2px dashed #000;
-              padding-bottom: 8px;
-              font-size: 15px;
-              font-weight: 600;
+            .meta-row:last-child {
+              margin-bottom: 0;
+            }
+            .section-title {
+              font-size: 10px;
+              font-weight: 900;
+              letter-spacing: 0.16em;
+              text-transform: uppercase;
+              color: #6b7280;
+              margin: 8px 0 5px;
             }
             .items {
-              margin-bottom: 15px;
-            }
-            .item {
               margin-bottom: 8px;
             }
-            .item-name {
-              font-weight: 700;
-              font-size: 15px;
+            .item {
+              border-bottom: 1px dashed #e5e7eb;
+              padding: 6px 0;
             }
-            .item-details {
-              font-size: 14px;
-              color: #000;
-              font-weight: 600;
+            .item:last-child {
+              border-bottom: none;
+            }
+            .item-name {
+              display: flex;
+              justify-content: space-between;
+              gap: 6px;
+              font-size: 12px;
+              font-weight: 800;
+            }
+            .item-sub {
+              margin-top: 2px;
+              color: #4b5563;
+              font-size: 10px;
+            }
+            .item-badge {
+              font-size: 9px;
+              font-weight: 800;
+              text-transform: uppercase;
+              letter-spacing: 0.12em;
+              color: #065f46;
+              background: #d1fae5;
+              border-radius: 999px;
+              padding: 2px 6px;
+              white-space: nowrap;
             }
             .item-total {
-              font-weight: 700;
+              margin-top: 4px;
               text-align: right;
-              font-size: 14px;
+              font-size: 12px;
+              font-weight: 900;
             }
             .totals {
-              border-top: 2px dashed #000;
-              padding-top: 8px;
-              margin-bottom: 15px;
-              font-size: 15px;
-              font-weight: 600;
+              border-top: 1px solid #e5e7eb;
+              padding-top: 7px;
+              margin-bottom: 8px;
             }
             .total-row {
               display: flex;
               justify-content: space-between;
-              margin-bottom: 5px;
-              font-weight: 600;
+              gap: 6px;
+              margin-bottom: 4px;
+              font-size: 11px;
             }
-            .payment-details {
-              border-top: 2px dashed #000;
-              padding-top: 8px;
-              margin-bottom: 15px;
-              font-size: 15px;
-              font-weight: 600;
+            .total-row strong {
+              font-size: 12px;
             }
-            .footer {
-              text-align: center;
-              font-size: 14px;
-              margin-top: 15px;
-              border-top: 2px dashed #000;
-              padding-top: 8px;
-              font-weight: 600;
+            .total-amount {
+              padding-top: 4px;
+              margin-top: 4px;
+              border-top: 1px solid #e5e7eb;
+              font-weight: 900;
+            }
+            .payment {
+              border: 1px solid #e5e7eb;
+              border-radius: 10px;
+              padding: 7px;
+              background: #f9fafb;
+              margin-bottom: 8px;
             }
             .status {
               text-align: center;
-              font-weight: 800;
-              margin: 15px 0;
-              font-size: 16px;
+              font-size: 12px;
+              font-weight: 900;
+              letter-spacing: 0.18em;
+              margin: 8px 0;
             }
-            .discount {
-              color: #000;
-              font-weight: 700;
+            .footer {
+              text-align: center;
+              font-size: 10px;
+              color: #6b7280;
+              margin-top: 8px;
             }
-            .store-credit {
-              color: #000;
-              font-weight: 700;
-            }
-            .change-due {
-              color: #000;
-              font-weight: 700;
-            }
-            .total-amount {
-              font-size: 16px;
-              font-weight: 800;
-            }
-            .split-payment-header {
-              font-weight: 700;
-              font-size: 15px;
-              margin-bottom: 5px;
-            }
-            @media print {
-              body {
-                width: 58mm;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-              }
-              .no-print {
-                display: none;
-              }
+            .qr {
+              text-align: center;
+              margin-top: 8px;
             }
           </style>
         </head>
         <body>
+          <div class="topbar"></div>
           <div class="header">
-            <div class="store-name">RAW STITCH</div>
-            <div class="store-info">Kapasia, Gazipur</div>
-            <div class="store-info">Phone: 01338869901</div>
+            <div class="brand">FERDOUS TEXTILE</div>
+            <div class="label">${receiptLabel}</div>
+            <div style="font-size:10px;color:#6b7280;margin-top:2px;">Kapasia, Gazipur</div>
+            <div style="font-size:10px;color:#6b7280;">Phone: 01338869901</div>
           </div>
 
-          <div class="receipt-details">
-            <div>Receipt #: ${data.id}</div>
-            <div>Date: ${new Date(data.date).toLocaleString()}</div>
+          <div class="meta">
+            <div class="meta-row"><span>Receipt #</span><strong>${data.id}</strong></div>
+            <div class="meta-row"><span>Date</span><strong>${new Date(data.date).toLocaleString()}</strong></div>
             ${
               data.customer
                 ? `
-             
-              <div>Customer #: ${data.customer.id || "N/A"}</div>
-              <div>Phone: ${data.customer.phone || "N/A"}</div>
+              <div class="meta-row"><span>Customer</span><strong>${data.customer.name || data.customer.first_name || "N/A"}</strong></div>
+              <div class="meta-row"><span>Phone</span><strong>${data.customer.phone || "N/A"}</strong></div>
             `
                 : ""
             }
           </div>
 
+          <div class="section-title">Items</div>
           <div class="items">
             ${data.items
               .map(
-                (item, index) => `
+                (item) => `
               <div class="item">
-                <div class="item-name">${item.name}</div>
-                <div class="item-details">
-                  ${item.quantity} x ${formatCurrency(item.price)} - ${
-                  item.size
-                } - ${item.color}
-                  ${
-                    item.itemDiscount > 0
-                      ? `
-                    <div class="text-xs text-red-600">
-                      Item Discount: -${formatCurrency(item.itemDiscount)}
-                    </div>
-                  `
-                      : ""
-                  }
+                <div class="item-name">
+                  <span>${item.name}</span>
+                  <span class="item-badge">${item.priceType === "wholesale" ? "WS" : "RT"}</span>
                 </div>
-                <div class="item-total">
-                  ${formatCurrency(item.discountedTotal)}
+                <div class="item-sub">
+                  ${item.quantity} x ${formatCurrency(item.price)} • ${item.design || ""} • ${item.color || ""}
                 </div>
+                ${
+                  item.itemDiscount > 0
+                    ? `<div class="item-sub">Item discount: -${formatCurrency(item.itemDiscount)}</div>`
+                    : ""
+                }
+                <div class="item-total">${formatCurrency(item.discountedTotal)}</div>
               </div>
             `
               )
@@ -286,114 +322,66 @@ export default function ReceiptModal({
           </div>
 
           <div class="totals">
-            <div class="total-row">
-              <span>Subtotal:</span>
-              <span>${formatCurrency(data.subtotal)}</span>
-            </div>
+            <div class="total-row"><span>Subtotal</span><span>${formatCurrency(data.subtotal)}</span></div>
             ${
               data.itemDiscounts > 0
-                ? `
-              <div class="total-row">
-                <span>Item Discounts:</span>
-                <span>-${formatCurrency(data.itemDiscounts)}</span>
-              </div>
-            `
+                ? `<div class="total-row"><span>Item discounts</span><span>-${formatCurrency(data.itemDiscounts)}</span></div>`
                 : ""
             }
             ${
               data.globalDiscount > 0
-                ? `
-              <div class="total-row">
-                <span>Global Discount:</span>
-                <span>-${formatCurrency(data.globalDiscount)}</span>
-              </div>
-            `
+                ? `<div class="total-row"><span>Global discount</span><span>-${formatCurrency(data.globalDiscount)}</span></div>`
                 : ""
             }
-            <div class="total-row">
-              <span>Tax:</span>
-              <span>${formatCurrency(data.tax)}</span>
-            </div>
+            <div class="total-row"><span>Tax</span><span>${formatCurrency(data.tax)}</span></div>
             ${
               data.storeCredit > 0
-                ? `
-              <div class="total-row">
-                <span>Store Credit:</span>
-                <span class="store-credit">-${formatCurrency(
-                  data.storeCredit
-                )}</span>
-              </div>
-            `
+                ? `<div class="total-row"><span>Store credit</span><span>-${formatCurrency(data.storeCredit)}</span></div>`
                 : ""
             }
-            <div class="total-row total-amount">
-              <span>Total:</span>
-              <span>${formatCurrency(data.total)}</span>
-            </div>
+            <div class="total-row total-amount"><span>Total</span><span>${formatCurrency(data.total)}</span></div>
           </div>
 
-          <div class="payment-details">
-            <div class="total-row">
-              <span>Payment Method:</span>
-              <span>${data.paymentMethod}</span>
-            </div>
+          <div class="payment">
+            <div class="total-row"><span>Payment</span><span>${data.paymentMethod}</span></div>
             ${
               data.paymentMethod === "cash" && data.cashAmount
                 ? `
-              <div class="total-row">
-                <span>Cash Tendered:</span>
-                <span>${formatCurrency(data.cashAmount)}</span>
-              </div>
-              <div class="total-row">
-                <span>Change Due:</span>
-                <span class="change-due">${formatCurrency(
-                  data.changeDue || 0
-                )}</span>
-              </div>
+              <div class="total-row"><span>Cash tendered</span><span>${formatCurrency(data.cashAmount)}</span></div>
+              <div class="total-row"><span>Change due</span><span>${formatCurrency(data.changeDue || 0)}</span></div>
             `
                 : ""
             }
             ${
               data.splitPayments
                 ? `
-              <div style="margin-top: 8px;">
-                <div class="split-payment-header">Split Payments:</div>
-                ${data.splitPayments
-                  .map(
-                    (payment) => `
-                  <div class="total-row">
-                    <span>${payment.method}:</span>
-                    <span>${formatCurrency(Number(payment.amount))}</span>
-                  </div>
+              <div class="section-title" style="margin-top:8px;">Split payments</div>
+              ${data.splitPayments
+                .map(
+                  (payment) => `
+                  <div class="total-row"><span>${payment.method}</span><span>${formatCurrency(Number(payment.amount))}</span></div>
                 `
-                  )
-                  .join("")}
-              </div>
+                )
+                .join("")}
             `
                 : ""
             }
           </div>
 
-          <div class="status" style="color: ${data.isPaid ? "#000" : "#000"}">
-            ${data.isPaid ? "PAID" : "DUE"}
-          </div>
+          <div class="status">${data.isPaid ? "PAID" : "DUE"}</div>
 
-          <div class="footer">
-            <div>Thanks for your purchase!</div>
-            <div>Return policy:3 days with receipt before wash</div>
-          </div>
-
-          <div style="text-align: center; margin: 15px 0;">
-            <div style="font-weight: 600; margin-bottom: 5px; font-size: 12px;">Scan to Reorder</div>
+          <div class="qr">
+            <div class="section-title" style="margin-top:0;">Scan to reorder</div>
             ${
               qrCodeDataURL
-                ? `<img src="${qrCodeDataURL}" alt="QR Code" style="width: 120px; height: 120px; margin: 0 auto; display: block;" />`
+                ? `<img src="${qrCodeDataURL}" alt="QR Code" style="width: 110px; height: 110px; display:block; margin: 0 auto;" />`
                 : ""
             }
           </div>
 
-          <div class="no-print" style="margin-top: 20px; text-align: center;">
-            <button onclick="window.print()">Print Receipt</button>
+          <div class="footer">
+            Thanks for your purchase
+            <div>Return policy: 3 days with receipt before wash</div>
           </div>
         </body>
       </html>
@@ -402,176 +390,271 @@ export default function ReceiptModal({
     printWindow.document.write(receiptContent);
     printWindow.document.close();
 
-    // Auto print after a short delay
     setTimeout(() => {
       printWindow.print();
-      // Close the window after printing
       setTimeout(() => {
         printWindow.close();
-      }, 1000);
-    }, 500);
+      }, 800);
+    }, 400);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Receipt</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          {/* Receipt Header */}
-          <div className="text-center space-y-1">
-            <h2 className="text-lg font-bold">RAW STITCH</h2>
-            <p className="text-sm text-muted-foreground">Kapasia, Gazipur</p>
-            <p className="text-sm text-muted-foreground">
-              Phone: (555) 123-4567
-            </p>
-          </div>
-
-          {/* Receipt Details */}
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Receipt #:</span>
-              <span>{data.id}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span>Date:</span>
-              <span>{new Date(data.date).toLocaleString()}</span>
-            </div>
-            {data.customer && (
-              <>
-                <div className="flex justify-between text-sm">
-                  <span>Customer:</span>
-                  <span>{data.customer.name}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Customer #:</span>
-                  <span>{data.customer.id || "N/A"}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Phone:</span>
-                  <span>{data.customer.phone || "N/A"}</span>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Items */}
-          <ScrollArea className="h-[200px]">
-            <div className="space-y-2">
-              {data.items.map((item, index) => (
-                <div key={index} className="flex justify-between text-sm">
-                  <div className="flex-1">
-                    <div>{item.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {item.quantity} x {formatCurrency(item.price)} -{" "}
-                      {item.size} - {item.color}
-                    </div>
-                    {item.itemDiscount > 0 && (
-                      <div className="text-xs text-red-600">
-                        Item Discount: -{formatCurrency(item.itemDiscount)}
+      <DialogContent className="max-h-[90vh] overflow-hidden border-0 bg-white p-0 shadow-2xl sm:max-w-5xl">
+        {data ? (
+          <div className="grid max-h-[90vh] grid-cols-1 md:grid-cols-[1.15fr_0.85fr]">
+            <div className="flex min-h-0 flex-col">
+              <div className="border-b border-slate-100 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 px-6 py-5 text-white">
+                <DialogHeader>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.24em] text-emerald-300">
+                        <Sparkles className="h-3.5 w-3.5" />
+                        Sale complete
                       </div>
-                    )}
+                      <DialogTitle className="text-2xl font-black tracking-tight">Receipt preview</DialogTitle>
+                      <p className="mt-2 max-w-xl text-sm text-slate-300">
+                        Edit the receipt label before printing, then review the sale summary in a cleaner, operator-friendly layout.
+                      </p>
+                    </div>
+                    <Badge className="rounded-full bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-white hover:bg-white/10">
+                      <ReceiptText className="mr-1 h-3 w-3" />
+                      {data.isPaid ? "Paid" : "Due"}
+                    </Badge>
                   </div>
-                  <div className="text-right">
-                    <div>{formatCurrency(item.discountedTotal)}</div>
+                </DialogHeader>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-sm">
+                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">
+                      Receipt name
+                    </div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <Input
+                        value={receiptLabel}
+                        onChange={(e) => setReceiptLabel(e.target.value)}
+                        className="h-10 border-white/10 bg-white/10 text-white placeholder:text-slate-400"
+                        placeholder="Receipt"
+                      />
+                      <PenLine className="h-4 w-4 text-slate-300" />
+                    </div>
+                  </div>
+
+                  <SummaryCard label="Items" value={String(data.items.length)} helper="sale lines" />
+                  <SummaryCard label="Total" value={formatCurrency(data.total)} helper={data.paymentMethod} />
+                </div>
+              </div>
+
+              <ScrollArea className="min-h-0 flex-1 bg-slate-50 px-4 py-4">
+                <div className="space-y-4">
+                  <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <InfoPill label="Receipt #" value={data.id} />
+                      <InfoPill label="Date" value={new Date(data.date).toLocaleString()} />
+                      {data.customer ? (
+                        <>
+                          <InfoPill label="Customer" value={data.customer.name || data.customer.first_name || "N/A"} />
+                          <InfoPill label="Phone" value={data.customer.phone || "N/A"} />
+                        </>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div className="mb-3 flex items-center justify-between">
+                      <div>
+                        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                          Items
+                        </div>
+                        <h3 className="mt-1 text-lg font-black text-slate-900">Purchased products</h3>
+                      </div>
+                      <Badge variant="outline" className="rounded-full border-slate-200 bg-slate-50 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                        {data.items.length} lines
+                      </Badge>
+                    </div>
+
+                    <div className="space-y-3">
+                      {data.items.map((item, index) => (
+                        <div
+                          key={`${item.productId || index}-${index}`}
+                          className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h4 className="truncate text-sm font-black text-slate-900">{item.name}</h4>
+                                <Badge className={item.priceType === "wholesale" ? "rounded-full bg-emerald-100 text-[10px] font-black uppercase tracking-widest text-emerald-700" : "rounded-full bg-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-600"}>
+                                  {item.priceType === "wholesale" ? "Wholesale" : "Retail"}
+                                </Badge>
+                              </div>
+                              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                                <span>{item.quantity} x {formatCurrency(item.price)}</span>
+                                <span>•</span>
+                                <span>{item.design || "Standard"}</span>
+                                <span>•</span>
+                                <span>{item.color || "Default"}</span>
+                              </div>
+                              {item.itemDiscount > 0 ? (
+                                <div className="mt-1 text-xs text-red-600">
+                                  Item discount: -{formatCurrency(item.itemDiscount)}
+                                </div>
+                              ) : null}
+                            </div>
+                            <div className="text-right">
+                              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                Subtotal
+                              </div>
+                              <div className="mt-1 text-sm font-black text-slate-900">
+                                {formatCurrency(item.discountedTotal)}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              ))}
+              </ScrollArea>
             </div>
-          </ScrollArea>
 
-          {/* Totals */}
-          <div className="space-y-2 border-t pt-2">
-            <div className="flex justify-between">
-              <span>Subtotal:</span>
-              <span>{formatCurrency(data.subtotal)}</span>
-            </div>
-            {data.itemDiscounts > 0 && (
-              <div className="flex justify-between text-red-600">
-                <span>Item Discounts:</span>
-                <span>-{formatCurrency(data.itemDiscounts)}</span>
-              </div>
-            )}
-            {data.globalDiscount > 0 && (
-              <div className="flex justify-between text-red-600">
-                <span>Global Discount:</span>
-                <span>-{formatCurrency(data.globalDiscount)}</span>
-              </div>
-            )}
-            <div className="flex justify-between">
-              <span>Tax:</span>
-              <span>{formatCurrency(data.tax)}</span>
-            </div>
-            {data.storeCredit > 0 && (
-              <div className="flex justify-between text-green-600">
-                <span>Store Credit:</span>
-                <span>-{formatCurrency(data.storeCredit)}</span>
-              </div>
-            )}
-            <div className="flex justify-between font-bold border-t pt-2">
-              <span>Total:</span>
-              <span>{formatCurrency(data.total)}</span>
-            </div>
-          </div>
-
-          {/* Payment Details */}
-          <div className="space-y-2 border-t pt-2">
-            <div className="flex justify-between">
-              <span>Payment Method:</span>
-              <span className="capitalize">{data.paymentMethod}</span>
-            </div>
-            {data.paymentMethod === "cash" && data.cashAmount && (
-              <>
-                <div className="flex justify-between">
-                  <span>Cash Tendered:</span>
-                  <span>{formatCurrency(data.cashAmount)}</span>
-                </div>
-                <div className="flex justify-between text-green-600">
-                  <span>Change Due:</span>
-                  <span>{formatCurrency(data.changeDue || 0)}</span>
-                </div>
-              </>
-            )}
-            {data.splitPayments && (
-              <div className="space-y-1">
-                <p className="font-medium">Split Payments:</p>
-                {data.splitPayments.map((payment, index) => (
-                  <div key={index} className="flex justify-between text-sm">
-                    <span className="capitalize">{payment.method}:</span>
-                    <span>{formatCurrency(Number(payment.amount))}</span>
+            <div className="flex min-h-0 flex-col border-t border-slate-100 bg-slate-950 text-white md:border-l md:border-t-0">
+              <div className="space-y-4 p-5">
+                <div className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 shadow-lg">
+                  <div className="grid grid-cols-2">
+                    <RightMetric label="Subtotal" value={formatCurrency(data.subtotal)} />
+                    <RightMetric label="Discounted" value={formatCurrency(data.discountedSubtotal)} />
+                    <RightMetric label="Discounts" value={formatCurrency(data.itemDiscounts + data.globalDiscount)} />
+                    <RightMetric label="Tax" value={formatCurrency(data.tax)} />
                   </div>
-                ))}
+                  <div className="border-t border-slate-800 p-4">
+                    <div className="flex items-end justify-between gap-4">
+                      <div>
+                        <div className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">
+                          Total
+                        </div>
+                        <div className="mt-1 text-3xl font-black text-white">
+                          {formatCurrency(data.total)}
+                        </div>
+                      </div>
+                      <Badge className={data.isPaid ? "rounded-full bg-emerald-100 text-emerald-700" : "rounded-full bg-amber-100 text-amber-700"}>
+                        {data.isPaid ? "PAID" : "DUE"}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-slate-800 bg-slate-900 p-4">
+                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                    Payment
+                  </div>
+                  <div className="mt-3 space-y-2 text-sm">
+                    <SideLine label="Method" value={data.paymentMethod} />
+                    {data.paymentMethod === "cash" && data.cashAmount ? (
+                      <>
+                        <SideLine label="Cash tendered" value={formatCurrency(data.cashAmount)} />
+                        <SideLine label="Change due" value={formatCurrency(data.changeDue || 0)} accent />
+                      </>
+                    ) : null}
+                    {data.splitPayments ? (
+                      <div className="pt-2">
+                        <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+                          Split payments
+                        </div>
+                        <div className="space-y-2">
+                          {data.splitPayments.map((payment, index) => (
+                            <div key={`${payment.method}-${index}`} className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-2">
+                              <span className="capitalize text-slate-300">{payment.method}</span>
+                              <span className="font-semibold text-white">{formatCurrency(Number(payment.amount))}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-slate-800 bg-slate-900 p-4">
+                  <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                    <ScanLine className="h-4 w-4 text-emerald-400" />
+                    Scan to reorder
+                  </div>
+                  <div ref={qrCodeRef} className="mt-3 flex items-center justify-center rounded-2xl border border-slate-800 bg-slate-950 p-4">
+                    <QRCodeSVG value={qrCodeData || data.id} size={120} level="M" />
+                  </div>
+                  <div className="mt-3 text-center text-xs text-slate-500">
+                    QR captures the product mix for quick repeat sales.
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    variant="outline"
+                    className="h-11 rounded-2xl border-slate-700 bg-slate-900 text-xs font-black uppercase tracking-[0.18em] text-white hover:bg-slate-800 hover:text-white"
+                    onClick={handlePrint}
+                  >
+                    <Printer className="mr-2 h-4 w-4" />
+                    Print
+                  </Button>
+                  <Button
+                    className="h-11 rounded-2xl bg-emerald-500 text-xs font-black uppercase tracking-[0.18em] text-slate-950 hover:bg-emerald-400"
+                    onClick={onNewSale}
+                  >
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    New Sale
+                  </Button>
+                </div>
               </div>
-            )}
-          </div>
-
-          {/* Status */}
-          <div className="text-center text-sm">
-            <p className={data.isPaid ? "text-green-600" : "text-red-600"}>
-              {data.isPaid ? "PAID" : "DUE"}
-            </p>
-          </div>
-
-          {/* QR Code for Reordering */}
-          <div className="flex flex-col items-center space-y-2 border-t pt-4">
-            <p className="text-xs font-medium text-muted-foreground">Scan to Reorder</p>
-            <div ref={qrCodeRef} className="flex items-center justify-center">
-              <QRCodeSVG value={qrCodeData} size={120} level="M" />
             </div>
           </div>
-
-          {/* Actions */}
-          <div className="flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={handlePrint}>
-              Print Receipt
-            </Button>
-            <Button className="flex-1" onClick={onNewSale}>
-              New Sale
-            </Button>
-          </div>
-        </div>
+        ) : null}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function SummaryCard({
+  label,
+  value,
+  helper,
+}: {
+  label: string;
+  value: string;
+  helper?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-sm">
+      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">{label}</div>
+      <div className="mt-1 text-lg font-black text-white">{value}</div>
+      {helper ? <div className="mt-1 text-xs text-slate-400">{helper}</div> : null}
+    </div>
+  );
+}
+
+function InfoPill({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{label}</div>
+      <div className="mt-1 break-words text-sm font-semibold text-slate-900">{value}</div>
+    </div>
+  );
+}
+
+function RightMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="border-b border-r border-slate-800 px-4 py-4 last:border-b-0 [&:nth-last-child(-n+2)]:border-b-0">
+      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{label}</div>
+      <div className="mt-2 text-sm font-black text-white">{value}</div>
+    </div>
+  );
+}
+
+function SideLine({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-2">
+      <span className="text-slate-400">{label}</span>
+      <span className={accent ? "font-semibold text-emerald-300" : "font-semibold text-white"}>
+        {value}
+      </span>
+    </div>
   );
 }

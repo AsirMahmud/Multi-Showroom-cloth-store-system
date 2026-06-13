@@ -13,10 +13,16 @@ export interface SaleItem {
         sku: string;
         cost_price: number;
     };
-    size: string;
+    design?: string;
+    design_name?: string;
     color: string;
     quantity: number;
+    price_type?: 'retail' | 'wholesale';
     unit_price: number;
+    applied_unit_price?: number;
+    retail_price_snapshot?: number;
+    wholesale_price_snapshot?: number;
+    wholesale_cutoff_snapshot?: number;
     discount: number;
     total?: number;
     profit?: number;
@@ -50,6 +56,8 @@ export interface DuePayment {
 export interface Sale {
     id?: number;
     invoice_number?: string;
+    branch?: number | null;
+    branch_name?: string | null;
     customer?: (
         | number
         | null
@@ -113,9 +121,10 @@ export interface Payment {
 }
 
 export interface ReturnItem {
-    id: number;
-    return_order: number;
-    sale_item: number;
+    id?: number;
+    return_order?: number;
+    sale_item?: number | SaleItem;
+    sale_item_id?: number;
     quantity: number;
     reason: string;
     created_at: string;
@@ -125,6 +134,9 @@ export interface Return {
     id: number;
     return_number: string;
     sale: number;
+    sale_invoice_number?: string;
+    sale_branch_name?: string | null;
+    sale_customer_name?: string | null;
     reason: string;
     status: ReturnStatus;
     refund_amount: number;
@@ -147,15 +159,52 @@ export interface CustomerLookupResponse {
 
 export interface DashboardStats {
     today: {
+        gross_sales: number;
+        returns_total: number;
+        net_sales: number;
         total_sales: number;
         total_transactions: number;
         total_profit: number;
+        gross_profit?: number;
+        total_loss?: number;
+        total_discount?: number;
+        average_transaction_value?: number;
+        total_customers?: number;
     };
     monthly: {
+        gross_sales: number;
+        returns_total: number;
+        net_sales: number;
         total_sales: number;
         total_transactions: number;
         total_profit: number;
+        gross_profit?: number;
+        total_loss?: number;
+        total_discount?: number;
+        average_transaction_value?: number;
+        total_customers?: number;
     };
+    customer_analytics?: {
+        new_customers_today: number;
+        active_customers_today: number;
+        customer_retention_rate: number;
+        top_customers: Array<{
+            customer_name: string;
+            customer__phone?: string;
+            total_spent: number;
+            visit_count: number;
+        }>;
+    };
+    payment_method_distribution?: Array<{
+        payment_method: string;
+        count: number;
+        total: number;
+    }>;
+    sales_by_hour?: Array<{
+        hour: number;
+        count: number;
+        total: number;
+    }>;
     top_products: Array<{
         product__name: string;
         total_quantity: number;
@@ -165,7 +214,10 @@ export interface DashboardStats {
     sales_trend: Array<{
         sale__date__date: any;
         date__date: string;
+        gross_sales?: number;
+        returns_total?: number;
         sales: number;
+        gross_profit?: number;
         profit: number;
         orders: number;
     }>;

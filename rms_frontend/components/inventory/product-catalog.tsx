@@ -49,6 +49,7 @@ import { Badge } from "@/components/ui/badge";
 import { useProducts, useDeleteProduct } from "@/hooks/queries/useInventory";
 import { Product } from "@/types/inventory";
 import { DeleteProductDialog } from "./delete-product-dialog";
+import { TableSkeleton } from "@/components/ui/professional";
 
 export function ProductCatalog() {
   const router = useRouter();
@@ -99,11 +100,7 @@ export function ProductCatalog() {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1E3A8A]" />
-      </div>
-    );
+    return <TableSkeleton cols={7} rows={5} />;
   }
 
   return (

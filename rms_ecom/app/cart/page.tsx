@@ -12,7 +12,7 @@ export default function CartPage() {
       <SiteHeader />
 
       <main className="flex-1">
-        <div className="container px-4 py-8">
+        <div className="container py-10 md:py-16">
           <Breadcrumb
             items={[
               { label: "Home", href: "/" },
@@ -20,12 +20,13 @@ export default function CartPage() {
             ]}
           />
 
-          <div className="text-center mt-6 mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-6">Cart</h1>
+          <div className="mb-12 mt-8 text-center">
+            <p className="editorial-kicker">Your selection</p>
+            <h1 className="mb-7 mt-2 font-serif text-4xl md:text-5xl">Shopping bag</h1>
             <CheckoutProgress currentStep={1} />
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-8 mt-8">
+          <div className="mt-8 grid gap-12 lg:grid-cols-3">
             {/* Cart Items - Takes 2 columns on large screens */}
             <div className="lg:col-span-2">
               <CartItems />

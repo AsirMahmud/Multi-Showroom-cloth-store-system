@@ -40,7 +40,7 @@ export default function ShopPage() {
     <div className="min-h-screen flex flex-col">
       <SiteHeader />
       <main className="flex-1">
-        <div className="container mx-auto px-4 py-6">
+        <div className="container mx-auto px-4 py-10 md:py-16">
           <Breadcrumb items={[{ label: "Home", href: "/" }, { label: "Shop", href: "/shop" }]} />
 
           <div className="flex gap-6 mt-6">
@@ -52,8 +52,8 @@ export default function ShopPage() {
               <ProductGrid
                 category="All"
                 products={products.map(p => ({
-                  id: `${p.product_id}/${p.color_slug}`,
-                  name: `${p.product_name} - ${p.color_name}`,
+                  id: p.product_url.replace(/^\/product\//, ""),
+                  name: p.display_name,
                   price: Number(p.product_price),
                   rating: 4.5,
                   image: p.cover_image_url || "/placeholder.jpg",
@@ -72,5 +72,4 @@ export default function ShopPage() {
     </div>
   )
 }
-
 

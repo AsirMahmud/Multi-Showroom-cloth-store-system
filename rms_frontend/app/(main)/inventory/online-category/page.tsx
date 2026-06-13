@@ -1004,7 +1004,7 @@ export default function OnlineCategoriesPage() {
                     </CardHeader>
                     <CardContent className="pt-2 pb-6">
                       <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-                        {statsCategory.detailed_stats.size_breakdown.map((item) => (
+                        {statsCategory.detailed_stats.size_breakdown?.map((item) => (
                           <div key={item.size} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center transition-all hover:border-blue-400 hover:shadow-md group">
                             <span className="text-lg font-black text-slate-900 group-hover:text-blue-600 transition-colors uppercase">{item.size}</span>
                             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{item.total_stock} Units</span>
@@ -1038,7 +1038,7 @@ export default function OnlineCategoriesPage() {
                               </td>
                               <td className="px-6 py-4">
                                 <div className="flex flex-wrap gap-2">
-                                  {product.size_breakdown.map((sb) => (
+                                  {product.size_breakdown?.map((sb) => (
                                     <div key={sb.size} className="flex items-center gap-1.5 bg-slate-100 px-2 py-1 rounded-md border border-slate-200">
                                       <span className="text-[10px] font-bold text-slate-500 uppercase">{sb.size}:</span>
                                       <span className="text-xs font-bold text-slate-900">{sb.total_stock}</span>

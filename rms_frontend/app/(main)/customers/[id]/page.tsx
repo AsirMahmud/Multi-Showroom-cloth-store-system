@@ -20,25 +20,19 @@ import {
   Percent,
   Clock,
   Users,
+  Activity,
+  History,
+  Settings,
+  StickyNote
 } from "lucide-react";
 import Link from "next/link";
 import { useCustomer } from "@/hooks/queries/use-customer";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Customer } from "@/types/customer";
-
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import {
   Table,
   TableBody,
@@ -47,6 +41,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { MetricCard, DataPanel, PageHeader } from "@/components/ui/professional";
+import { formatCurrency, cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 const rankingIcons = [
   { icon: Crown, color: "text-yellow-500", bgColor: "bg-yellow-100", label: "Top 5" },
@@ -66,6 +63,11 @@ const getRankingIcon = (ranking: number) => {
   return null;
 };
 
+const item = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0 },
+};
+
 export default function CustomerDetailPage({
   params,
 }: {
@@ -76,93 +78,37 @@ export default function CustomerDetailPage({
 
   if (isLoading) {
     return (
-      <div className="container mx-auto py-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Button variant="outline" size="icon" asChild>
-              <Link href="/customers">
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Skeleton className="h-8 w-48" />
-          </div>
-          <div className="flex space-x-2">
-            <Skeleton className="h-10 w-32" />
-            <Skeleton className="h-10 w-32" />
-            <Skeleton className="h-10 w-32" />
-          </div>
+      <div className="space-y-8">
+        <Skeleton className="h-40 rounded-[32px]" />
+        <div className="grid gap-4 md:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-28 rounded-[24px]" />
+          ))}
         </div>
-
-        <div className="grid gap-6 md:grid-cols-3">
-          <Card className="md:col-span-1">
-            <CardHeader>
-              <Skeleton className="h-6 w-32" />
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex flex-col items-center space-y-3">
-                <Skeleton className="h-24 w-24 rounded-full" />
-                <Skeleton className="h-6 w-32" />
-              </div>
-              <div className="space-y-3">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="flex items-center space-x-3">
-                    <Skeleton className="h-4 w-4" />
-                    <Skeleton className="h-4 w-48" />
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="md:col-span-2 space-y-6">
-            <Card>
-              <CardHeader>
-                <Skeleton className="h-6 w-32" />
-                <Skeleton className="h-4 w-48" />
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {[...Array(3)].map((_, i) => (
-                    <Skeleton key={i} className="h-32 w-full" />
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+        <Skeleton className="h-[500px] rounded-[32px]" />
       </div>
     );
   }
 
   if (!customer) {
     return (
-      <div className="container mx-auto py-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Customer Not Found</h1>
-          <p className="text-muted-foreground mt-2">
-            The customer you're looking for doesn't exist or has been removed.
-          </p>
-          <Button className="mt-4" asChild>
-            <Link href="/customers">Back to Customers</Link>
+      <DataPanel title="System Conflict" description="Protocol failure while retrieving customer node.">
+        <div className="text-center py-12">
+          <AlertTriangle className="h-12 w-12 text-rose-500 mx-auto mb-4" />
+          <p className="text-slate-600 font-bold">Customer record not found.</p>
+          <Button variant="outline" className="mt-4 rounded-xl" asChild>
+            <Link href="/customers">Return to Base</Link>
           </Button>
         </div>
-      </div>
+      </DataPanel>
     );
   }
 
   const isTopCustomer = customer.is_top_customer;
   const ranking = customer.ranking;
   const rankingIcon = ranking ? getRankingIcon(ranking) : null;
-  const IconComponent = rankingIcon?.icon;
+  const RankingIconComponent = rankingIcon?.icon;
 
-  // Debug logging for discount data
-  console.log('Customer data:', {
-    average_discount: customer.average_discount,
-    purchase_history: customer.purchase_history?.length,
-    sample_purchase: customer.purchase_history?.[0]
-  });
-
-  // Calculate due details
   const dueDetails = customer.purchase_history?.reduce((acc: any, sale: any) => {
     const amountDue = parseFloat(sale.amount_due?.toString() || '0') || 0;
     if (amountDue > 0) {
@@ -172,7 +118,6 @@ export default function CustomerDetailPage({
     return acc;
   }, { totalDue: 0, dueSales: [] }) || { totalDue: 0, dueSales: [] };
 
-  // Calculate discount details from purchase history
   const discountDetails = customer.purchase_history?.reduce((acc: any, sale: any) => {
     const discount = parseFloat(sale.discount?.toString() || '0') || 0;
     const total = parseFloat(sale.total_amount?.toString() || '0') || 0;
@@ -185,421 +130,235 @@ export default function CustomerDetailPage({
     return acc;
   }, { totalDiscount: 0, totalSales: 0, salesWithDiscount: 0, totalSalesCount: 0 }) || { totalDiscount: 0, totalSales: 0, salesWithDiscount: 0, totalSalesCount: 0 };
 
-  // Use backend-calculated average discount if available, otherwise calculate from purchase history
   const averageDiscount = customer.average_discount || (discountDetails.totalSales > 0 ? (discountDetails.totalDiscount / discountDetails.totalSales) * 100 : 0);
-  const averageDiscountAmount = discountDetails.totalSalesCount > 0 ? discountDetails.totalDiscount / discountDetails.totalSalesCount : 0;
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="icon" asChild>
-            <Link href="/customers">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <h1 className="text-2xl font-bold">Customer Details</h1>
+    <div className="space-y-8">
+      <PageHeader
+        title="Client Intelligence"
+        description="Detailed behavioral and fiscal analysis of client node."
+        icon={<Users className="h-5 w-5" />}
+        action={
+          <div className="flex items-center gap-2">
+            <Button variant="outline" className="h-10 rounded-xl px-4 font-black text-[10px] uppercase tracking-widest border-slate-100 bg-white/50 hover:bg-white shadow-sm transition-all" asChild>
+              <Link href="/customers">
+                <ArrowLeft className="h-3.5 w-3.5 mr-2" />
+                Back to Grid
+              </Link>
+            </Button>
+            <Button className="h-10 rounded-xl px-6 font-black text-[10px] uppercase tracking-widest bg-brand-primary text-white shadow-lg shadow-brand-primary/20 transition-all">
+              Initiate Transaction
+            </Button>
+          </div>
+        }
+      />
+
+      <motion.div variants={item} className="bg-white/50 backdrop-blur-md border border-slate-100 p-8 rounded-[32px] shadow-sm flex flex-col lg:flex-row gap-8 items-center">
+        <div className="relative">
+          <Avatar className="h-28 w-28 border-4 border-white shadow-xl ring-1 ring-slate-100">
+            <AvatarFallback className="bg-brand-secondary text-brand-primary text-3xl font-black">
+              {`${customer.first_name || ""} ${customer.last_name || ""}`.split(" ").map((n) => n[0]).join("")}
+            </AvatarFallback>
+          </Avatar>
+          {isTopCustomer && (
+            <div className="absolute -top-2 -right-2 bg-yellow-400 p-2 rounded-full shadow-lg border-2 border-white">
+              <Crown className="h-5 w-5 text-white" />
+            </div>
+          )}
         </div>
-        <div className="flex space-x-2">
-          <Button variant="outline">
-            <Download className="mr-2 h-4 w-4" />
-            Export Data
-          </Button>
-          <Button variant="outline">Edit Customer</Button>
-          <Button>New Sale</Button>
+        
+        <div className="flex-1 text-center lg:text-left space-y-2">
+          <div className="flex flex-col md:flex-row items-center gap-3">
+            <h1 className="text-3xl font-black text-brand-primary tracking-tight">{customer.first_name} {customer.last_name}</h1>
+            {isTopCustomer && (
+              <Badge className="bg-yellow-50 text-yellow-600 border-none font-black text-[9px] uppercase tracking-widest px-3 py-1">
+                Elite Tier Associate
+              </Badge>
+            )}
+          </div>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+            Identity trace active since {new Date(customer.created_at).toLocaleDateString()}
+          </p>
+          <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-2">
+            <div className="flex items-center gap-2 text-slate-500">
+              <Mail className="h-3.5 w-3.5" />
+              <span className="text-xs font-bold">{customer.email || "No Node Registered"}</span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-500">
+              <Phone className="h-3.5 w-3.5" />
+              <span className="text-xs font-bold">{customer.phone}</span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-500">
+              <MapPin className="h-3.5 w-3.5" />
+              <span className="text-xs font-bold">{customer.address || "Location Encrypted"}</span>
+            </div>
+          </div>
         </div>
+
+        <div className="flex flex-col gap-3 min-w-[200px]">
+          {ranking && (
+            <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 flex items-center justify-between">
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-0.5">Global Ranking</div>
+                <div className="text-xs font-black text-indigo-700">Position #{ranking}</div>
+              </div>
+              {RankingIconComponent && <RankingIconComponent className="h-5 w-5 text-indigo-500 opacity-50" />}
+            </div>
+          )}
+          <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100 flex items-center justify-between">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-0.5">Status Protocol</div>
+              <div className="text-xs font-black text-emerald-700">{customer.is_active ? "Verified" : "Stagnant"}</div>
+            </div>
+            <Activity className="h-5 w-5 text-emerald-500 opacity-50" />
+          </div>
+        </div>
+      </motion.div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <motion.div variants={item}>
+          <MetricCard
+            label="Gross Settlement"
+            value={formatCurrency(customer.total_sales)}
+            icon={<DollarSign className="h-5 w-5" />}
+            tone="brand"
+            helper={`${customer.sales_count} Cumulative Orders`}
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Outstanding Liability"
+            value={formatCurrency(dueDetails.totalDue)}
+            icon={<AlertTriangle className="h-5 w-5" />}
+            tone={dueDetails.totalDue > 0 ? "rose" : "emerald"}
+            helper={`${dueDetails.dueSales.length} Active Debts`}
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Yield Mean"
+            value={formatCurrency(customer.sales_count > 0 ? customer.total_sales / customer.sales_count : 0)}
+            icon={<TrendingUp className="h-5 w-5" />}
+            tone="indigo"
+            helper="Yield per transaction"
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Efficiency Bonus"
+            value={`${averageDiscount.toFixed(1)}%`}
+            icon={<Percent className="h-5 w-5" />}
+            tone="brand"
+            helper="Aggregate discount applied"
+          />
+        </motion.div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card className="md:col-span-1">
-          <CardHeader>
-            <CardTitle>Customer Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex flex-col items-center space-y-3">
-              <div className="relative">
-                <Avatar className="h-24 w-24">
-                  <AvatarImage src={`https://avatar.vercel.sh/${customer.id}`} />
-                  <AvatarFallback className="text-2xl">
-                    {`${customer.first_name || ""} ${customer.last_name || ""}`
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")}
-                  </AvatarFallback>
-                </Avatar>
-                {isTopCustomer && (
-                  <div className="absolute -top-2 -right-2">
-                    <Crown className="h-6 w-6 text-yellow-500" />
-                  </div>
-                )}
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <h2 className="text-xl font-bold">
-                    {customer.first_name} {customer.last_name}
-                  </h2>
-                  {isTopCustomer && (
-                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                      Top Customer
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Customer since{" "}
-                  {new Date(customer.created_at).toLocaleDateString()}
-                </p>
-              </div>
-            </div>
+      <Tabs defaultValue="purchases" className="space-y-8">
+        <TabsList className="bg-slate-50 border-none p-1 h-12 shadow-inner rounded-2xl flex justify-start gap-1 w-fit">
+          <TabsTrigger value="purchases" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-brand-primary data-[state=active]:shadow-sm px-6 font-black text-[10px] uppercase tracking-widest transition-all">
+            Transaction History
+          </TabsTrigger>
+          <TabsTrigger value="preferences" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-brand-primary data-[state=active]:shadow-sm px-6 font-black text-[10px] uppercase tracking-widest transition-all">
+            Behavioral Profile
+          </TabsTrigger>
+          <TabsTrigger value="notes" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-brand-primary data-[state=active]:shadow-sm px-6 font-black text-[10px] uppercase tracking-widest transition-all">
+            Intelligence Log
+          </TabsTrigger>
+        </TabsList>
 
-            <div className="space-y-3">
-              <div className="flex items-center space-x-3">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                <span>{customer.email || "No email"}</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                <span>{customer.phone}</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span>{customer.address || "No address"}</span>
-              </div>
-              {customer.date_of_birth && (
-                <div className="flex items-center space-x-3">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span>
-                    DOB: {new Date(customer.date_of_birth).toLocaleDateString()}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <Separator />
-
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Status:</span>
-                <Badge variant={customer.is_active ? "default" : "destructive"}>
-                  {customer.is_active ? "Active" : "Inactive"}
-                </Badge>
-              </div>
-              
-              {/* Ranking Information */}
-              {ranking && (
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Ranking:</span>
-                  <div className="flex items-center gap-2">
-                    {rankingIcon && IconComponent && (
-                      <div className={`p-1 rounded-full ${rankingIcon.bgColor}`}>
-                        <IconComponent className={`h-4 w-4 ${rankingIcon.color}`} />
+        <TabsContent value="purchases" className="m-0 focus-visible:outline-none">
+          <DataPanel title="Transaction Matrix" description="Exhaustive chronological log of client settlements and volume delta.">
+            <div className="space-y-8 pt-4">
+              {customer.purchase_history.map((purchase: any) => (
+                <div key={purchase.id} className="bg-white/50 backdrop-blur-sm border border-slate-100 rounded-[32px] overflow-hidden hover:border-brand-primary/10 transition-all group">
+                  <div className="p-6 bg-slate-50/50 flex flex-wrap items-center justify-between gap-6">
+                    <div className="flex items-center gap-4">
+                      <div className="h-10 w-10 rounded-2xl bg-white shadow-sm flex items-center justify-center text-brand-primary">
+                        <ShoppingBag className="h-5 w-5" />
                       </div>
-                    )}
-                    <Badge variant="outline">
-                      #{ranking} of all customers
-                    </Badge>
-                    {rankingIcon && (
-                      <span className="text-xs text-muted-foreground">
-                        {rankingIcon.label}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-              
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Total Sales:</span>
-                <span className="font-medium">
-                  {new Intl.NumberFormat("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                  }).format(customer.total_sales)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Sales Count:</span>
-                <span className="font-medium">{customer.sales_count}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Last Sale:</span>
-                <span className="font-medium">
-                  {customer.last_sale_date
-                    ? new Date(customer.last_sale_date).toLocaleDateString()
-                    : "No sales yet"}
-                </span>
-              </div>
-              {customer.sales_count > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Avg Order Value:</span>
-                  <span className="font-medium">
-                    {new Intl.NumberFormat("en-US", {
-                      style: "currency",
-                      currency: "USD",
-                    }).format(customer.total_sales / customer.sales_count)}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <Separator />
-
-            {/* Due Details */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-orange-500" />
-                <span className="font-medium">Due Details</span>
-              </div>
-              
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Total Due:</span>
-                <span className={`font-medium ${dueDetails.totalDue > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  {new Intl.NumberFormat("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                  }).format(dueDetails.totalDue)}
-                </span>
-              </div>
-              
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Due Sales:</span>
-                <span className="font-medium">
-                  {dueDetails.dueSales.length} sales
-                </span>
-              </div>
-              
-              {dueDetails.totalDue > 0 && (
-                <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                  <div className="flex items-center gap-2 text-orange-800">
-                    <Clock className="h-4 w-4" />
-                    <span className="text-sm font-medium">Payment Required</span>
-                  </div>
-                  <p className="text-xs text-orange-700 mt-1">
-                    This customer has outstanding payments totaling {new Intl.NumberFormat("en-US", {
-                      style: "currency",
-                      currency: "USD",
-                    }).format(dueDetails.totalDue)}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <Separator />
-
-            {/* Discount Information */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Percent className="h-4 w-4 text-blue-500" />
-                <span className="font-medium">Discount History</span>
-              </div>
-              
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Avg Discount %:</span>
-                <span className="font-medium text-blue-600">
-                  {averageDiscount.toFixed(1)}%
-                </span>
-              </div>
-              
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Avg Discount Amount:</span>
-                <span className="font-medium">
-                  {new Intl.NumberFormat("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                  }).format(averageDiscountAmount)}
-                </span>
-              </div>
-              
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Total Discount Given:</span>
-                <span className="font-medium">
-                  {new Intl.NumberFormat("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                  }).format(discountDetails.totalDiscount)}
-                </span>
-              </div>
-              
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Sales with Discount:</span>
-                <span className="font-medium">
-                  {discountDetails.salesWithDiscount} of {discountDetails.totalSalesCount}
-                </span>
-              </div>
-              
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Discount Rate:</span>
-                <span className="font-medium text-blue-600">
-                  {discountDetails.totalSalesCount > 0 ? ((discountDetails.salesWithDiscount / discountDetails.totalSalesCount) * 100).toFixed(1) : 0}%
-                </span>
-              </div>
-              
-              {/* Discount Summary Card */}
-              {discountDetails.totalDiscount > 0 && (
-                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="flex items-center gap-2 text-blue-800">
-                    <Percent className="h-4 w-4" />
-                    <span className="text-sm font-medium">Discount Summary</span>
-                  </div>
-                  <div className="mt-2 space-y-1">
-                    <p className="text-xs text-blue-700">
-                      This customer has received <strong>{averageDiscount.toFixed(1)}%</strong> average discount
-                    </p>
-                    <p className="text-xs text-blue-700">
-                      Total savings: <strong>{new Intl.NumberFormat("en-US", {
-                        style: "currency",
-                        currency: "USD",
-                      }).format(discountDetails.totalDiscount)}</strong>
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="md:col-span-2 space-y-6">
-          <Tabs defaultValue="purchases" className="w-full">
-            <TabsList className="grid grid-cols-3 w-full">
-              <TabsTrigger value="purchases">Purchase History</TabsTrigger>
-              <TabsTrigger value="preferences">Preferences</TabsTrigger>
-              <TabsTrigger value="notes">Notes</TabsTrigger>
-            </TabsList>
-            <TabsContent value="purchases" className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Purchase History</CardTitle>
-                  <CardDescription>
-                    Customer's previous orders and transactions
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-[600px] pr-4">
-                    <div className="space-y-6">
-                      {customer.purchase_history.map((purchase: any) => (
-                        <Card key={purchase.id} className="overflow-hidden">
-                          <CardHeader className="bg-muted/50 py-3">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-2">
-                                <ShoppingBag className="h-4 w-4" />
-                                <span className="font-medium">
-                                  Order #{purchase.id}
-                                </span>
-                              </div>
-                              <div className="flex items-center space-x-4">
-                                <Badge variant="outline">
-                                  {purchase.payment_method}
-                                </Badge>
-                                <Badge
-                                  variant={
-                                    purchase.status === "completed"
-                                      ? "default"
-                                      : "secondary"
-                                  }
-                                >
-                                  {purchase.status}
-                                </Badge>
-                                {purchase.amount_due && purchase.amount_due > 0 && (
-                                  <Badge variant="destructive" className="text-xs">
-                                    Due: {new Intl.NumberFormat("en-US", {
-                                      style: "currency",
-                                      currency: "USD",
-                                    }).format(purchase.amount_due)}
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between text-sm text-muted-foreground mt-2">
-                              <span>
-                                {new Date(purchase.date).toLocaleDateString()}
-                              </span>
-                              <div className="flex items-center gap-4">
-                                {parseFloat(purchase.discount?.toString() || '0') > 0 && (
-                                  <Badge variant="secondary" className="text-blue-600 bg-blue-50">
-                                    <Percent className="h-3 w-3 mr-1" />
-                                    Discount: {new Intl.NumberFormat("en-US", {
-                                      style: "currency",
-                                      currency: "USD",
-                                    }).format(parseFloat(purchase.discount))}
-                                  </Badge>
-                                )}
-                                <span className="font-medium">
-                                  {new Intl.NumberFormat("en-US", {
-                                    style: "currency",
-                                    currency: "USD",
-                                  }).format(parseFloat(purchase.total_amount))}
-                                </span>
-                              </div>
-                            </div>
-                          </CardHeader>
-                          <CardContent className="p-4">
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead>Product</TableHead>
-                                  <TableHead>Size</TableHead>
-                                  <TableHead>Color</TableHead>
-                                  <TableHead className="text-right">
-                                    Quantity
-                                  </TableHead>
-                                  <TableHead className="text-right">
-                                    Price
-                                  </TableHead>
-                                  <TableHead className="text-right">
-                                    Total
-                                  </TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {purchase.items.map((item: any, index: number) => (
-                                  <TableRow key={index}>
-                                    <TableCell>{item.product_name}</TableCell>
-                                    <TableCell>{item.size}</TableCell>
-                                    <TableCell>{item.color}</TableCell>
-                                    <TableCell className="text-right">
-                                      {item.quantity}
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                      {new Intl.NumberFormat("en-US", {
-                                        style: "currency",
-                                        currency: "USD",
-                                      }).format(parseFloat(item.unit_price))}
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                      {new Intl.NumberFormat("en-US", {
-                                        style: "currency",
-                                        currency: "USD",
-                                      }).format(parseFloat(item.total))}
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          </CardContent>
-                        </Card>
-                      ))}
+                      <div>
+                        <div className="text-xs font-black text-slate-700 uppercase tracking-tighter">Protocol #{purchase.id}</div>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(purchase.date).toLocaleDateString()}</div>
+                      </div>
                     </div>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="preferences" className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Customer Preferences</CardTitle>
-                  <CardDescription>Coming soon...</CardDescription>
-                </CardHeader>
-              </Card>
-            </TabsContent>
-            <TabsContent value="notes" className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Customer Notes</CardTitle>
-                  <CardDescription>Coming soon...</CardDescription>
-                </CardHeader>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <Badge variant="outline" className="border-slate-200 text-slate-500 font-black text-[9px] uppercase tracking-widest h-7">
+                        {purchase.payment_method}
+                      </Badge>
+                      <Badge className={cn(
+                        "border-none font-black text-[9px] uppercase tracking-widest h-7",
+                        purchase.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'
+                      )}>
+                        {purchase.status}
+                      </Badge>
+                      {purchase.amount_due && purchase.amount_due > 0 && (
+                        <Badge className="bg-rose-50 text-rose-600 border-none font-black text-[9px] uppercase tracking-widest h-7">
+                          Due: {formatCurrency(parseFloat(purchase.amount_due))}
+                        </Badge>
+                      )}
+                    </div>
+
+                    <div className="text-right">
+                      <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Total Settlement</div>
+                      <div className="text-lg font-black text-brand-primary">{formatCurrency(parseFloat(purchase.total_amount))}</div>
+                    </div>
+                  </div>
+
+                  <div className="p-6 overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-b border-slate-50 hover:bg-transparent">
+                          <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-3">SKU Identifier</TableHead>
+                          <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-3">Configuration</TableHead>
+                          <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-3 text-right">Volume</TableHead>
+                          <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-3 text-right">Unit Yield</TableHead>
+                          <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-3 text-right">Total Yield</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {purchase.items.map((item: any, index: number) => (
+                          <TableRow key={index} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/30 transition-colors">
+                            <TableCell className="py-4 text-xs font-black text-slate-700">{item.product_name}</TableCell>
+                            <TableCell className="py-4">
+                              <div className="flex gap-2">
+                                <Badge variant="outline" className="h-5 px-2 border-slate-100 text-[9px] font-bold text-slate-400">{item.size}</Badge>
+                                <Badge variant="outline" className="h-5 px-2 border-slate-100 text-[9px] font-bold text-slate-400">{item.color}</Badge>
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-4 text-right text-xs font-bold text-slate-500">{item.quantity} Units</TableCell>
+                            <TableCell className="py-4 text-right text-xs font-bold text-slate-500">{formatCurrency(parseFloat(item.unit_price))}</TableCell>
+                            <TableCell className="py-4 text-right text-xs font-black text-brand-primary">{formatCurrency(parseFloat(item.total))}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </DataPanel>
+        </TabsContent>
+
+        <TabsContent value="preferences" className="m-0 focus-visible:outline-none">
+          <DataPanel title="Behavioral Preferences" description="Algorithmic prediction of client interests and preferred categories.">
+            <div className="flex flex-col items-center justify-center py-20 text-slate-300">
+              <Activity className="h-12 w-12 mb-4 opacity-20" />
+              <p className="font-black text-[10px] uppercase tracking-widest">Neural profiling in progress...</p>
+            </div>
+          </DataPanel>
+        </TabsContent>
+
+        <TabsContent value="notes" className="m-0 focus-visible:outline-none">
+          <DataPanel title="Intelligence Log" description="Contextual annotations and administrative observations.">
+            <div className="flex flex-col items-center justify-center py-20 text-slate-300">
+              <StickyNote className="h-12 w-12 mb-4 opacity-20" />
+              <p className="font-black text-[10px] uppercase tracking-widest">No Intelligence nodes recorded.</p>
+            </div>
+          </DataPanel>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

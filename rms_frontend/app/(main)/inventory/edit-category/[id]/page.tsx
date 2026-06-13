@@ -31,6 +31,7 @@ import {
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   description: z.string().optional(),
+  wholesale_cutoff: z.number().min(1, "Wholesale cutoff must be at least 1").default(10),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -48,6 +49,7 @@ export default function EditCategoryPage() {
     defaultValues: {
       name: "",
       description: "",
+      wholesale_cutoff: 10,
     },
   });
 
@@ -57,6 +59,7 @@ export default function EditCategoryPage() {
       form.reset({
         name: category.name,
         description: category.description || "",
+        wholesale_cutoff: category.wholesale_cutoff || 10,
       });
     }
   }, [category, form]);
@@ -217,6 +220,28 @@ export default function EditCategoryPage() {
                           rows={4}
                           {...field}
                           className="border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="wholesale_cutoff"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-gray-700">
+                        Wholesale Cutoff Qty
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="1"
+                          placeholder="10"
+                          value={field.value}
+                          onChange={(e) => field.onChange(parseInt(e.target.value || "10", 10))}
+                          className="h-12 border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors"
                         />
                       </FormControl>
                       <FormMessage />

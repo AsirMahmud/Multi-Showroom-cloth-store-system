@@ -25,7 +25,8 @@ class PreorderProduct(models.Model):
     supplier = models.ForeignKey(Supplier, on_delete=models.SET_NULL, null=True, blank=True, related_name='preorder_products')
     estimated_price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))],null=True,blank=True)
     cost_price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
-    selling_price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
+    wholesale_price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))], default=Decimal('0.00'))
+    retail_price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
     deposit_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     expected_arrival_date = models.DateField()
     max_quantity = models.IntegerField(default=0, validators=[MinValueValidator(0)])  # 0 means unlimited
@@ -57,7 +58,7 @@ class PreorderProduct(models.Model):
 
 class PreorderVariation(models.Model):
     preorder_product = models.ForeignKey(PreorderProduct, on_delete=models.CASCADE, related_name='variations')
-    size = models.CharField(max_length=50, default='Standard')
+    design_name = models.CharField(max_length=100, null=True, blank=True)
     color = models.CharField(max_length=50, default='Default')
     color_hax = models.CharField(max_length=50, default='#FFFFF')
     max_quantity = models.IntegerField(default=0, validators=[MinValueValidator(0)])  # 0 means unlimited
@@ -67,10 +68,10 @@ class PreorderVariation(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ('preorder_product', 'size', 'color')
+        unique_together = ('preorder_product', 'design_name', 'color')
 
     def __str__(self):
-        return f"{self.preorder_product.name} - {self.size} - {self.color} (Preorder)"
+        return f"{self.preorder_product.name} - {self.design_name} - {self.color} (Preorder)"
 
     @property
     def available_quantity(self):
@@ -105,6 +106,13 @@ class Preorder(models.Model):
     profit = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
     unit_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    branch = models.ForeignKey(
+        "branches.Branch",
+        on_delete=models.PROTECT,
+        related_name="preorders",
+        null=True,
+        blank=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -133,7 +141,7 @@ class Preorder(models.Model):
                 total_qty += qty
                 try:
                     product = Product.objects.get(id=item['product_id'])
-                    item_unit_price = Decimal(str(product.selling_price))
+                    item_unit_price = Decimal(str(product.retail_price))
                     item_cost_price = Decimal(str(product.cost_price))
                 except Product.DoesNotExist:
                     item_unit_price = Decimal('0.00')
@@ -171,7 +179,7 @@ class Preorder(models.Model):
                 'items': [
                     {
                         'product_id': item['product_id'],
-                        'size': item['size'],
+                        'design_name': item.get('design_name', ''),
                         'color': item['color'],
                         'quantity': int(item['quantity']),
                         'unit_price': float(item['unit_price']),

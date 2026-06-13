@@ -8,12 +8,19 @@ from apps.sales.models import Sale
 from apps.customer.models import Customer
 from apps.expenses.models import Expense
 from apps.reports.models import Report
+from apps.branches.permissions import is_admin
 
 class FlushDatabaseView(APIView):
+    """Destructive admin-only endpoint. Wipes whole tables - never expose to non-admin."""
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
 
     def delete(self, request):
+        if not is_admin(request.user):
+            return Response(
+                {'error': 'Only an administrator can flush database tables.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         try:
             database_type = request.query_params.get('database_type')
             

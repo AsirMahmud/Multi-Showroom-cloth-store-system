@@ -551,13 +551,10 @@ export function EnhancedPOS() {
       change: paymentMethod === "cash" ? change : null,
     };
 
-    // In a real app, you would save this to your backend
-    console.log("Sale completed:", saleRecord);
+    // In a real app, save this to your backend
 
-    // If the customer is temporary, we would update their info in a real app
     if (selectedCustomer?.isTemporary) {
-      // In a real app, you would update the customer record
-      console.log("Temporary customer to be updated:", selectedCustomer);
+      // In a real app, update the customer record with their full details
     }
 
     toast({
@@ -565,13 +562,9 @@ export function EnhancedPOS() {
       description: `Transaction of $${total.toFixed(2)} has been processed.`,
     });
 
-    // If we have a customer, we could navigate to their details
     if (selectedCustomer) {
       // Add loyalty points based on purchase
       const loyaltyPointsEarned = Math.floor(total);
-      console.log(
-        `${loyaltyPointsEarned} loyalty points earned for customer ${selectedCustomer.id}`
-      );
     }
 
     setCartItems([]);

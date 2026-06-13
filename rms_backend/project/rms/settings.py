@@ -34,7 +34,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-=i3-$(--y)2nbeogrplsh-c1z%
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["rawstitch.info","localhost",'127.0.0.1']
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # Application definition
@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'corsheaders',
     
     # local apps
+    'apps.branches',
     'apps.authentication',
     'apps.inventory',
     "apps.customer",
@@ -63,11 +64,18 @@ INSTALLED_APPS = [
     'apps.preorder',
     'apps.ecommerce',
     'apps.online_preorder',
+    'apps.notifications',
+    'apps.auditlog',
 ]
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    # Default to IsAuthenticated. Public endpoints (storefront, login) must
+    # opt-in explicitly with `permission_classes = [AllowAny]`.
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_FILTER_BACKENDS': (
         'django_filters.rest_framework.DjangoFilterBackend',
@@ -102,11 +110,11 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# Add CSRF exemption for API views
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "https://rawstitch.info"
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
 ]
 
 # Exempt API views from CSRF
@@ -150,8 +158,6 @@ DATABASES = {
     }
 }
 
-print(os.getenv('DB_HOST'))
-
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
 
@@ -192,7 +198,7 @@ MEDIA_URL = '/media/'
 # Production vs Development media root
 if os.getenv('DEBUG', 'True') == 'False':
     # Production settings
-    MEDIA_ROOT = '/home/rawstitc/public_html/media'
+    MEDIA_ROOT = os.getenv('PROD_MEDIA_ROOT', os.path.join(BASE_DIR, 'media'))
 else:
     # Development settings
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -218,19 +224,22 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'authentication.CustomUser'
 
 # CORS settings
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://localhost:3002",
-    "http://127.0.0.1:3000",
-    "https://rawstitch.info",
-    "https://rawstitch.vercel.app",
-    "https://retail-management-sytstem-omega.vercel.app",
-    "https://www.rawstitch.com.bd"
-
-]
+CORS_ALLOWED_ORIGINS = os.getenv(
+    'CORS_ALLOWED_ORIGINS',
+    'http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001',
+).split(',')
 
 CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "authorization",
+    "content-type",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+    "x-branch-id",
+]
 
 # Email Configuration (Gmail)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

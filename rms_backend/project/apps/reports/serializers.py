@@ -69,6 +69,7 @@ class ExpenseReportSerializer(serializers.Serializer):
 class InventoryReportSerializer(serializers.Serializer):
     total_products = serializers.IntegerField()
     total_stock_value = serializers.DecimalField(max_digits=10, decimal_places=2)
+    potential_revenue = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
     low_stock_items = serializers.ListField(child=serializers.DictField())
     stock_by_category = serializers.ListField(child=serializers.DictField())
     stock_movements = serializers.ListField(child=serializers.DictField())
@@ -86,6 +87,9 @@ class PaymentMethodSerializer(serializers.Serializer):
     items_count = serializers.IntegerField()
 
 class SalesReportSerializer(serializers.Serializer):
+    gross_sales = serializers.DecimalField(max_digits=10, decimal_places=2)
+    returns_total = serializers.DecimalField(max_digits=10, decimal_places=2)
+    net_sales = serializers.DecimalField(max_digits=10, decimal_places=2)
     total_sales = serializers.DecimalField(max_digits=10, decimal_places=2)
     total_orders = serializers.IntegerField()
     total_items_sold = serializers.IntegerField()
@@ -160,9 +164,12 @@ class ProfitByCategorySerializer(serializers.Serializer):
     items_sold = serializers.IntegerField()
 
 class ProfitLossReportSerializer(serializers.Serializer):
-    total_revenue = serializers.DecimalField(max_digits=10, decimal_places=2)
-    total_expenses = serializers.DecimalField(max_digits=10, decimal_places=2)
-    net_profit = serializers.DecimalField(max_digits=10, decimal_places=2)
+    total_revenue = serializers.DecimalField(max_digits=15, decimal_places=2)
+    gross_profit = serializers.DecimalField(max_digits=15, decimal_places=2)
+    total_expenses = serializers.DecimalField(max_digits=15, decimal_places=2)
+    net_profit = serializers.DecimalField(max_digits=15, decimal_places=2)
+    net_revenue = serializers.DecimalField(max_digits=15, decimal_places=2, required=False)
+    profit_margin_basis = serializers.CharField(required=False)
     profit_margin = serializers.DecimalField(max_digits=10, decimal_places=2)
     revenue_by_date = RevenueByDateSerializer(many=True)
     expenses_by_date = ExpenseByDateSerializer(many=True)

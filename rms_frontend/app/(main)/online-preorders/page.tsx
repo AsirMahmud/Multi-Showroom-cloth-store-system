@@ -1,9 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { useEffect, useState, useMemo } from "react";
+import { PageHeader, DataPanel, MetricCard } from "@/components/ui/professional";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
+import { 
+  Select, 
+  SelectTrigger, 
+  SelectValue, 
+  SelectContent, 
+  SelectItem 
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,6 +36,9 @@ import {
   BarChart3,
   MoreHorizontal,
   Clock,
+  Zap,
+  Globe,
+  Loader2
 } from "lucide-react";
 import { onlinePreordersApi, type OnlinePreorder } from "@/lib/api/onlinePreorder";
 import { OrderDetailsSheet } from "@/components/online-preorders/order-details-sheet";
@@ -31,7 +47,6 @@ import { ManualOrderForm } from "@/components/online-preorders/manual-order-form
 import { useDebounce } from "@/hooks/use-debounce";
 import { format } from "date-fns";
 import { useOnlinePreorderAnalytics } from "@/hooks/queries/use-reports";
-import { useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
@@ -51,7 +66,24 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn, formatCurrency } from "@/lib/utils";
+
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+    },
+  },
+};
+
+const item = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0 },
+};
 
 export default function OnlinePreordersPage() {
   const [activeTab, setActiveTab] = useState("orders");
@@ -68,20 +100,16 @@ export default function OnlinePreordersPage() {
   const [verificationOrder, setVerificationOrder] = useState<OnlinePreorder | null>(null);
   const [isVerificationOpen, setIsVerificationOpen] = useState(false);
 
+  const { toast } = useToast();
   const debouncedSearch = useDebounce(search, 500);
 
-  // Calculate date range for analytics (all time)
   const dateRange = useMemo(() => {
     const now = new Date();
-    return {
-      from: new Date(2020, 0, 1),
-      to: now,
-    };
+    return { from: new Date(2020, 0, 1), to: now };
   }, []);
 
   const { data: analyticsData, isLoading: isLoadingAnalytics } = useOnlinePreorderAnalytics(dateRange);
 
-  // Calculate stats from current rows
   const stats = useMemo(() => {
     const totalOrders = rows.length;
     const totalRevenue = rows
@@ -91,7 +119,7 @@ export default function OnlinePreordersPage() {
     const averageOrderValue = completedCount > 0 ? totalRevenue / completedCount : 0;
     const totalProfit = rows
       .filter(o => o.status === 'COMPLETED')
-      .reduce((sum, o) => sum + Number(o.profit || 0), 0);
+      .reduce((sum, o) => sum + Number((o as any).profit || 0), 0);
 
     return {
       totalOrders,
@@ -131,14 +159,10 @@ export default function OnlinePreordersPage() {
 
   const handleDelete = async () => {
     if (!orderToDelete) return;
-    
     setIsDeleting(true);
     try {
       await onlinePreordersApi.delete(orderToDelete.id);
-      toast({
-        title: "Success",
-        description: "Order deleted successfully",
-      });
+      toast({ title: "Success", description: "Order deleted successfully" });
       setDeleteDialogOpen(false);
       setOrderToDelete(null);
       void loadData();
@@ -153,20 +177,8 @@ export default function OnlinePreordersPage() {
     }
   };
 
-  const openDeleteDialog = (order: OnlinePreorder, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setOrderToDelete(order);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleEditClick = (order: OnlinePreorder, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    handleEdit(order);
-  };
-
   useEffect(() => {
     void loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, debouncedSearch]);
 
   const getStatusBadge = (s: string) => {
@@ -177,325 +189,220 @@ export default function OnlinePreordersPage() {
       COMPLETED: "bg-green-100 text-green-800",
       CANCELLED: "bg-red-100 text-red-800",
     };
-    return <Badge className={`${config[s] || "bg-gray-100"} border-none capitalize`}>{s.toLowerCase()}</Badge>;
+    return <Badge className={cn("border-none capitalize text-[9px] font-black tracking-widest", config[s] || "bg-gray-100")}>{s.toLowerCase()}</Badge>;
   };
 
   return (
-    <div className="min-h-screen space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">Online Preorders</h1>
-          <p className="text-slate-500 mt-2 font-medium">Manage and track your ecommerce COD orders from one place.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" className="bg-white" onClick={loadData}>
-            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-          <Button className="bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200" onClick={() => { setEditingOrder(null); setActiveTab("manual"); }}>
-            <Plus className="w-4 h-4 mr-2" />
-            Create Order
-          </Button>
-        </div>
-      </div>
+    <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
+      <PageHeader
+        title="Storefront Logistics"
+        description="Monitor and optimize fulfillment cycles for global ecommerce transactions."
+        icon={<Globe className="h-6 w-6" />}
+        actions={
+          <div className="flex items-center gap-3">
+            <Button variant="outline" className="h-10 bg-white rounded-xl border-slate-200 font-bold text-[10px] uppercase tracking-widest" onClick={loadData}>
+              <RefreshCw className={cn("h-3.5 w-3.5 mr-2", loading && "animate-spin")} />
+              Sync Stream
+            </Button>
+            <Button className="h-10 bg-brand-primary text-brand-secondary hover:bg-emerald-900 rounded-xl font-bold text-[10px] uppercase tracking-widest shadow-lg shadow-brand-primary/20" onClick={() => { setEditingOrder(null); setActiveTab("manual"); }}>
+              <Plus className="h-3.5 w-3.5 mr-2" />
+              New Order
+            </Button>
+          </div>
+        }
+      />
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200 shadow-lg hover:shadow-xl transition-all">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-semibold text-indigo-900">Total Orders</CardTitle>
-            <ShoppingBag className="h-5 w-5 text-indigo-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-indigo-900">
-              {isLoadingAnalytics ? (
-                <Skeleton className="h-8 w-20" />
-              ) : (
-                analyticsData?.total_orders ?? stats.totalOrders
-              )}
-            </div>
-            <p className="text-xs text-indigo-700 mt-1">All online preorders</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200 shadow-lg hover:shadow-xl transition-all">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-semibold text-emerald-900">Total Revenue</CardTitle>
-            <DollarSign className="h-5 w-5 text-emerald-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-emerald-900">
-              {isLoadingAnalytics ? (
-                <Skeleton className="h-8 w-24" />
-              ) : (
-                `৳${Number(analyticsData?.total_revenue ?? stats.totalRevenue).toLocaleString()}`
-              )}
-            </div>
-            <p className="text-xs text-emerald-700 mt-1">From completed orders</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 shadow-lg hover:shadow-xl transition-all">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-semibold text-blue-900">Total Sales</CardTitle>
-            <BarChart3 className="h-5 w-5 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-blue-900">
-              {isLoadingAnalytics ? (
-                <Skeleton className="h-8 w-20" />
-              ) : (
-                analyticsData?.total_sales_count ?? stats.completedCount
-              )}
-            </div>
-            <p className="text-xs text-blue-700 mt-1">Completed orders</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 shadow-lg hover:shadow-xl transition-all">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-semibold text-purple-900">Avg Order Value</CardTitle>
-            <TrendingUp className="h-5 w-5 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-purple-900">
-              {isLoadingAnalytics ? (
-                <Skeleton className="h-8 w-24" />
-              ) : (
-                `৳${Number(analyticsData?.average_order_value ?? stats.averageOrderValue).toLocaleString()}`
-              )}
-            </div>
-            <p className="text-xs text-purple-700 mt-1">Per completed order</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <motion.div variants={item}>
+          <MetricCard
+            label="Order Volume"
+            value={(isLoadingAnalytics ? "..." : (analyticsData?.total_orders ?? stats.totalOrders)).toString()}
+            icon={<ShoppingBag className="h-5 w-5" />}
+            tone="indigo"
+            helper="All active preorders"
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Gross Revenue"
+            value={formatCurrency(Number(analyticsData?.total_revenue ?? stats.totalRevenue))}
+            icon={<DollarSign className="h-5 w-5" />}
+            tone="emerald"
+            helper="Completed COD cycle"
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Fulfillment Count"
+            value={(isLoadingAnalytics ? "..." : (analyticsData?.total_sales_count ?? stats.completedCount)).toString()}
+            icon={<Package className="h-5 w-5" />}
+            tone="brand"
+            helper="Verified delivery"
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="AOV Velocity"
+            value={formatCurrency(Number(analyticsData?.average_order_value ?? stats.averageOrderValue))}
+            icon={<TrendingUp className="h-5 w-5" />}
+            tone="indigo"
+            helper="Avg order yield"
+          />
+        </motion.div>
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); if (v !== "manual") setEditingOrder(null); }} className="w-full">
-        <TabsList className="bg-white border p-1 h-12 shadow-sm rounded-xl mb-6">
-          <TabsTrigger value="orders" className="rounded-lg data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600 px-6 font-semibold transition-all">
-            <ShoppingBag className="w-4 h-4 mr-2" />
-            Orders
+        <TabsList className="bg-slate-50 border-none p-1 h-12 shadow-inner rounded-2xl mb-8 flex justify-start gap-1 w-fit">
+          <TabsTrigger value="orders" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-brand-primary data-[state=active]:shadow-sm px-6 font-black text-[10px] uppercase tracking-widest transition-all">
+            <ShoppingBag className="w-3.5 h-3.5 mr-2" /> Transaction Log
           </TabsTrigger>
-          <TabsTrigger value="manual" className="rounded-lg data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600 px-6 font-semibold transition-all">
-            {editingOrder ? <Edit className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-            {editingOrder ? "Edit Order" : "Manual Order"}
+          <TabsTrigger value="manual" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-brand-primary data-[state=active]:shadow-sm px-6 font-black text-[10px] uppercase tracking-widest transition-all">
+            {editingOrder ? <Edit className="w-3.5 h-3.5 mr-2" /> : <Plus className="w-3.5 h-3.5 mr-2" />}
+            {editingOrder ? "Edit Order" : "Manual Input"}
           </TabsTrigger>
-          <TabsTrigger value="customers" className="rounded-lg data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600 px-6 font-semibold transition-all">
-            <User className="w-4 h-4 mr-2" />
-            Customers
+          <TabsTrigger value="customers" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-brand-primary data-[state=active]:shadow-sm px-6 font-black text-[10px] uppercase tracking-widest transition-all">
+            <User className="w-3.5 h-3.5 mr-2" /> Core Clients
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="orders">
-          <Card className="border-none shadow-xl bg-white overflow-hidden">
-            <CardHeader className="border-b bg-slate-50/50 pb-6">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                  <Input
-                    placeholder="Search by customer, phone..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-10 h-10 bg-white border-slate-200"
-                  />
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
-                    <Filter className="w-4 h-4" />
-                    Status:
+        <AnimatePresence mode="wait">
+          <TabsContent value="orders" key="orders" className="m-0 focus-visible:outline-none">
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              <DataPanel 
+                title="Logistics Stream" 
+                description="Live tactical view of ecommerce fulfillment pipeline."
+                actions={
+                  <div className="flex items-center gap-4">
+                    <div className="relative w-64">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                      <Input
+                        placeholder="Search manifests..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="pl-9 h-9 bg-white border-slate-200 rounded-xl text-xs font-bold"
+                      />
+                    </div>
+                    <Select value={status} onValueChange={setStatus}>
+                      <SelectTrigger className="w-40 h-9 bg-white border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-slate-100">
+                        <SelectItem value="all" className="text-[10px] font-black uppercase">All Orders</SelectItem>
+                        <SelectItem value="PENDING" className="text-[10px] font-black uppercase">Pending</SelectItem>
+                        <SelectItem value="CONFIRMED" className="text-[10px] font-black uppercase">Confirmed</SelectItem>
+                        <SelectItem value="DELIVERED" className="text-[10px] font-black uppercase">Delivered</SelectItem>
+                        <SelectItem value="COMPLETED" className="text-[10px] font-black uppercase">Completed</SelectItem>
+                        <SelectItem value="CANCELLED" className="text-[10px] font-black uppercase">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <Select value={status} onValueChange={setStatus}>
-                    <SelectTrigger className="w-44 bg-white"><SelectValue placeholder="All Status" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Orders</SelectItem>
-                      <SelectItem value="PENDING">Pending</SelectItem>
-                      <SelectItem value="CONFIRMED">Confirmed</SelectItem>
-                      <SelectItem value="DELIVERED">Delivered</SelectItem>
-                      <SelectItem value="COMPLETED">Completed</SelectItem>
-                      <SelectItem value="CANCELLED">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              {loading && rows.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-24 gap-4">
-                  <div className="animate-spin rounded-full h-10 w-10 border-4 border-indigo-600 border-t-transparent shadow-md"></div>
-                  <p className="text-slate-500 font-medium">Loading orders...</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto max-h-[600px]">
+                }
+              >
+                <div className="overflow-x-auto">
                   <Table>
-                    <TableHeader className="bg-slate-50/80 sticky top-0 z-10 backdrop-blur-sm">
-                      <TableRow>
-                        <TableHead className="font-bold text-slate-700">Preview</TableHead>
-                        <TableHead className="font-bold text-slate-700">Order ID</TableHead>
-                        <TableHead className="font-bold text-slate-700">Customer</TableHead>
-                        <TableHead className="font-bold text-slate-700 text-center">Items</TableHead>
-                        <TableHead className="font-bold text-slate-700">Total Price</TableHead>
-                        <TableHead className="font-bold text-slate-700">Discount</TableHead>
-                        <TableHead className="font-bold text-slate-700">Status</TableHead>
-                        <TableHead className="font-bold text-slate-700">Date</TableHead>
-                        <TableHead className="font-bold text-slate-700 text-right">Actions</TableHead>
+                    <TableHeader>
+                      <TableRow className="border-b border-slate-100 hover:bg-transparent">
+                        <TableHead className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 py-6">Visuals</TableHead>
+                        <TableHead className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 py-6">Manifest ID</TableHead>
+                        <TableHead className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 py-6">Recipient</TableHead>
+                        <TableHead className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 py-6 text-center">Items</TableHead>
+                        <TableHead className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 py-6">Valuation</TableHead>
+                        <TableHead className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 py-6">Status</TableHead>
+                        <TableHead className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 py-6">Timestamp</TableHead>
+                        <TableHead className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 py-6 text-right">Ops</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {rows.map((o) => {
-                        const totalDiscount = o.items?.reduce((sum, item) => sum + (Number(item.discount) || 0), 0) || 0;
-                        const images = o.items?.map(i => i.product_image).filter(Boolean) || [];
-                        const displayImages = images.slice(0, 3);
-                        const remainingCount = images.length - 3;
-                        const isMulti = images.length > 1;
-
-                        return (
-                          <TableRow
-                            key={o.id}
-                            className="cursor-pointer hover:bg-slate-50/90 transition-colors odd:bg-white even:bg-slate-50/40"
-                            onClick={() => { setSelectedOrder(o); setIsSheetOpen(true); }}
-                          >
-                            <TableCell>
-                              <div className="flex gap-2 items-center">
-                                {images.length > 0 ? (
-                                  displayImages.map((img, idx) => (
-                                    <div
-                                      key={idx}
-                                      className={`${isMulti ? 'w-16 h-20' : 'w-20 h-24'} rounded-md border bg-white overflow-hidden flex-shrink-0 relative transition-all`}
-                                    >
-                                      <img src={img} alt="Order preview" className="w-full h-full object-cover" />
-                                      {isMulti && idx === 2 && remainingCount > 0 && (
-                                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                                          <span className="text-white text-xs font-bold">+{remainingCount}</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))
-                                ) : (
-                                  <div className="w-20 h-24 rounded-md border bg-white overflow-hidden flex items-center justify-center flex-shrink-0">
-                                    <Package className="w-8 h-8 text-slate-300" />
-                                  </div>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell className="font-bold text-indigo-600">#{o.id}</TableCell>
-                            <TableCell>
-                              <div className="font-bold text-slate-900">{o.customer_name}</div>
-                              <div className="text-xs text-slate-500 font-medium mt-0.5">{o.customer_phone}</div>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Badge variant="secondary" className="bg-slate-100 text-slate-600 font-bold border-none">
-                                {o.items?.length || 0}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="font-extrabold text-slate-900">৳{Number(o.total_amount).toLocaleString()}</TableCell>
-                            <TableCell>
-                              {totalDiscount > 0 ? (
-                                <span className="text-red-500 font-bold text-sm">৳{totalDiscount.toLocaleString()}</span>
-                              ) : (
-                                <span className="text-slate-400 text-xs">-</span>
+                      {rows.map((o) => (
+                        <TableRow
+                          key={o.id}
+                          className="group border-b border-slate-50 hover:bg-slate-50/50 transition-all cursor-pointer"
+                          onClick={() => { setSelectedOrder(o); setIsSheetOpen(true); }}
+                        >
+                          <TableCell className="py-5">
+                            <div className="flex -space-x-4 items-center">
+                              {(o.items?.slice(0, 3).map((item, idx) => (
+                                <div key={idx} className="w-12 h-16 rounded-lg border-2 border-white shadow-sm overflow-hidden bg-slate-100 shrink-0">
+                                  <img src={item.product_image} className="w-full h-full object-cover" alt="" />
+                                </div>
+                              )) || <div className="w-12 h-16 rounded-lg bg-slate-100 border-2 border-white shadow-sm" />)}
+                              {o.items && o.items.length > 3 && (
+                                <div className="w-10 h-10 rounded-full bg-brand-primary text-brand-secondary flex items-center justify-center text-[10px] font-black z-10 shadow-lg">
+                                  +{o.items.length - 3}
+                                </div>
                               )}
-                            </TableCell>
-                            <TableCell>{getStatusBadge(o.status)}</TableCell>
-                            <TableCell className="text-slate-500 font-medium whitespace-nowrap">
-                              {format(new Date(o.created_at), "MMM dd, yyyy")}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 p-0 hover:bg-slate-100"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-44">
-                                  <DropdownMenuLabel>Order #{o.id}</DropdownMenuLabel>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      setSelectedOrder(o);
-                                      setIsSheetOpen(true);
-                                    }}
-                                  >
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    View &amp; Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleStartVerification(o)}
-                                  >
-                                    <Package className="mr-2 h-4 w-4" />
-                                    Verify &amp; Deliver
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      setSelectedOrder(o);
-                                      setIsSheetOpen(true);
-                                    }}
-                                  >
-                                    <Clock className="mr-2 h-4 w-4" />
-                                    Change Status
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={(e) => {
-                                      // e is the synthetic event from menu; stop menu closing from bubbling to row
-                                      e.stopPropagation?.();
-                                      openDeleteDialog(o);
-                                    }}
-                                    className="text-red-600 focus:text-red-700"
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete Order
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-5 font-black text-brand-primary text-xs">#{o.id}</TableCell>
+                          <TableCell className="py-5">
+                            <div className="flex flex-col">
+                              <span className="text-xs font-black text-slate-700">{o.customer_name}</span>
+                              <span className="text-[10px] font-bold text-slate-400 tracking-tight">{o.customer_phone}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-5 text-center">
+                            <span className="text-[10px] font-black bg-slate-100 px-2 py-1 rounded-md text-slate-500">{o.items?.length || 0}</span>
+                          </TableCell>
+                          <TableCell className="py-5 font-black text-xs text-slate-900">{formatCurrency(Number(o.total_amount))}</TableCell>
+                          <TableCell className="py-5">{getStatusBadge(o.status)}</TableCell>
+                          <TableCell className="py-5 text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                            {format(new Date(o.created_at), "MMM dd, HH:mm")}
+                          </TableCell>
+                          <TableCell className="py-5 text-right" onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-white border border-transparent hover:border-slate-100 shadow-sm transition-all"><MoreHorizontal className="h-3.5 w-3.5 text-slate-400" /></Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-52 rounded-2xl border-brand-primary/5 shadow-2xl p-2">
+                                <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-3">Operational Logic</DropdownMenuLabel>
+                                <DropdownMenuSeparator className="bg-slate-50" />
+                                <DropdownMenuItem className="rounded-xl h-10 font-bold text-[11px] px-3 focus:bg-brand-primary/5 focus:text-brand-primary" onClick={() => { setSelectedOrder(o); setIsSheetOpen(true); }}><Edit className="mr-2 h-3.5 w-3.5" /> Modify Protocol</DropdownMenuItem>
+                                <DropdownMenuItem className="rounded-xl h-10 font-bold text-[11px] px-3 focus:bg-emerald-50 focus:text-emerald-600" onClick={() => handleStartVerification(o)}><Zap className="mr-2 h-3.5 w-3.5" /> Direct Verification</DropdownMenuItem>
+                                <DropdownMenuSeparator className="bg-slate-50" />
+                                <DropdownMenuItem className="rounded-xl h-10 font-bold text-[11px] px-3 focus:bg-rose-50 focus:text-rose-600 text-rose-500" onClick={(e) => { e.stopPropagation(); setOrderToDelete(o); setDeleteDialogOpen(true); }}><Trash2 className="mr-2 h-3.5 w-3.5" /> Terminate Order</DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
                       {rows.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={9} className="text-center py-20">
-                            <div className="flex flex-col items-center justify-center gap-2 opacity-30">
-                              <ShoppingBag className="w-16 h-16" />
-                              <p className="font-bold text-lg">No online preorders found</p>
-                            </div>
+                          <TableCell colSpan={8} className="py-24 text-center">
+                            <ShoppingBag className="h-12 w-12 text-slate-100 mx-auto mb-4" />
+                            <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Null Log Detected</h3>
+                            <p className="text-xs text-slate-300 font-bold mt-1 uppercase tracking-tighter">Awaiting new storefront conversions.</p>
                           </TableCell>
                         </TableRow>
                       )}
                     </TableBody>
                   </Table>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+              </DataPanel>
+            </motion.div>
+          </TabsContent>
 
-        <TabsContent value="manual">
-          <ManualOrderForm
-            initialData={editingOrder || undefined}
-            onSuccess={() => { clearEditing(); void loadData(); }}
-            onCancel={clearEditing}
-          />
-        </TabsContent>
+          <TabsContent value="manual" key="manual" className="m-0 focus-visible:outline-none">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}>
+              <ManualOrderForm
+                initialData={editingOrder || undefined}
+                onSuccess={() => { clearEditing(); void loadData(); }}
+                onCancel={clearEditing}
+              />
+            </motion.div>
+          </TabsContent>
 
-        <TabsContent value="customers">
-          <Card className="border-none shadow-xl bg-white min-h-[400px]">
-            <CardHeader>
-              <CardTitle>Frequent Online Customers</CardTitle>
-              <CardDescription>View customers who frequently place online orders</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col items-center justify-center py-24 gap-4 opacity-40">
-                <User className="w-16 h-16" />
-                <p className="font-bold text-lg">Customer history will appear here</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+          <TabsContent value="customers" key="customers" className="m-0 focus-visible:outline-none">
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+              <DataPanel title="Client Database" description="High-velocity online client behavioral history.">
+                <div className="py-24 text-center border-2 border-dashed border-slate-100 rounded-[32px] bg-slate-50/50">
+                  <User className="h-12 w-12 text-slate-200 mx-auto mb-4" />
+                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Client Mapping Initializing</h3>
+                  <p className="text-xs text-slate-300 font-bold mt-1 uppercase tracking-tighter">Syncing historical storefront engagement data.</p>
+                </div>
+              </DataPanel>
+            </motion.div>
+          </TabsContent>
+        </AnimatePresence>
       </Tabs>
 
       <OrderDetailsSheet
@@ -514,36 +421,26 @@ export default function OnlinePreordersPage() {
         onCompleted={() => { void loadData(); }}
       />
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-[32px] border-none shadow-2xl p-8">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Order</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete order #{orderToDelete?.id}? This action cannot be undone.
-              {orderToDelete && (
-                <div className="mt-2 text-sm text-slate-600">
-                  <p>Customer: {orderToDelete.customer_name}</p>
-                  <p>Total: ৳{Number(orderToDelete.total_amount).toLocaleString()}</p>
-                </div>
-              )}
+            <AlertDialogTitle className="text-xl font-black uppercase tracking-tighter text-slate-900">Confirm Termination</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs font-bold text-slate-500 leading-relaxed">
+              You are about to terminate order #{orderToDelete?.id}. This action will purge the manifest from the active stream permanently.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="mt-8 gap-3">
+            <AlertDialogCancel className="rounded-xl h-12 font-black text-[10px] uppercase tracking-widest border-none bg-slate-100">Abort</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700"
+              className="rounded-xl h-12 font-black text-[10px] uppercase tracking-widest bg-rose-500 text-white hover:bg-rose-600 shadow-lg shadow-rose-200"
             >
-              {isDeleting ? "Deleting..." : "Delete"}
+              {isDeleting ? <Loader2 className="animate-spin h-4 w-4" /> : "Execute Deletion"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </motion.div>
   );
 }
-
-
-

@@ -33,14 +33,24 @@ class OnlinePreorderAdmin(admin.ModelAdmin):
             # Logic: "primary photo of first variant of that product"
             image_url = None
             
-            # 1. Try first variant's primary photo
-            first_variant = product.variations.first()
-            if first_variant:
-                gallery = Gallery.objects.filter(product=product, color=first_variant.color).first()
+            # 1. Try item-specific color primary photo
+            item_color = item.get('color')
+            if item_color:
+                gallery = Gallery.objects.filter(design__product=product, color__iexact=item_color).first()
                 if gallery:
                     primary_img = Image.objects.filter(gallery=gallery, imageType='PRIMARY').first()
                     if primary_img and primary_img.image:
                         image_url = primary_img.image.url
+            
+            # Fallback to first variant if item color not found
+            if not image_url:
+                first_variant = product.variations.first()
+                if first_variant:
+                    gallery = Gallery.objects.filter(design__product=product, color=first_variant.color).first()
+                    if gallery:
+                        primary_img = Image.objects.filter(gallery=gallery, imageType='PRIMARY').first()
+                        if primary_img and primary_img.image:
+                            image_url = primary_img.image.url
             
             # 2. Fallback to main product image
             if not image_url and product.image:

@@ -31,7 +31,7 @@ def run_test():
         name="TEST-Product-1",
         sku="TEST-SKU-1",
         cost_price=Decimal('50.00'),
-        selling_price=Decimal('100.00'),
+        retail_price=Decimal('100.00'),
         stock_quantity=10,
         assign_to_online=True,
         is_active=True
@@ -41,7 +41,7 @@ def run_test():
         name="TEST-Product-2",
         sku="TEST-SKU-2",
         cost_price=Decimal('50.00'),
-        selling_price=Decimal('100.00'),
+        retail_price=Decimal('100.00'),
         stock_quantity=10,
         assign_to_online=True,
         is_active=True

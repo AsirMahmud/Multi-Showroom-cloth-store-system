@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
+import { useBranch } from '@/contexts/branch-context';
 import {
     getCustomers,
     getActiveCustomers,
@@ -18,9 +19,7 @@ import {
     type UpdateCustomerData,
     type PaginatedResponse,
 } from '@/lib/api/customer';
-import axios from "axios";
-
-const API_URL = process.env.NEXT_PUBLIC_BASEURL || 'http://localhost:8000/api';
+import axiosInstance from "@/lib/api/axios-config";
 
 // Query keys
 export const customerKeys = {
@@ -47,8 +46,9 @@ export const useCustomers = (
         ordering?: string;
     }
 ) => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: [...customerKeys.lists(), page, pageSize, filters],
+        queryKey: [...customerKeys.lists(), page, pageSize, filters, selectedBranchId],
         queryFn: async () => {
             const params: any = { page, page_size: pageSize };
             
@@ -59,7 +59,7 @@ export const useCustomers = (
                 if (filters.ordering) params.ordering = filters.ordering;
             }
             
-            const response = await axios.get(`${API_URL}/customer/customers/`, { params });
+            const response = await axiosInstance.get('/customer/customers/', { params });
             return response.data;
         },
     });
@@ -67,10 +67,11 @@ export const useCustomers = (
 
 // Hook for getting active customers with pagination
 export const useActiveCustomers = (page: number = 1, pageSize: number = 20) => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: [...customerKeys.active(), page, pageSize],
+        queryKey: [...customerKeys.active(), page, pageSize, selectedBranchId],
         queryFn: async () => {
-            const response = await axios.get(`${API_URL}/customer/customers/active_customers/`, {
+            const response = await axiosInstance.get('/customer/customers/active_customers/', {
                 params: { page, page_size: pageSize }
             });
             return response.data;
@@ -80,10 +81,11 @@ export const useActiveCustomers = (page: number = 1, pageSize: number = 20) => {
 
 // Hook for getting top customers
 export const useTopCustomers = (limit: number = 5) => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: [...customerKeys.top(), limit],
+        queryKey: [...customerKeys.top(), limit, selectedBranchId],
         queryFn: async () => {
-            const response = await axios.get(`${API_URL}/customer/customers/top_customers/`, {
+            const response = await axiosInstance.get('/customer/customers/top_customers/', {
                 params: { limit }
             });
             return response.data;
@@ -93,10 +95,11 @@ export const useTopCustomers = (limit: number = 5) => {
 
 // Hook for getting customer analytics
 export const useCustomerAnalytics = () => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: customerKeys.analytics(),
+        queryKey: [...customerKeys.analytics(), selectedBranchId],
         queryFn: async () => {
-            const response = await axios.get(`${API_URL}/customer/customers/customer_analytics/`);
+            const response = await axiosInstance.get('/customer/customers/customer_analytics/');
             return response.data;
         },
     });
@@ -104,10 +107,11 @@ export const useCustomerAnalytics = () => {
 
 // Hook for getting a single customer
 export const useCustomer = (id: number) => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: customerKeys.detail(id),
+        queryKey: [...customerKeys.detail(id), selectedBranchId],
         queryFn: async () => {
-            const response = await axios.get(`${API_URL}/customer/customers/${id}/`);
+            const response = await axiosInstance.get(`/customer/customers/${id}/`);
             return response.data;
         },
     });
@@ -119,7 +123,7 @@ export const useCreateCustomer = () => {
 
     return useMutation({
         mutationFn: async (data: Partial<Customer>) => {
-            const response = await axios.post(`${API_URL}/customer/customers/`, data);
+            const response = await axiosInstance.post('/customer/customers/', data);
             return response.data;
         },
         onSuccess: () => {
@@ -147,7 +151,7 @@ export const useUpdateCustomer = () => {
 
     return useMutation({
         mutationFn: async ({ id, data }: { id: number; data: Partial<Customer> }) => {
-            const response = await axios.patch(`${API_URL}/customer/customers/${id}/`, data);
+            const response = await axiosInstance.patch(`/customer/customers/${id}/`, data);
             return response.data;
         },
         onSuccess: (_, { id }) => {
@@ -176,7 +180,7 @@ export const useDeleteCustomer = () => {
 
     return useMutation({
         mutationFn: async (id: number) => {
-            const response = await axios.delete(`${API_URL}/customer/customers/${id}/`);
+            const response = await axiosInstance.delete(`/customer/customers/${id}/`);
             return response.data;
         },
         onSuccess: () => {
@@ -211,8 +215,9 @@ export const useSearchCustomers = (
         customer_type?: string;
     }
 ) => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: [...customerKeys.search(query), page, pageSize, filters],
+        queryKey: [...customerKeys.search(query), page, pageSize, filters, selectedBranchId],
         queryFn: async () => {
             if (!query) return { count: 0, next: null, previous: null, results: [] };
             
@@ -227,7 +232,7 @@ export const useSearchCustomers = (
                 if (filters.customer_type) params.customer_type = filters.customer_type;
             }
             
-            const response = await axios.get(`${API_URL}/customer/customers/`, { params });
+            const response = await axiosInstance.get('/customer/customers/', { params });
             return response.data;
         },
         enabled: !!query,
@@ -236,10 +241,11 @@ export const useSearchCustomers = (
 
 // Hook for looking up a customer by phone
 export const useCustomerLookup = () => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: customerKeys.lookup(),
+        queryKey: [...customerKeys.lookup(), selectedBranchId],
         queryFn: async () => {
-            const response = await axios.get(`${API_URL}/customer/customers/`);
+            const response = await axiosInstance.get('/customer/customers/');
             const customers = response.data.results || response.data;
             return customers.map((customer: Customer) => ({
                 value: customer.id,
@@ -253,8 +259,8 @@ export function usePermanentDeleteCustomer() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (customerId: number) => {
-            const response = await axios.delete(
-                `${API_URL}/customer/customers/${customerId}/permanent_delete/`
+            const response = await axiosInstance.delete(
+                `/customer/customers/${customerId}/permanent_delete/`
             );
             return response.data;
         },
@@ -281,8 +287,8 @@ export function useBulkDeleteCustomers() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (customerIds: number[]) => {
-            const response = await axios.post(
-                `${API_URL}/customer/customers/bulk_delete/`,
+            const response = await axiosInstance.post(
+                '/customer/customers/bulk_delete/',
                 { customer_ids: customerIds }
             );
             return response.data;
@@ -304,4 +310,4 @@ export function useBulkDeleteCustomers() {
             });
         },
     });
-} 
+}

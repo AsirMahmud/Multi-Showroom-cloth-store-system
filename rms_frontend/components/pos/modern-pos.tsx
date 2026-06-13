@@ -52,6 +52,8 @@ import { usePOSStore } from "@/store/pos-store";
 import { Product, ProductVariation } from "@/types/inventory";
 import ReceiptModal from "./ReceiptModal";
 import { productsApi } from "@/lib/api/inventory";
+import { useSidebar } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 
 // Sample product data
 
@@ -94,7 +96,7 @@ type CartItem = {
   name: string;
   price: number;
   quantity: number;
-  size: string;
+  design: string;
   color: string;
   image: string;
   discount?: {
@@ -129,6 +131,12 @@ export function ModernPOS() {
     receiptData,
     setReceiptData,
   } = usePOSStore();
+  const { setOpen } = useSidebar();
+
+  // Automatically collapse sidebar on POS page mount
+  useEffect(() => {
+    setOpen(false);
+  }, [setOpen]);
 
   // Note: We no longer fetch all products for scanning - we fetch from backend on each scan
 
@@ -147,7 +155,7 @@ export function ModernPOS() {
   const [cashAmount, setCashAmount] = useState("");
   const [showCustomerSearch, setShowCustomerSearch] = useState(false);
   const [customerSearchQuery, setCustomerSearchQuery] = useState("");
-  const [selectedSizes, setSelectedSizes] = useState<Record<number, string>>(
+  const [selectedDesigns, setSelectedDesigns] = useState<Record<number, string>>(
     {}
   );
   const [selectedColors, setSelectedColors] = useState<Record<number, string>>(
@@ -323,8 +331,7 @@ export function ModernPOS() {
       setSelectedCustomer(updatedCustomer);
     }
 
-    // In a real app, you would save this transaction to your backend
-    console.log("Transaction completed:", receipt);
+    // Save transaction to backend in a real app
 
     completePayment(toast);
   };
@@ -360,253 +367,48 @@ export function ModernPOS() {
   // Handle removing item from cart
 
   // Keep barcode input focused for continuous scanning when barcode mode is enabled
-  // Only runs when barcodeMode is true, allowing normal input behavior when disabled
   useEffect(() => {
     if (!barcodeMode) return;
 
     const barcodeInput = barcodeInputRef.current;
     if (!barcodeInput) return;
 
-    // Track if user is actively interacting with other inputs
-    let shouldRefocus = true;
-    let refocusTimeout: NodeJS.Timeout | null = null;
+    const handleFocusCheck = () => {
+      // Check if any dialog or modal is open
+      const isModalOpen = !!document.querySelector('[role="dialog"], [data-state="open"]');
+      if (isModalOpen) return;
 
-    // Check if element is an interactive input element or inside one
-    const isInteractiveElement = (element: Element | null): boolean => {
-      if (!element) return false;
-      
-      // Check if element itself is an input/textarea/select
-      const tagName = element.tagName;
-      if (tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT') {
-        return true;
-      }
-      
-      // Check if element is contentEditable
-      const htmlElement = element as HTMLElement;
-      if (htmlElement.isContentEditable || htmlElement.contentEditable === 'true') {
-        return true;
-      }
-      
-      // Check if element is inside a dialog/modal (all inputs in modals should work)
-      if (element.closest('[role="dialog"]') || 
-          element.closest('[data-radix-portal]') ||
-          element.closest('[data-state="open"]')) {
-        return true;
-      }
-      
-      // Check if element is inside an input/textarea/select (for labels, icons, etc.)
-      const inputParent = element.closest('input, textarea, select');
-      if (inputParent) {
-        return true;
-      }
-      
-      // Check if element is a button or inside a button
-      const buttonParent = element.closest('button, [role="button"]');
-      if (buttonParent && buttonParent !== barcodeInput) {
-        return true;
-      }
-      
-      // Check if it's inside a form field wrapper
-      if (element.closest('[data-radix-select-trigger]') ||
-          element.closest('[data-radix-dropdown-trigger]')) {
-        return true;
-      }
-      
-      return false;
-    };
-
-    // Clear any pending refocus timeout
-    const clearRefocusTimeout = () => {
-      if (refocusTimeout) {
-        clearTimeout(refocusTimeout);
-        refocusTimeout = null;
-      }
-    };
-
-    // Check if any input/textarea/select is currently focused
-    const isAnyInputFocused = (): boolean => {
+      // Check if any other input is focused
       const activeElement = document.activeElement;
-      if (!activeElement) return false;
-      
-      // Check if active element is an input, textarea, or select
-      const tagName = activeElement.tagName;
-      if (tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT') {
-        return activeElement !== barcodeInput;
-      }
-      
-      // Check if it's inside any input field
-      const htmlElement = activeElement as HTMLElement;
-      if (htmlElement.isContentEditable || htmlElement.contentEditable === 'true') {
-        return true;
-      }
-      
-      // Check if it's inside a dialog/modal
-      if (activeElement.closest('[role="dialog"]') || 
-          activeElement.closest('[data-radix-portal]') ||
-          activeElement.closest('[data-state="open"]')) {
-        return true;
-      }
-      
-      return false;
-    };
+      const isOtherInputFocused = 
+        activeElement && 
+        (activeElement.tagName === 'INPUT' || 
+         activeElement.tagName === 'TEXTAREA' || 
+         activeElement.tagName === 'SELECT') &&
+        activeElement !== barcodeInput;
 
-    // Focus function that respects other inputs
-    const attemptRefocus = () => {
-      clearRefocusTimeout();
-      
-      // Only refocus if flag is set
-      if (!shouldRefocus) return;
-      
-      // Double-check that no input is currently focused
-      if (isAnyInputFocused()) {
-        shouldRefocus = false;
-        return;
-      }
-      
-      const activeElement = document.activeElement;
-      
-      // Don't refocus if user is interacting with another input/textarea/select
-      if (isInteractiveElement(activeElement) && activeElement !== barcodeInput) {
-        shouldRefocus = false;
-        return;
-      }
-      
-      // Only refocus if no interactive element is focused or body/document is focused
-      if (barcodeInput && activeElement !== barcodeInput) {
-        if (!activeElement || 
-            activeElement === document.body || 
-            activeElement === document.documentElement ||
-            activeElement.tagName === 'HTML') {
-          // Final check before focusing
-          if (!isAnyInputFocused()) {
-            barcodeInput.focus();
-          }
-        }
+      if (!isOtherInputFocused) {
+        barcodeInput.focus();
       }
     };
 
-    // Focus on mount only if nothing else is focused
-    if (!document.activeElement || 
-        document.activeElement === document.body || 
-        document.activeElement === document.documentElement) {
-      attemptRefocus();
-    }
+    // Initial check
+    handleFocusCheck();
 
-    // Handle focus events - disable refocus when other inputs are focused
-    const handleFocus = (e: FocusEvent) => {
-      const target = e.target as HTMLElement;
-      if (target && target !== barcodeInput) {
-        // Disable refocus immediately when any other element gets focus
-        shouldRefocus = false;
-        clearRefocusTimeout();
-        
-        // Check if it's an interactive element
-        if (isInteractiveElement(target)) {
-          // Definitely don't refocus while this input is focused
-          return;
-        }
-      }
-    };
-
-    // Handle blur events - enable refocus when user leaves other inputs
-    const handleBlur = (e: FocusEvent) => {
-      const relatedTarget = e.relatedTarget as HTMLElement;
-      
-      // If user moved to another interactive element, don't refocus
-      if (relatedTarget && 
-          relatedTarget !== barcodeInput && 
-          isInteractiveElement(relatedTarget)) {
-        shouldRefocus = false;
-        return;
-      }
-      
-      // Wait a bit to check what actually got focus
-      clearRefocusTimeout();
-      refocusTimeout = setTimeout(() => {
-        // Double-check that no input is focused
-        if (!isAnyInputFocused()) {
-          shouldRefocus = true;
-          attemptRefocus();
-        } else {
-          shouldRefocus = false;
-        }
-      }, 150);
-    };
-
-    // Handle clicks - disable refocus if clicking on interactive elements
-    const handleClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      
-      // Clear any pending refocus
-      clearRefocusTimeout();
-      
-      // If clicking on or inside an interactive element, disable refocus
-      if (isInteractiveElement(target)) {
-        shouldRefocus = false;
-        // Don't try to refocus while user is interacting
-        return;
-      }
-      
-      // Check if click is on an input (might not be caught by isInteractiveElement)
-      const clickedInput = target.closest('input, textarea, select');
-      if (clickedInput && clickedInput !== barcodeInput) {
-        shouldRefocus = false;
-        return;
-      }
-      
-      // If clicking outside interactive areas, wait and then maybe refocus
-      refocusTimeout = setTimeout(() => {
-        // Only refocus if no input is currently focused
-        if (!isAnyInputFocused()) {
-          shouldRefocus = true;
-          attemptRefocus();
-        } else {
-          shouldRefocus = false;
-        }
-      }, 250);
-    };
-
-    // Handle keyboard events - if typing in another input, disable refocus
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const activeElement = document.activeElement;
-      
-      // If typing in any element that's not the barcode input, disable refocus
-      if (activeElement && activeElement !== barcodeInput) {
-        // Check if it's an input/textarea/select
-        const tagName = activeElement.tagName;
-        if (tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT') {
-          shouldRefocus = false;
-          clearRefocusTimeout();
-          return;
-        }
-        
-        // Check if it's contentEditable
-        const htmlElement = activeElement as HTMLElement;
-        if (htmlElement.isContentEditable || htmlElement.contentEditable === 'true') {
-          shouldRefocus = false;
-          clearRefocusTimeout();
-          return;
-        }
-      }
-    };
-
-    // Add event listeners
-    document.addEventListener('focus', handleFocus, true);
-    document.addEventListener('blur', handleBlur, true);
-    document.addEventListener('click', handleClick, true);
-    document.addEventListener('keydown', handleKeyDown, true);
+    // Use a periodic check as a fallback and handle common interaction events
+    const interval = setInterval(handleFocusCheck, 1000);
+    document.addEventListener('click', handleFocusCheck);
+    document.addEventListener('keydown', handleFocusCheck);
 
     return () => {
-      clearRefocusTimeout();
-      document.removeEventListener('focus', handleFocus, true);
-      document.removeEventListener('blur', handleBlur, true);
-      document.removeEventListener('click', handleClick, true);
-      document.removeEventListener('keydown', handleKeyDown, true);
+      clearInterval(interval);
+      document.removeEventListener('click', handleFocusCheck);
+      document.removeEventListener('keydown', handleFocusCheck);
     };
   }, [barcodeMode]);
 
   // Decode QR code data
-  const decodeQRCodeData = (scannedValue: string): { productId: string; color: string; size: string } | null => {
+  const decodeQRCodeData = (scannedValue: string): { productId: string; color: string; design: string } | null => {
     try {
       // Validate input
       if (!scannedValue || typeof scannedValue !== 'string' || scannedValue.trim().length === 0) {
@@ -643,7 +445,7 @@ export function ModernPOS() {
           return {
             productId: String(item.productId),
             color: item.variations.color || "",
-            size: item.variations.size || "",
+            design: item.variations.design || "",
           };
         }
       }
@@ -695,16 +497,23 @@ export function ModernPOS() {
             const product = await productsApi.getById(productId);
             
             if (product) {
-              // Verify variation exists
-              const variation = product.variations?.find(
-                (v: ProductVariation) =>
-                  v.is_active &&
-                  v.size === qrData.size &&
-                  v.color === qrData.color
-              );
+              // Verify variation exists in the new hierarchy
+              let foundDesign = null;
+              let foundColor = null;
 
-              if (variation && variation.stock > 0) {
-                handleAddToCart(product, qrData.size, qrData.color);
+              for (const design of product.designs || []) {
+                if (design.name === qrData.design) {
+                  const colorMatch = design.colors.find(c => c.color === qrData.color);
+                  if (colorMatch) {
+                    foundDesign = design;
+                    foundColor = colorMatch;
+                    break;
+                  }
+                }
+              }
+
+              if (foundDesign && foundColor && foundColor.stock > 0) {
+                handleAddToCart(product, qrData.design, qrData.color);
                 toast({
                   title: "Added",
                   description: `${product.name}`,
@@ -737,11 +546,21 @@ export function ModernPOS() {
             const product = await productsApi.searchByBarcode(scannedValue);
             
             if (product) {
-              // Get first available variation
-              const firstVariation = product.variations?.find((v: ProductVariation) => v.is_active && v.stock > 0);
+              // Get first available variation from the new hierarchy
+              let firstDesign = null;
+              let firstColor = null;
+
+              for (const design of product.designs || []) {
+                const colorMatch = design.colors.find(c => c.stock > 0);
+                if (colorMatch) {
+                  firstDesign = design;
+                  firstColor = colorMatch;
+                  break;
+                }
+              }
               
-              if (firstVariation) {
-                handleAddToCart(product, firstVariation.size, firstVariation.color);
+              if (firstDesign && firstColor) {
+                handleAddToCart(product, firstDesign.name, firstColor.color);
                 toast({
                   title: "Added",
                   description: `${product.name}`,
@@ -780,20 +599,20 @@ export function ModernPOS() {
     <div className="flex flex-col h-[calc(100vh-4rem)]">
       {/* Main POS Interface - Two Column Layout */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Column - Product Selection */}
-        <div className="flex-1 bg-gray-50 overflow-y-auto pb-20">
+        {/* Left Column - Product Selection - 30% Space */}
+        <div className="flex-[0.3] min-w-0 bg-slate-50/50 backdrop-blur-xl overflow-y-auto border-r border-brand-primary/5">
           <div className="p-4">
             {/* Search & Filter Bar */}
             <div className="mb-4 space-y-2">
-              <div className="flex gap-2">
-                <div className="relative flex-1">
+              <div className="flex flex-col gap-2">
+                <div className="relative w-full">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     ref={barcodeInputRef}
                     placeholder={
                       barcodeMode
-                        ? "Scan barcode or QR code (Barcode Mode Active)"
-                        : "Search products by name, SKU, or description"
+                        ? "Scan..."
+                        : "Search..."
                     }
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -802,112 +621,74 @@ export function ModernPOS() {
                   />
                   {barcodeMode && (
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                      <Badge variant="default" className="bg-green-600 text-white text-xs px-2 py-0.5">
-                        <ScanLine className="h-3 w-3 mr-1" />
-                        Scan Mode
+                      <Badge variant="default" className="bg-green-600 text-white text-[10px] px-1.5 py-0">
+                        Scan
                       </Badge>
                     </div>
                   )}
                 </div>
-                <Button
-                  variant={barcodeMode ? "default" : "outline"}
-                  onClick={() => {
-                    setBarcodeMode(!barcodeMode);
-                    // Focus input when enabling barcode mode
-                    if (!barcodeMode) {
-                      setTimeout(() => {
-                        barcodeInputRef.current?.focus();
-                      }, 100);
-                    }
-                  }}
-                  className={barcodeMode ? "bg-green-600 hover:bg-green-700" : ""}
-                >
-                  <ScanLine className="h-4 w-4 mr-2" />
-                  {barcodeMode ? "Barcode Mode ON" : "Barcode Mode"}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsFilterOpen(!isFilterOpen)}
-                >
-                  <Filter className="h-4 w-4 mr-2" />
-                  Filters
-                  {isFilterOpen ? (
-                    <ChevronUp className="h-4 w-4 ml-2" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4 ml-2" />
-                  )}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant={barcodeMode ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setBarcodeMode(!barcodeMode);
+                      if (!barcodeMode) {
+                        setTimeout(() => {
+                          barcodeInputRef.current?.focus();
+                        }, 100);
+                      }
+                    }}
+                    className={cn("flex-1 text-[10px] font-black uppercase tracking-widest h-9", barcodeMode ? "bg-green-600 hover:bg-green-700" : "")}
+                  >
+                    <ScanLine className="h-3 w-3 mr-2" />
+                    {barcodeMode ? "ON" : "Scan"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsFilterOpen(!isFilterOpen)}
+                    className="flex-1 text-[10px] font-black uppercase tracking-widest h-9"
+                  >
+                    <Filter className="h-3 w-3 mr-2" />
+                    Filters
+                  </Button>
+                </div>
               </div>
 
-              {/* Expanded Filters */}
+              {/* Expanded Filters - Compact version for 30% column */}
               {isFilterOpen && (
-                <div className="bg-white p-4 rounded-md border shadow-sm">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Price Range Filter */}
-                    <div>
-                      <h3 className="text-sm font-medium mb-2">Price Range</h3>
-                      <div className="px-2">
-                        <Slider
-                          defaultValue={priceRange}
-                          min={0}
-                          max={300}
-                          step={5}
-                          onValueChange={setPriceRange}
-                        />
-                        <div className="flex justify-between mt-2 text-sm text-muted-foreground">
-                          <span>${priceRange[0]}</span>
-                          <span>${priceRange[1]}</span>
-                        </div>
-                      </div>
-                    </div>
+                <div className="bg-white/80 backdrop-blur-md p-4 rounded-[24px] border border-brand-primary/5 shadow-premium space-y-4">
+                  <div>
+                    <h3 className="text-[10px] font-black uppercase tracking-widest mb-2 text-slate-400">Price</h3>
+                    <Slider
+                      defaultValue={priceRange}
+                      min={0}
+                      max={300}
+                      step={5}
+                      onValueChange={setPriceRange}
+                    />
+                  </div>
 
-                    {/* Tags Filter */}
-                    <div>
-                      <h3 className="text-sm font-medium mb-2">Tags</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {productTags.map((tag) => (
-                          <Badge
-                            key={tag.id}
-                            variant={
-                              selectedTags.includes(tag.id)
-                                ? "default"
-                                : "outline"
+                  <div>
+                    <h3 className="text-[10px] font-black uppercase tracking-widest mb-2 text-slate-400">Tags</h3>
+                    <div className="flex flex-wrap gap-1">
+                      {productTags.map((tag) => (
+                        <Badge
+                          key={tag.id}
+                          variant={selectedTags.includes(tag.id) ? "default" : "outline"}
+                          className="cursor-pointer text-[9px] px-2 py-0.5"
+                          onClick={() => {
+                            if (selectedTags.includes(tag.id)) {
+                              setSelectedTags(selectedTags.filter((t) => t !== tag.id));
+                            } else {
+                              setSelectedTags([...selectedTags, tag.id]);
                             }
-                            className={`cursor-pointer ${
-                              selectedTags.includes(tag.id)
-                                ? ""
-                                : "hover:bg-gray-100"
-                            }`}
-                            onClick={() => {
-                              if (selectedTags.includes(tag.id)) {
-                                setSelectedTags(
-                                  selectedTags.filter((t) => t !== tag.id)
-                                );
-                              } else {
-                                setSelectedTags([...selectedTags, tag.id]);
-                              }
-                            }}
-                          >
-                            <Tag className="h-3 w-3 mr-1" />
-                            {tag.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Clear Filters */}
-                    <div className="flex items-end">
-                      <Button
-                        variant="ghost"
-                        className="text-blue-600"
-                        onClick={() => {
-                          setSelectedTags([]);
-                          setPriceRange([0, 300]);
-                          setSearchQuery("");
-                        }}
-                      >
-                        Clear All Filters
-                      </Button>
+                          }}
+                        >
+                          {tag.name}
+                        </Badge>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -923,8 +704,10 @@ export function ModernPOS() {
           </div>
         </div>
 
-        {/* Right Column - Cart & Checkout */}
-        <CartAndCheckout />
+        {/* Right Column - Cart & Checkout - 70% Space */}
+        <div className="flex-[0.7] overflow-hidden">
+          <CartAndCheckout />
+        </div>
       </div>
 
       {/* Customer Search Modal */}
@@ -969,17 +752,18 @@ export function ModernPOS() {
                     {product.name}
                   </h3>
                   <p className="text-lg font-bold mb-2">
-                    {formatCurrency(Number(product.selling_price))}
+                    {formatCurrency(Number(product.retail_price))}
                   </p>
                   <Button
                     className="w-full mt-2"
                     onClick={() => {
-                      const variation = product.variations?.[0];
-                      if (variation) {
+                      const design = product.designs?.[0];
+                      const color = design?.colors?.[0];
+                      if (design && color) {
                         handleAddToCart(
                           product,
-                          variation.size,
-                          variation.color
+                          design.name,
+                          color.color
                         );
                       }
                       setShowUpsellModal(false);

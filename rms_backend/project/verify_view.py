@@ -28,7 +28,8 @@ def run_test():
         name="TEST-Product-View",
         sku="TEST-SKU-VIEW",
         cost_price=Decimal('50.00'),
-        selling_price=Decimal('100.00'),
+        retail_price=Decimal('100.00'),
+        wholesale_price=Decimal('80.00'),
         stock_quantity=10,
         assign_to_online=True,
         is_active=True

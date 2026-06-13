@@ -1,7 +1,7 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.utils import timezone
-from pydantic import ValidationError
 from apps.inventory.models import Product, ProductVariation, StockMovement
 from apps.customer.models import Customer
 import uuid
@@ -58,6 +58,13 @@ class Sale(models.Model):
     gift_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0.00'))])
     
     notes = models.TextField(blank=True)
+    branch = models.ForeignKey(
+        "branches.Branch",
+        on_delete=models.PROTECT,
+        related_name="sales",
+        null=True,
+        blank=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -144,7 +151,8 @@ class Sale(models.Model):
                         movement_type=movement_type,
                         quantity=item.quantity,
                         reference_number=self.invoice_number,
-                        notes=movement_notes
+                        notes=movement_notes,
+                        branch=self.branch,
                     )
                     
                     # Update variation stock
@@ -263,20 +271,32 @@ class Sale(models.Model):
             total_cost = cost_per_unit * item.quantity
             
             # Calculate selling price after item discount
-            selling_price_after_item_discount = (item.unit_price * item.quantity) - item.discount
+            retail_price_after_item_discount = (item.unit_price * item.quantity) - item.discount
             
             # Calculate this item's proportion of the total for global discount allocation
             if total_after_item_discounts > 0:
-                item_proportion = selling_price_after_item_discount / total_after_item_discounts
+                item_proportion = retail_price_after_item_discount / total_after_item_discounts
                 item_global_discount = self.discount * item_proportion
             else:
                 item_global_discount = Decimal('0.00')
             
             # Calculate final selling price after all discounts
-            final_selling_price = selling_price_after_item_discount - item_global_discount
+            final_retail_price = retail_price_after_item_discount - item_global_discount
             
             # Calculate profit/loss for this item
-            profit_loss = final_selling_price - total_cost
+            profit_loss = final_retail_price - total_cost
+
+            if profit_loss >= 0:
+                item_profit = profit_loss
+                item_loss = Decimal('0.00')
+            else:
+                item_profit = Decimal('0.00')
+                item_loss = abs(profit_loss)
+
+            SaleItem.objects.filter(pk=item.pk).update(
+                profit=item_profit,
+                loss=item_loss,
+            )
             
             if profit_loss >= 0:
                 total_profit += profit_loss
@@ -291,12 +311,22 @@ class Sale(models.Model):
         self.save(update_fields=['subtotal', 'total', 'total_profit', 'total_loss'])
 
 class SaleItem(models.Model):
+    PRICE_TYPE_CHOICES = [
+        ('retail', 'Retail'),
+        ('wholesale', 'Wholesale'),
+    ]
+
     sale = models.ForeignKey(Sale, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
-    size = models.CharField(max_length=50)
+    design_name = models.CharField(max_length=100, null=True, blank=True)
     color = models.CharField(max_length=50)
     quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    price_type = models.CharField(max_length=20, choices=PRICE_TYPE_CHOICES, default='retail')
     unit_price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.00'))])
+    applied_unit_price = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0.00'))])
+    retail_price_snapshot = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0.00'))])
+    wholesale_price_snapshot = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0.00'))])
+    wholesale_cutoff_snapshot = models.PositiveIntegerField(default=10)
     discount = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0.00'))])
     total = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.00'))])
     profit = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0.00'))])
@@ -304,14 +334,15 @@ class SaleItem(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.product.name} - {self.size} - {self.color} - {self.quantity}"
+        return f"{self.product.name} - {self.design_name} - {self.color} - {self.quantity}"
 
     def get_variation(self):
-        """Get the product variation based on size and color"""
+        """Get the product variation based on design and color"""
         try:
+            from apps.inventory.models import ProductVariation
             return ProductVariation.objects.get(
-                product=self.product,
-                size=self.size,
+                design__product=self.product,
+                design__name=self.design_name,
                 color=self.color,
                 is_active=True
             )
@@ -322,10 +353,10 @@ class SaleItem(models.Model):
         """Validate stock availability"""
         variation = self.get_variation()
         if not variation:
-            raise ValidationError(f"Invalid variation for {self.product.name} - Size: {self.size}, Color: {self.color}")
+            raise ValidationError(f"Invalid variation for {self.product.name} - Design: {self.design_name}, Color: {self.color}")
         
         if self.quantity > variation.stock:
-            raise ValidationError(f"Not enough stock for {self.product.name} - Size: {self.size}, Color: {self.color}")
+            raise ValidationError(f"Not enough stock for {self.product.name} - Design: {self.design_name}, Color: {self.color}")
 
     def calculate_profit_loss(self):
         """Calculate profit or loss for this sale item"""
@@ -347,6 +378,8 @@ class SaleItem(models.Model):
         return Decimal('0.00'), Decimal('0.00')
 
     def save(self, *args, **kwargs):
+        if not self.applied_unit_price:
+            self.applied_unit_price = self.unit_price
         # Calculate total before saving (with discount)
         self.total = (self.quantity * self.unit_price) - self.discount
         
@@ -534,20 +567,3 @@ class ReturnItem(models.Model):
 
     def __str__(self):
         return f"Return Item {self.id} for Return {self.return_order.return_number}"
-
-    def save(self, *args, **kwargs):
-        # Create stock movement record when return is approved
-        if self.return_order.status == 'approved':
-            StockMovement.objects.create(
-                product=self.sale_item.product,
-                movement_type='IN',
-                quantity=self.quantity,
-                reference_number=self.return_order.return_number,
-                notes=f"Return item from {self.return_order.return_number}"
-            )
-            
-            # Update product stock
-            self.sale_item.product.stock_quantity += self.quantity
-            self.sale_item.product.save()
-        
-        super().save(*args, **kwargs) 

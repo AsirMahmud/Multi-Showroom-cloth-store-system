@@ -1,8 +1,7 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
 
-
-export const API_URL = 'https://rawstitch.info/demo/api'
+export const API_URL = process.env.NEXT_PUBLIC_BASEURL || 'http://localhost:8000/api';
 
 // Create axios instance with default config
 const axiosInstance = axios.create({
@@ -15,9 +14,22 @@ const axiosInstance = axios.create({
 // Add request interceptor
 axiosInstance.interceptors.request.use(
     (config) => {
+        if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+            // Let the browser add multipart/form-data with the required boundary.
+            config.headers.delete('Content-Type');
+        }
+
         const token = Cookies.get('token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
+        }
+        if (typeof window !== "undefined") {
+            const selectedBranchId = localStorage.getItem("selectedBranchId");
+            if (selectedBranchId && selectedBranchId !== "all") {
+                config.headers["X-Branch-Id"] = selectedBranchId;
+            } else {
+                delete config.headers["X-Branch-Id"];
+            }
         }
         return config;
     },

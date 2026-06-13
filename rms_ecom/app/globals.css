@@ -4,32 +4,31 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Updated color scheme for modern e-commerce aesthetic */
-  --background: oklch(0.99 0 0);
-  --foreground: oklch(0.15 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.15 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.15 0 0);
-  --primary: oklch(0.15 0 0);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.96 0 0);
-  --secondary-foreground: oklch(0.15 0 0);
-  --muted: oklch(0.96 0 0);
-  --muted-foreground: oklch(0.5 0 0);
-  --accent: oklch(0.96 0 0);
-  --accent-foreground: oklch(0.15 0 0);
+  --background: #faf9fa;
+  --foreground: #1a1c1d;
+  --card: #ffffff;
+  --card-foreground: #1a1c1d;
+  --popover: #ffffff;
+  --popover-foreground: #1a1c1d;
+  --primary: #a83200;
+  --primary-foreground: #ffffff;
+  --secondary: #e0e0ff;
+  --secondary-foreground: #27308a;
+  --muted: #eeedee;
+  --muted-foreground: #5c4037;
+  --accent: #ffdbd0;
+  --accent-foreground: #842500;
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.9 0 0);
-  --input: oklch(0.9 0 0);
-  --ring: oklch(0.15 0 0);
+  --border: #e5beb2;
+  --input: #d8d2d0;
+  --ring: #ad3300;
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.5rem;
+  --radius: 0.25rem;
   --sidebar: oklch(1 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -76,8 +75,8 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-outfit), "Century Gothic", "Apple Gothic", "ITC Avant Garde Gothic", sans-serif;
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-hanken), Arial, sans-serif;
+  --font-serif: var(--font-playfair), Georgia, serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -119,12 +118,12 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    font-family: var(--font-sans);
   }
 
   body {
     @apply bg-background text-foreground font-sans;
     font-weight: 400;
+    min-height: 100vh;
   }
 
   h1,
@@ -133,7 +132,9 @@
   h4,
   h5,
   h6 {
-    font-weight: 700;
+    font-family: var(--font-playfair), Georgia, serif;
+    font-weight: 600;
+    letter-spacing: -0.02em;
   }
 
   button,
@@ -145,7 +146,8 @@
 
   /* Added container centering and max-width configuration */
   .container {
-    @apply mx-auto max-w-7xl;
+    width: min(100% - 40px, 1440px);
+    margin-inline: auto;
   }
 
   /* </CHANGE> */
@@ -156,5 +158,37 @@
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+}
+
+@layer components {
+  .editorial-kicker {
+    @apply text-[11px] font-semibold uppercase tracking-[0.16em] text-primary;
+  }
+
+  .editorial-heading {
+    font-family: var(--font-playfair), Georgia, serif;
+    @apply text-3xl leading-tight tracking-[-0.02em] md:text-5xl;
+  }
+
+  .motif-divider {
+    height: 1px;
+    background:
+      repeating-linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--primary) 20%, transparent) 0 5px,
+        transparent 5px 11px
+      );
+  }
+
+  .editorial-surface {
+    @apply border border-border/70 bg-card;
+    box-shadow: 0 24px 50px rgb(47 48 50 / 4%);
+  }
+}
+
+@media (min-width: 768px) {
+  .container {
+    width: min(100% - 128px, 1440px);
   }
 }

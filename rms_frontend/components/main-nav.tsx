@@ -53,7 +53,7 @@ export function MainNav() {
   const breadcrumbs = generateBreadcrumbs()
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-white px-4 sm:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-brand-primary/5 bg-white/60 backdrop-blur-xl px-4 sm:px-6">
       <div className="hidden md:block">
         <Breadcrumb>
           <BreadcrumbList>
@@ -62,7 +62,10 @@ export function MainNav() {
                 <BreadcrumbItem>
                   <BreadcrumbLink
                     href={crumb.href}
-                    className={index === breadcrumbs.length - 1 ? "font-semibold text-[#1E3A8A]" : ""}
+                    className={cn(
+                      "transition-colors hover:text-brand-primary",
+                      index === breadcrumbs.length - 1 ? "font-bold text-brand-primary" : "text-slate-500"
+                    )}
                   >
                     {crumb.label}
                   </BreadcrumbLink>
@@ -77,40 +80,39 @@ export function MainNav() {
       <div className="ml-auto flex items-center gap-2">
         <div className="hidden md:block w-full max-w-sm">
           <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input type="search" placeholder="Search..." className="w-full bg-white pl-8 md:w-[240px] lg:w-[340px]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input type="search" placeholder="Search anything..." className="w-full bg-slate-100/50 border-transparent focus:bg-white focus:border-brand-primary/20 transition-all pl-9 md:w-[240px] lg:w-[340px] rounded-xl h-10" />
           </div>
         </div>
 
-        <Button variant="outline" size="icon" className="relative">
+        <Button variant="ghost" size="icon" className="relative hover:bg-brand-secondary/30 text-slate-600 hover:text-brand-primary rounded-xl transition-all">
           <Bell className="h-5 w-5" />
           {notifications > 0 && (
             <Badge
-              variant="destructive"
-              className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px]"
+              className="absolute top-1.5 right-1.5 h-4 w-4 p-0 flex items-center justify-center text-[10px] bg-brand-primary text-brand-secondary border-0"
             >
               {notifications}
             </Badge>
           )}
         </Button>
 
-        <Button variant="outline" size="icon">
+        <Button variant="ghost" size="icon" className="hover:bg-brand-secondary/30 text-slate-600 hover:text-brand-primary rounded-xl transition-all">
           <MessageSquare className="h-5 w-5" />
         </Button>
 
-        <Button variant="outline" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+        <Button variant="ghost" size="icon" className="hover:bg-brand-secondary/30 text-slate-600 hover:text-brand-primary rounded-xl transition-all" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
           {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </Button>
 
-        <Button variant="outline" size="icon">
+        <Button variant="ghost" size="icon" className="hover:bg-brand-secondary/30 text-slate-600 hover:text-brand-primary rounded-xl transition-all">
           <HelpCircle className="h-5 w-5" />
         </Button>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-[#F1F5F9] text-[#1E3A8A]">JD</AvatarFallback>
+            <Button variant="ghost" className="relative h-10 w-10 rounded-xl hover:bg-brand-secondary/30 p-0 overflow-hidden border border-brand-primary/5">
+              <Avatar className="h-10 w-10 rounded-none">
+                <AvatarFallback className="bg-brand-secondary text-brand-primary font-bold">JD</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>

@@ -1,7 +1,7 @@
 from rest_framework import viewsets, mixins, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.decorators import action
 from django.db import models, transaction
 from django.utils import timezone
@@ -41,15 +41,15 @@ class PublicCreateOnlinePreorderView(APIView):
 
 
 class OnlinePreorderViewSet(
-    mixins.CreateModelMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     mixins.UpdateModelMixin,
     mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
+    """Admin/staff management of online preorders. Public order creation goes through PublicCreateOnlinePreorderView."""
     queryset = OnlinePreorder.objects.all().order_by('-created_at')
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
@@ -149,7 +149,7 @@ class OnlinePreorderViewSet(
 
         return verification
 
-    @action(detail=True, methods=["post"], url_path="start-verification", authentication_classes=[], permission_classes=[AllowAny])
+    @action(detail=True, methods=["post"], url_path="start-verification", permission_classes=[IsAuthenticated])
     def start_verification(self, request, pk=None):
         """
         Initialize a verification session for this online preorder.
@@ -158,7 +158,7 @@ class OnlinePreorderViewSet(
         serializer = OnlinePreorderVerificationSerializer(verification, context={"request": request})
         return Response(serializer.data)
 
-    @action(detail=True, methods=["get"], url_path="verification", authentication_classes=[], permission_classes=[AllowAny])
+    @action(detail=True, methods=["get"], url_path="verification", permission_classes=[IsAuthenticated])
     def get_verification(self, request, pk=None):
         """
         Get current verification state for this online preorder.
@@ -171,7 +171,7 @@ class OnlinePreorderViewSet(
         serializer = OnlinePreorderVerificationSerializer(verification, context={"request": request})
         return Response(serializer.data)
 
-    @action(detail=True, methods=["post"], url_path="verify-scan", authentication_classes=[], permission_classes=[AllowAny])
+    @action(detail=True, methods=["post"], url_path="verify-scan", permission_classes=[IsAuthenticated])
     def verify_scan(self, request, pk=None):
         """
         Handle a barcode scan for the given online preorder.
@@ -264,7 +264,7 @@ class OnlinePreorderViewSet(
         )
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    @action(detail=True, methods=["post"], url_path="complete-verification", authentication_classes=[], permission_classes=[AllowAny])
+    @action(detail=True, methods=["post"], url_path="complete-verification", permission_classes=[IsAuthenticated])
     def complete_verification(self, request, pk=None):
         """
         Mark verification as completed and update order status to DELIVERED.
@@ -289,7 +289,7 @@ class OnlinePreorderViewSet(
         serializer = OnlinePreorderVerificationSerializer(verification, context={"request": request})
         return Response(serializer.data)
 
-    @action(detail=True, methods=["post"], url_path="skip-verification", authentication_classes=[], permission_classes=[AllowAny])
+    @action(detail=True, methods=["post"], url_path="skip-verification", permission_classes=[IsAuthenticated])
     def skip_verification(self, request, pk=None):
         """
         Skip verification for this order but still move it to DELIVERED.

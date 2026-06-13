@@ -7,8 +7,8 @@ echo "🔧 Fixing Production Media Directory Issue..."
 echo "=================================================="
 
 # Set variables
-MEDIA_DIR="/home/rawstitc/public_html/media"
-USER="rawstitc"
+MEDIA_DIR="/home/torongox/public_html/media"
+USER="torongox"
 
 # Create media directory
 echo "📁 Creating media directory: $MEDIA_DIR"
@@ -52,7 +52,6 @@ echo ""
 echo "Next steps:"
 echo "1. Restart your Django application"
 echo "2. Test file upload through your API"
-
 
 
 

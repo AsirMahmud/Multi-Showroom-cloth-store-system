@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image"
+import Link from "next/link"
 import { Trash2, Minus, Plus, Tag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useEffect, useState } from "react"
@@ -20,6 +21,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
+import { formatCurrency, normalizeCartLine, parseProductId } from "@/lib/utils"
 
 interface PricedCartItem {
   productId: number
@@ -75,26 +77,7 @@ export function CartItems() {
         setLoading(true)
 
         // Normalize items: extract numeric productId and ensure variations are properly set
-        const normalizedItems = items.map((item) => {
-          let productId: string | number = item.productId
-          let variations = item.variations ? { ...item.variations } : {}
-
-          // If productId contains a slash (e.g., "141/blue"), extract the numeric ID and color
-          if (typeof item.productId === 'string' && item.productId.includes('/')) {
-            const parts = item.productId.split('/')
-            productId = parts[0] // Get the numeric part
-            // If color is not already in variations, extract it from productId
-            if (!variations.color && parts.length > 1) {
-              variations.color = parts.slice(1).join('/') // Handle multi-part colors
-            }
-          }
-
-          return {
-            productId: productId,
-            quantity: item.quantity,
-            variations: Object.keys(variations).length > 0 ? variations : undefined
-          }
-        })
+        const normalizedItems = items.map(normalizeCartLine)
 
         const response = await ecommerceApi.priceCart(normalizedItems)
         setPricedItems(response.items)
@@ -114,7 +97,7 @@ export function CartItems() {
       <div className="border border-dashed rounded-lg p-8 text-center">
         <p className="text-muted-foreground mb-4">Your cart is empty.</p>
         <Button asChild>
-          <a href="/">Continue Shopping</a>
+          <Link href="/">Continue Shopping</Link>
         </Button>
       </div>
     )
@@ -183,13 +166,7 @@ export function CartItems() {
         const itemSize = normalizeValue(it.variations?.size)
 
         // Extract numeric product ID from string (handle cases like "141/blue")
-        let numericProductId: number
-        if (typeof it.productId === 'string' && it.productId.includes('/')) {
-          const parts = it.productId.split('/')
-          numericProductId = Number(parts[0]) || 0
-        } else {
-          numericProductId = Number(it.productId) || 0
-        }
+        const numericProductId = parseProductId(it.productId)
 
         const pricedItem = pricedItems.find((pi) => {
           if (pi.productId !== numericProductId) return false
@@ -226,8 +203,8 @@ export function CartItems() {
         let unitPrice = pricedItem?.unit_price || Number(productInfo?.selling_price) || 0
 
         return (
-          <div key={`${it.productId}-${JSON.stringify(it.variations || {})}`} className="flex gap-4 p-4 border rounded-lg bg-card">
-            <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-muted">
+          <div key={`${it.productId}-${JSON.stringify(it.variations || {})}`} className="flex gap-5 border-b border-border/70 py-6">
+            <div className="relative h-32 w-24 flex-shrink-0 overflow-hidden bg-muted">
               <Image
                 src={productImage}
                 alt={productName}
@@ -257,7 +234,7 @@ export function CartItems() {
                       {discount && <span className="text-xs text-destructive font-medium">-{discount}%</span>}
                     </div>
                   )}
-                  <div className="font-semibold mt-1">৳{unitPrice.toFixed(2)}</div>
+                  <div className="mt-1">{formatCurrency(unitPrice)}</div>
                 </div>
                 <Button
                   variant="ghost"
@@ -275,7 +252,7 @@ export function CartItems() {
                 </Button>
               </div>
               <div className="flex justify-between items-center mt-4">
-                <div className="flex items-center gap-3 bg-muted rounded-full px-4 py-2">
+                <div className="flex items-center gap-3 border border-input bg-white px-3 py-2">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -311,7 +288,7 @@ export function CartItems() {
                     <span className="sr-only">Increase quantity</span>
                   </Button>
                 </div>
-                <div className="font-bold text-lg">৳{(unitPrice * it.quantity).toFixed(2)}</div>
+                <div className="font-serif text-lg">{formatCurrency(unitPrice * it.quantity)}</div>
               </div>
             </div>
           </div>

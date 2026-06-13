@@ -1,13 +1,9 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import React, { useState, useMemo, useEffect } from "react";
+import { PageHeader, MetricCard, DataPanel } from "@/components/ui/professional";
+import { Skeleton } from "@/components/ui/skeleton";
+import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +23,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   BarChart,
   Bar,
@@ -48,31 +43,47 @@ import {
   DollarSign,
   Users,
   TrendingUp,
-  TrendingDown,
   Clock,
   CreditCard,
   Phone,
   Mail,
-  MapPin,
   AlertCircle,
+  ChevronRight,
+  Filter,
+  Download,
+  Wallet,
+  ArrowUpRight,
+  UserCheck,
+  CheckCircle2,
+  TrendingDown,
+  Loader2,
+  History,
+  FileText
 } from "lucide-react";
 import { useDueSales } from "@/hooks/queries/use-sales";
 import { addPayment } from "@/lib/api/sales";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Sale } from "@/types/sales";
+import { cn, formatCurrency } from "@/lib/utils";
 
-interface ExpandedSale extends Omit<Sale, 'customer'> {
-  customer?: {
-    id: number;
-    first_name: string;
-    last_name: string;
-    email?: string;
-    phone?: string;
-  } | null;
-}
+const CHART_COLORS = ["#163625", "#2a6646", "#E4FCD5", "#f59e0b", "#ef4444"];
 
-const CHART_COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
+// Framer motion variants
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+    },
+  },
+};
+
+const item = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0 },
+};
 
 export default function DueSalesPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -89,23 +100,17 @@ export default function DueSalesPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch due sales data (any sale with amount_due > 0 regardless of status)
   const { sales: salesData, isLoading } = useDueSales({
     page_size: 1000,
   });
 
-  // Filter and process due sales data
   const dueSales = useMemo(() => {
     if (!salesData) return [];
     
     return salesData.filter((sale: Sale) => {
-      // Additional frontend filtering for due sales
-      const isUnpaid = sale.amount_due && sale.amount_due > 0;
-      const isPending = sale.status === 'pending';
+      const amountDue = parseFloat(sale.amount_due?.toString() || "0") || 0;
+      if (amountDue <= 0) return false;
       
-      if (!isUnpaid && !isPending) return false;
-      
-      // Apply search filter
       if (searchTerm) {
         const searchLower = searchTerm.toLowerCase();
         const matchesInvoice = sale.invoice_number?.toLowerCase().includes(searchLower);
@@ -116,13 +121,11 @@ export default function DueSalesPage() {
         if (!matchesInvoice && !matchesCustomer) return false;
       }
       
-             // Apply customer filter
-       const customerId = typeof sale.customer === 'object' ? sale.customer?.id : sale.customer;
-       if (selectedCustomer && selectedCustomer !== "all" && selectedCustomer !== customerId?.toString()) {
-         return false;
-       }
+      const customerId = typeof sale.customer === 'object' ? sale.customer?.id : sale.customer;
+      if (selectedCustomer && selectedCustomer !== "all" && selectedCustomer !== customerId?.toString()) {
+        return false;
+      }
       
-      // Apply time filter
       if (timeFilter !== "all") {
         const dateString = sale.date || sale.created_at;
         if (!dateString) return false;
@@ -148,7 +151,6 @@ export default function DueSalesPage() {
     });
   }, [salesData, searchTerm, selectedCustomer, timeFilter]);
 
-  // Calculate analytics data
   const analytics = useMemo(() => {
     const totalDue = dueSales.reduce((sum, sale) => {
       const amount = parseFloat(sale.amount_due?.toString() || '0') || 0;
@@ -162,7 +164,6 @@ export default function DueSalesPage() {
       })
     ).size;
     
-    // Monthly due analysis
     const monthlyData = dueSales.reduce((acc, sale) => {
       const date = new Date((sale.date ?? sale.created_at) || '');
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
@@ -170,28 +171,27 @@ export default function DueSalesPage() {
       if (!acc[monthKey]) {
         acc[monthKey] = { month: monthKey, amount: 0, count: 0 };
       }
-             acc[monthKey].amount += parseFloat(sale.amount_due?.toString() || '0') || 0;
+      acc[monthKey].amount += parseFloat(sale.amount_due?.toString() || '0') || 0;
       acc[monthKey].count += 1;
       return acc;
     }, {} as Record<string, { month: string; amount: number; count: number }>);
 
-    // Age analysis
     const ageAnalysis = dueSales.reduce((acc, sale) => {
       const saleDate = new Date((sale.date ?? sale.created_at) || '');
       const now = new Date();
       const diffDays = Math.ceil((now.getTime() - saleDate.getTime()) / (1000 * 60 * 60 * 24));
       
       let ageGroup = "";
-      if (diffDays <= 7) ageGroup = "0-7 days";
-      else if (diffDays <= 30) ageGroup = "8-30 days";
-      else if (diffDays <= 60) ageGroup = "31-60 days";
-      else ageGroup = "60+ days";
+      if (diffDays <= 7) ageGroup = "0-7 Days";
+      else if (diffDays <= 30) ageGroup = "8-30 Days";
+      else if (diffDays <= 60) ageGroup = "31-60 Days";
+      else ageGroup = "60+ Days";
       
       if (!acc[ageGroup]) {
         acc[ageGroup] = { name: ageGroup, value: 0, amount: 0 };
       }
       acc[ageGroup].value += 1;
-             acc[ageGroup].amount += parseFloat(sale.amount_due?.toString() || '0') || 0;
+      acc[ageGroup].amount += parseFloat(sale.amount_due?.toString() || '0') || 0;
       return acc;
     }, {} as Record<string, { name: string; value: number; amount: number }>);
 
@@ -199,12 +199,19 @@ export default function DueSalesPage() {
       totalDue,
       totalSales,
       uniqueCustomers,
+      oldestDueDays: dueSales.reduce((maxDays, sale) => {
+        const saleDate = new Date((sale.date ?? sale.created_at) || '');
+        const diffDays = Math.max(
+          0,
+          Math.ceil((Date.now() - saleDate.getTime()) / (1000 * 60 * 60 * 24))
+        );
+        return Math.max(maxDays, Number.isFinite(diffDays) ? diffDays : 0);
+      }, 0),
       monthlyData: Object.values(monthlyData).sort((a, b) => a.month.localeCompare(b.month)),
       ageAnalysis: Object.values(ageAnalysis)
     };
   }, [dueSales]);
 
-  // Group sales by customer
   const customerGroups = useMemo(() => {
     const groups = dueSales.reduce((acc, sale) => {
       const customerKey = String(
@@ -228,7 +235,6 @@ export default function DueSalesPage() {
       acc[customerKey].sales.push(sale);
       acc[customerKey].totalDue += parseFloat(sale.amount_due?.toString() || '0') || 0;
       
-      // Track oldest sale
       const currentOldest = new Date((acc[customerKey].oldestSale.date ?? acc[customerKey].oldestSale.created_at) || '');
       const thisSale = new Date((sale.date ?? sale.created_at) || '');
       if (thisSale < currentOldest) {
@@ -241,55 +247,32 @@ export default function DueSalesPage() {
     return Object.values(groups).sort((a: any, b: any) => b.totalDue - a.totalDue);
   }, [dueSales]);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+  const handleSelectCustomerSales = (customerGroup: any) => {
+    setSelectedCustomerSales(customerGroup);
+    setShowCustomerSalesDialog(true);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+  const handleSelectSaleForPayment = (sale: Sale) => {
+    setSelectedSale(sale);
+    setShowCustomerSalesDialog(false);
+    setPaymentAmount("");
+    setPaymentNotes("");
+    setPaymentMethod("cash");
   };
 
-     const handleSelectCustomerSales = (customerGroup: any) => {
-     setSelectedCustomerSales(customerGroup);
-     setShowCustomerSalesDialog(true);
-   };
-
-   const handleSelectSaleForPayment = (sale: Sale) => {
-     setSelectedSale(sale);
-     setShowCustomerSalesDialog(false);
-     setPaymentAmount("");
-     setPaymentNotes("");
-     setPaymentMethod("cash");
-   };
-
-       const handleCompletePayment = async () => {
-      if (!selectedSale || !paymentAmount) return;
-     
-     const paymentAmountNum = parseFloat(paymentAmount);
-     const amountDue = parseFloat(selectedSale.amount_due?.toString() || '0') || 0;
+  const handleCompletePayment = async () => {
+    if (!selectedSale || !paymentAmount) return;
+    
+    const paymentAmountNum = parseFloat(paymentAmount);
+    const amountDue = parseFloat(selectedSale.amount_due?.toString() || '0') || 0;
     
     if (paymentAmountNum <= 0) {
-      toast({
-        title: "Invalid Amount",
-        description: "Payment amount must be greater than 0.",
-        variant: "destructive",
-      });
+      toast({ title: "Invalid Amount", description: "Payment amount must be greater than 0.", variant: "destructive" });
       return;
     }
     
     if (paymentAmountNum > amountDue) {
-      toast({
-        title: "Amount Too High",
-        description: `Payment amount cannot exceed the due amount of ${formatCurrency(amountDue)}.`,
-        variant: "destructive",
-      });
+      toast({ title: "Amount Too High", description: `Payment amount cannot exceed ${formatCurrency(amountDue)}.`, variant: "destructive" });
       return;
     }
     
@@ -302,29 +285,12 @@ export default function DueSalesPage() {
         status: 'completed'
       });
       
-      const isCompletePayment = paymentAmountNum >= amountDue;
-      
-      toast({
-        title: isCompletePayment ? "Payment Completed" : "Partial Payment Processed",
-        description: isCompletePayment 
-          ? `Payment of ${formatCurrency(paymentAmountNum)} completed. Sale status updated.`
-          : `Partial payment of ${formatCurrency(paymentAmountNum)} processed. Remaining due: ${formatCurrency(amountDue - paymentAmountNum)}.`,
-      });
-      
+      toast({ title: paymentAmountNum >= amountDue ? "Payment Completed" : "Partial Payment Processed", description: "Ledger updated successfully." });
       setSelectedSale(null);
-      setPaymentAmount("");
-      setPaymentNotes("");
-      setPaymentMethod("cash");
-      
       queryClient.invalidateQueries({ queryKey: ['due-sales'] });
       queryClient.invalidateQueries({ queryKey: ['sales'] });
     } catch (error) {
-      console.error('Error processing payment:', error);
-      toast({
-        title: "Payment Failed",
-        description: "Failed to process payment. Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Payment Failed", description: "Failed to process transaction.", variant: "destructive" });
     } finally {
       setIsProcessingPayment(false);
     }
@@ -332,584 +298,333 @@ export default function DueSalesPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-32" />
-          ))}
+      <div className="space-y-8 p-8">
+        <Skeleton className="h-12 w-64 rounded-xl" />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-32 rounded-3xl" />)}
         </div>
-        <div className="grid gap-6 md:grid-cols-2">
-          <Skeleton className="h-[400px]" />
-          <Skeleton className="h-[400px]" />
-        </div>
+        <Skeleton className="h-[600px] rounded-[32px]" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Due Sales</h1>
-          <p className="text-muted-foreground">
-            Manage outstanding payments and track due amounts
-          </p>
+    <motion.div variants={container} initial="hidden" animate="show" className="space-y-8 p-4 md:p-8">
+      <PageHeader
+        title="Payment Orchestration"
+        description="Monitor outstanding liabilities, manage debt recovery, and reconcile customer ledgers."
+        icon={<Wallet className="h-6 w-6" />}
+        actions={
+          <div className="flex gap-3">
+            <Button variant="outline" className="h-10 rounded-xl border-slate-200 bg-white/50 backdrop-blur-md font-bold text-xs uppercase tracking-widest">
+              <Download className="h-3.5 w-3.5 mr-2" /> Financial Audit
+            </Button>
+          </div>
+        }
+      />
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard
+          label="Total Receivables"
+          value={formatCurrency(analytics.totalDue)}
+          icon={<DollarSign className="h-5 w-5" />}
+          helper={`Across ${analytics.totalSales} outstanding invoices`}
+          tone="rose"
+        />
+        <MetricCard
+          label="Debtor Network"
+          value={analytics.uniqueCustomers.toString()}
+          icon={<Users className="h-5 w-5" />}
+          helper="Unique customer entities"
+          tone="brand"
+        />
+        <MetricCard
+          label="Avg. Transaction"
+          value={formatCurrency(analytics.totalSales > 0 ? analytics.totalDue / analytics.totalSales : 0)}
+          icon={<TrendingUp className="h-5 w-5" />}
+          helper="Average debt per invoice"
+          tone="indigo"
+        />
+        <MetricCard
+          label="Oldest Due Age"
+          value={`${analytics.oldestDueDays}d`}
+          icon={<History className="h-5 w-5" />}
+          helper="Age of the oldest outstanding invoice"
+          tone="amber"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
+          <DataPanel title="Debt Ledger" description="Granular tracking of all outstanding customer obligations.">
+            <div className="flex flex-col md:flex-row gap-4 mb-6">
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+                <Input
+                  placeholder="Query Invoice or Customer..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="h-12 pl-10 bg-slate-50 border-none rounded-xl font-bold"
+                />
+              </div>
+              <Select value={timeFilter} onValueChange={setTimeFilter}>
+                <SelectTrigger className="h-12 w-48 bg-slate-50 border-none rounded-xl font-black text-[10px] uppercase tracking-widest">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-slate-100 shadow-2xl">
+                  <SelectItem value="all" className="font-bold text-[10px] uppercase">All Epochs</SelectItem>
+                  <SelectItem value="week" className="font-bold text-[10px] uppercase">Last 7 Cycles</SelectItem>
+                  <SelectItem value="month" className="font-bold text-[10px] uppercase">Current Moon</SelectItem>
+                  <SelectItem value="quarter" className="font-bold text-[10px] uppercase">Quarterly Alpha</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <AnimatePresence>
+                {customerGroups.map((group: any) => (
+                  <motion.div
+                    key={group.customer?.id || 'unknown'}
+                    layout
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="p-5 rounded-3xl bg-white border border-slate-100 shadow-sm hover:shadow-xl transition-all group border-t-4 border-t-red-500"
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-2xl bg-slate-100 flex items-center justify-center text-brand-primary font-black text-xs uppercase">
+                          {group.customerName.charAt(0)}
+                        </div>
+                        <div>
+                          <h3 className="font-black text-sm text-brand-primary uppercase tracking-tighter truncate max-w-[120px]">{group.customerName}</h3>
+                          <div className="flex items-center text-[10px] font-bold text-slate-400">
+                            <Phone className="h-2.5 w-2.5 mr-1" /> {group.customerPhone || "Unlisted"}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-black text-red-600">{formatCurrency(group.totalDue)}</div>
+                        <Badge variant="outline" className="bg-red-50 text-red-700 border-none text-[8px] font-black uppercase tracking-widest px-1.5 py-0">
+                          {group.sales.length} Invoices
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 mb-4">
+                      {group.sales.slice(0, 2).map((sale: Sale) => (
+                        <div key={sale.id} className="flex justify-between items-center p-2.5 bg-slate-50 rounded-xl border border-transparent hover:border-brand-primary/10 transition-colors">
+                          <div>
+                            <div className="text-[10px] font-black text-brand-primary uppercase">{sale.invoice_number}</div>
+                            <div className="text-[9px] font-bold text-slate-400">{new Date(sale.date || sale.created_at || "").toLocaleDateString()}</div>
+                          </div>
+                          <div className="text-[11px] font-black text-slate-600">{formatCurrency(sale.amount_due || 0)}</div>
+                        </div>
+                      ))}
+                      {group.sales.length > 2 && (
+                        <div className="text-center text-[9px] font-black text-slate-400 uppercase tracking-widest pt-1">+{group.sales.length - 2} Additional Units</div>
+                      )}
+                    </div>
+
+                    <Button 
+                      onClick={() => group.sales.length === 1 ? handleSelectSaleForPayment(group.sales[0]) : handleSelectCustomerSales(group)}
+                      className="w-full h-10 bg-brand-primary text-brand-secondary hover:bg-brand-primary/90 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand-primary/10"
+                    >
+                      <CreditCard className="h-3 w-3 mr-2" /> {group.sales.length === 1 ? "Reconcile Unit" : "Batch Reconciliation"}
+                    </Button>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          </DataPanel>
+        </div>
+
+        <div className="space-y-8">
+          <DataPanel title="Aging Matrix" description="Liquidity depth analysis by chronological delay.">
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={analytics.ageAnalysis}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={8}
+                    dataKey="value"
+                  >
+                    {analytics.ageAnalysis.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} className="stroke-none" />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {analytics.ageAnalysis.map((entry, index) => (
+                <div key={index} className="flex items-center gap-2 p-2 bg-slate-50 rounded-xl border border-slate-100">
+                  <div className="h-2 w-2 rounded-full" style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }} />
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{entry.name}</span>
+                    <span className="text-xs font-black text-brand-primary">{formatCurrency(entry.amount)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </DataPanel>
+
+          <DataPanel title="Temporal Trends" description="Monthly liability flow indicators.">
+            <div className="h-[200px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={analytics.monthlyData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} />
+                  <YAxis hide />
+                  <Tooltip 
+                    cursor={{ fill: '#E4FCD5', opacity: 0.4 }}
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontSize: '10px', fontWeight: 'bold' }}
+                    formatter={(value) => formatCurrency(Number(value))} 
+                  />
+                  <Bar dataKey="amount" fill="#163625" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </DataPanel>
         </div>
       </div>
 
-      {/* Analytics Dashboard */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Due Amount</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {formatCurrency(analytics.totalDue)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Across {analytics.totalSales} sales
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Due Sales Count</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analytics.totalSales}</div>
-            <p className="text-xs text-muted-foreground">
-              Outstanding transactions
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Customers with Due</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analytics.uniqueCustomers}</div>
-            <p className="text-xs text-muted-foreground">
-              Unique customers
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Average Due</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(analytics.totalSales > 0 ? analytics.totalDue / analytics.totalSales : 0)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Per transaction
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters and Search */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Search & Filters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Search</label>
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by invoice, customer..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Time Period</label>
-              <Select value={timeFilter} onValueChange={setTimeFilter}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Time</SelectItem>
-                  <SelectItem value="week">Last Week</SelectItem>
-                  <SelectItem value="month">Last Month</SelectItem>
-                  <SelectItem value="quarter">Last Quarter</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Customer</label>
-                             <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
-                 <SelectTrigger>
-                   <SelectValue placeholder="All Customers" />
-                 </SelectTrigger>
-                 <SelectContent>
-                   <SelectItem value="all">All Customers</SelectItem>
-                  {customerGroups.map((group: any) => (
-                    <SelectItem 
-                      key={group.customer?.id || 'unknown'} 
-                      value={group.customer?.id?.toString() || 'unknown'}
-                    >
-                      {group.customerName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">&nbsp;</label>
-              <Button 
-                variant="outline" 
-                                 onClick={() => {
-                   setSearchTerm("");
-                   setTimeFilter("all");
-                   setSelectedCustomer("all");
-                 }}
-                className="w-full"
-              >
-                Clear Filters
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Analytics Charts */}
-      <Tabs defaultValue="monthly" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="monthly">Monthly Trends</TabsTrigger>
-          <TabsTrigger value="aging">Aging Analysis</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="monthly" className="space-y-4">
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Monthly Due Amount</CardTitle>
-                <CardDescription>Outstanding amounts by month</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={analytics.monthlyData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis tickFormatter={(value) => formatCurrency(value)} />
-                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                    <Bar dataKey="amount" fill="#ef4444" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Monthly Due Count</CardTitle>
-                <CardDescription>Number of due sales by month</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={analytics.monthlyData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="count" stroke="#0088FE" strokeWidth={2} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="aging" className="space-y-4">
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Due Age Distribution</CardTitle>
-                <CardDescription>Sales count by age groups</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={analytics.ageAnalysis}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {analytics.ageAnalysis.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Due Amount by Age</CardTitle>
-                <CardDescription>Outstanding amounts by age groups</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={analytics.ageAnalysis} layout="horizontal">
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" tickFormatter={(value) => formatCurrency(value)} />
-                    <YAxis dataKey="name" type="category" width={80} />
-                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                    <Bar dataKey="amount" fill="#f59e0b" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
-
-      {/* Customer Cards */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Due Sales by Customer</CardTitle>
-          <CardDescription>
-            {customerGroups.length} customers with outstanding payments
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {customerGroups.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Due Sales Found</h3>
-              <p className="text-muted-foreground">
-                {searchTerm || selectedCustomer || timeFilter !== "all" 
-                  ? "Try adjusting your filters to see more results."
-                  : "All sales are paid up! Great job."}
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {customerGroups.map((group: any) => (
-                <Card key={group.customer?.id || 'unknown'} className="border-l-4 border-l-red-500">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1">
-                        <CardTitle className="text-lg">{group.customerName}</CardTitle>
-                        {group.customerPhone && (
-                          <div className="flex items-center text-sm text-muted-foreground">
-                            <Phone className="h-3 w-3 mr-1" />
-                            {group.customerPhone}
-                          </div>
-                        )}
-                        {group.customer?.email && (
-                          <div className="flex items-center text-sm text-muted-foreground">
-                            <Mail className="h-3 w-3 mr-1" />
-                            {group.customer.email}
-                          </div>
-                        )}
-                      </div>
-                      <Badge variant="destructive">
-                        {formatCurrency(group.totalDue)}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Sales Count:</span>
-                        <span className="font-medium">{group.sales.length}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Oldest Due:</span>
-                         <span className="font-medium">
-                           {formatDate((group.oldestSale.date ?? group.oldestSale.created_at) || new Date().toISOString())}
-                         </span>
-                      </div>
-                    </div>
-                    
-                                         {/* Due Sales List */}
-                     <div className="space-y-2">
-                       <h4 className="text-sm font-medium">Due Sales ({group.sales.length}):</h4>
-                       <div className="space-y-1 max-h-32 overflow-y-auto">
-                         {group.sales.map((sale: Sale) => (
-                           <div key={sale.id} className="flex justify-between items-center text-xs bg-muted rounded p-2">
-                             <div className="flex-1">
-                               <div className="font-medium">{sale.invoice_number}</div>
-                               <div className="text-muted-foreground">
-                                  {formatDate((sale.date ?? sale.created_at) || new Date().toISOString())}
-                               </div>
-                             </div>
-                             <div className="text-right">
-                               <div className="font-medium">{formatCurrency(parseFloat(sale.amount_due?.toString() || '0') || 0)}</div>
-                               <Badge variant="outline" className="text-xs">
-                                 {sale.status}
-                               </Badge>
-                             </div>
-                           </div>
-                         ))}
-                       </div>
-                     </div>
-
-                                         {/* Action Buttons */}
-                     <div className="flex gap-2 pt-2">
-                       {group.sales.length === 1 ? (
-                         <Button 
-                           size="sm" 
-                           className="flex-1"
-                           onClick={() => setSelectedSale(group.sales[0])}
-                         >
-                           <CreditCard className="h-3 w-3 mr-1" />
-                           Pay Now
-                         </Button>
-                       ) : (
-                         <Button 
-                           size="sm" 
-                           className="flex-1"
-                           onClick={() => handleSelectCustomerSales(group)}
-                         >
-                           <CreditCard className="h-3 w-3 mr-1" />
-                           Select & Pay ({group.sales.length})
-                         </Button>
-                       )}
-                       <Button 
-                         size="sm" 
-                         variant="outline"
-                         onClick={() => {
-                           // Navigate to customer details
-                           window.open(`/customers/${group.customer?.id}`, '_blank');
-                         }}
-                       >
-                         View Details
-                       </Button>
-                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Payment Completion Dialog */}
-      <Dialog open={!!selectedSale} onOpenChange={() => setSelectedSale(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Complete Payment</DialogTitle>
-            <DialogDescription>
-              Process payment for {selectedSale?.invoice_number}
+      {/* Customer Sales Dialog */}
+      <Dialog open={showCustomerSalesDialog} onOpenChange={setShowCustomerSalesDialog}>
+        <DialogContent className="max-w-2xl rounded-[32px] border-none shadow-2xl overflow-hidden p-0 bg-white">
+          <DialogHeader className="p-8 bg-brand-primary text-brand-secondary">
+            <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Unit Selection Protocol</DialogTitle>
+            <DialogDescription className="text-emerald-100/70 text-[10px] font-black uppercase tracking-widest">
+              Multiple outstanding liabilities detected for {selectedCustomerSales?.customerName}
             </DialogDescription>
           </DialogHeader>
+          <div className="p-8 space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+            {selectedCustomerSales?.sales.map((sale: Sale) => (
+              <div 
+                key={sale.id}
+                onClick={() => handleSelectSaleForPayment(sale)}
+                className="flex items-center justify-between p-5 rounded-2xl border border-slate-100 bg-slate-50/50 hover:bg-emerald-50 hover:border-emerald-200 transition-all cursor-pointer group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-brand-primary">
+                    <FileText className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="font-black text-sm text-brand-primary uppercase tracking-tighter">{sale.invoice_number}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Protocol Date: {new Date(sale.date || sale.created_at || "").toLocaleDateString()}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-black text-red-600">{formatCurrency(parseFloat(sale.amount_due?.toString() || '0') || 0)}</p>
+                  <Button size="sm" className="bg-brand-primary text-brand-secondary font-black text-[9px] uppercase h-8 px-4 mt-1 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">Reconcile</Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reconcile Dialog */}
+      <Dialog open={!!selectedSale} onOpenChange={() => setSelectedSale(null)}>
+        <DialogContent className="max-w-md rounded-[32px] border-none shadow-2xl overflow-hidden p-0 bg-white">
+          <DialogHeader className="p-8 bg-brand-primary text-brand-secondary">
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-2xl bg-white/20 flex items-center justify-center backdrop-blur-md">
+                <CreditCard className="h-6 w-6" />
+              </div>
+              <div>
+                <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Reconciliation</DialogTitle>
+                <DialogDescription className="text-emerald-100/70 text-[10px] font-black uppercase tracking-widest">
+                  Processing unit {selectedSale?.invoice_number}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
           
-          {selectedSale && (
+          <div className="p-8 space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Payload</p>
+                <p className="text-lg font-black text-brand-primary">{formatCurrency(selectedSale?.total || 0)}</p>
+              </div>
+              <div className="p-4 bg-red-50 rounded-2xl border border-red-100">
+                <p className="text-[9px] font-black text-red-400 uppercase tracking-widest mb-1">Active Liability</p>
+                <p className="text-lg font-black text-red-600">{formatCurrency(parseFloat(selectedSale?.amount_due?.toString() || '0') || 0)}</p>
+              </div>
+            </div>
+
             <div className="space-y-4">
               <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Total Amount:</span>
-                  <span className="font-medium">{formatCurrency(selectedSale.total || 0)}</span>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Reconciliation Amount</label>
+                <div className="relative">
+                  <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+                  <Input
+                    type="number"
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(e.target.value)}
+                    className="pl-10 h-14 rounded-2xl bg-slate-50 border-none text-lg font-black text-brand-primary"
+                    placeholder="0.00"
+                  />
                 </div>
-                                 <div className="flex justify-between text-sm">
-                   <span>Already Paid:</span>
-                   <span className="font-medium">{formatCurrency((selectedSale.total || 0) - (parseFloat(selectedSale.amount_due?.toString() || '0') || 0))}</span>
-                 </div>
-                 <div className="flex justify-between text-sm font-semibold">
-                   <span>Remaining Due:</span>
-                   <span className="text-red-600">{formatCurrency(parseFloat(selectedSale.amount_due?.toString() || '0') || 0)}</span>
-                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Payment Amount</label>
-                                 <Input
-                   type="number"
-                   step="0.01"
-                   min="0"
-                   max={parseFloat(selectedSale.amount_due?.toString() || '0') || 0}
-                   value={paymentAmount}
-                   onChange={(e) => setPaymentAmount(e.target.value)}
-                   placeholder="Enter payment amount"
-                 />
                 <div className="flex gap-2">
-                                     <Button
-                     size="sm"
-                     variant="outline"
-                     onClick={() => setPaymentAmount(((parseFloat(selectedSale.amount_due?.toString() || '0') || 0) / 2).toFixed(2))}
-                   >
-                     Pay Half
-                   </Button>
-                   <Button
-                     size="sm"
-                     variant="outline"
-                     onClick={() => setPaymentAmount((parseFloat(selectedSale.amount_due?.toString() || '0') || 0).toFixed(2))}
-                   >
-                     Pay Full
-                   </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1 h-9 rounded-xl font-black text-[9px] uppercase border-slate-100 text-slate-400 hover:text-brand-primary"
+                    onClick={() => setPaymentAmount((parseFloat(selectedSale?.amount_due?.toString() || '0') / 2).toFixed(2))}
+                  >
+                    50% Split
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1 h-9 rounded-xl font-black text-[9px] uppercase border-slate-100 text-slate-400 hover:text-brand-primary"
+                    onClick={() => setPaymentAmount((parseFloat(selectedSale?.amount_due?.toString() || '0')).toFixed(2))}
+                  >
+                    Full Balance
+                  </Button>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Payment Method</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Instrument</label>
                 <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-12 bg-slate-50 border-none rounded-xl font-black text-[10px] uppercase tracking-widest">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cash">Cash</SelectItem>
-                    <SelectItem value="card">Card</SelectItem>
-                    <SelectItem value="mobile">Mobile Payment</SelectItem>
+                  <SelectContent className="rounded-xl border-slate-100">
+                    <SelectItem value="cash" className="font-bold text-[10px] uppercase">Physical Cash</SelectItem>
+                    <SelectItem value="card" className="font-bold text-[10px] uppercase">Digital Terminal</SelectItem>
+                    <SelectItem value="mobile" className="font-bold text-[10px] uppercase">Mobile Vector</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Notes (Optional)</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Reconciliation Notes</label>
                 <Input
                   value={paymentNotes}
                   onChange={(e) => setPaymentNotes(e.target.value)}
-                  placeholder="Payment notes..."
+                  className="h-12 rounded-xl bg-slate-50 border-none font-bold text-xs"
+                  placeholder="Internal audit metadata..."
                 />
               </div>
-
-              {paymentAmount && (
-                <div className="bg-blue-50 border border-blue-200 rounded p-3">
-                  <div className="text-sm">
-                    <div className="font-medium">Payment Summary:</div>
-                    <div className="flex justify-between">
-                      <span>Amount to pay:</span>
-                      <span>{formatCurrency(parseFloat(paymentAmount) || 0)}</span>
-                    </div>
-                                         <div className="flex justify-between">
-                       <span>Remaining after payment:</span>
-                       <span>{formatCurrency((parseFloat(selectedSale.amount_due?.toString() || '0') || 0) - (parseFloat(paymentAmount) || 0))}</span>
-                     </div>
-                     <div className="mt-1 text-xs text-blue-700">
-                       {(parseFloat(paymentAmount) || 0) >= (parseFloat(selectedSale.amount_due?.toString() || '0') || 0) 
-                         ? "✅ This will complete the payment" 
-                         : "⚠️ This is a partial payment"}
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
-          )}
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedSale(null)}>
-              Cancel
-            </Button>
             <Button 
               onClick={handleCompletePayment}
-              disabled={!paymentAmount || parseFloat(paymentAmount) <= 0 || isProcessingPayment}
+              disabled={isProcessingPayment || !paymentAmount}
+              className="w-full h-14 bg-brand-primary text-brand-secondary hover:bg-brand-primary/90 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-brand-primary/20"
             >
-              {isProcessingPayment ? "Processing..." : "Process Payment"}
+              {isProcessingPayment ? <Loader2 className="h-5 w-5 animate-spin" /> : "Authorize Reconciliation"}
             </Button>
-                     </DialogFooter>
-         </DialogContent>
-       </Dialog>
-
-       {/* Customer Sales Selection Dialog */}
-       <Dialog open={showCustomerSalesDialog} onOpenChange={setShowCustomerSalesDialog}>
-         <DialogContent className="max-w-2xl">
-           <DialogHeader>
-             <DialogTitle>Select Sale to Pay - {selectedCustomerSales?.customerName}</DialogTitle>
-             <DialogDescription>
-               Choose which sale you want to process payment for
-             </DialogDescription>
-           </DialogHeader>
-           
-           {selectedCustomerSales && (
-             <div className="space-y-4">
-               {/* Customer Summary */}
-               <div className="bg-muted rounded-lg p-4">
-                 <div className="flex justify-between items-start">
-                   <div>
-                     <h3 className="font-semibold">{selectedCustomerSales.customerName}</h3>
-                     {selectedCustomerSales.customerPhone && (
-                       <p className="text-sm text-muted-foreground flex items-center">
-                         <Phone className="h-3 w-3 mr-1" />
-                         {selectedCustomerSales.customerPhone}
-                       </p>
-                     )}
-                   </div>
-                   <div className="text-right">
-                     <div className="text-lg font-bold text-red-600">
-                       {formatCurrency(selectedCustomerSales.totalDue)}
-                     </div>
-                     <p className="text-sm text-muted-foreground">Total Due</p>
-                   </div>
-                 </div>
-               </div>
-
-               {/* Sales List */}
-               <div className="space-y-2 max-h-96 overflow-y-auto">
-                 <h4 className="font-medium">Due Sales ({selectedCustomerSales.sales.length})</h4>
-                 {selectedCustomerSales.sales.map((sale: Sale) => (
-                   <Card key={sale.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                     <CardContent className="p-4">
-                       <div className="flex justify-between items-start">
-                         <div className="space-y-2">
-                           <div className="flex items-center gap-2">
-                             <h5 className="font-semibold">{sale.invoice_number}</h5>
-                             <Badge variant="outline" className="text-xs">
-                               {sale.status}
-                             </Badge>
-                           </div>
-                           <div className="text-sm text-muted-foreground">
-                              <div>Date: {formatDate((sale.date ?? sale.created_at) || new Date().toISOString())}</div>
-                             <div>Total: {formatCurrency(sale.total || 0)}</div>
-                             <div>Paid: {formatCurrency((sale.total || 0) - (parseFloat(sale.amount_due?.toString() || '0') || 0))}</div>
-                           </div>
-                           {sale.items && sale.items.length > 0 && (
-                             <div className="text-xs text-muted-foreground">
-                               Items: {sale.items.slice(0, 2).map((item: any) => item.product?.name || 'Unknown').join(', ')}
-                               {sale.items.length > 2 && ` +${sale.items.length - 2} more`}
-                             </div>
-                           )}
-                         </div>
-                         <div className="text-right space-y-2">
-                           <div className="text-lg font-bold text-red-600">
-                             {formatCurrency(parseFloat(sale.amount_due?.toString() || '0') || 0)}
-                           </div>
-                           <Button 
-                             size="sm"
-                             onClick={() => handleSelectSaleForPayment(sale)}
-                             className="w-full"
-                           >
-                             <CreditCard className="h-3 w-3 mr-1" />
-                             Pay This Sale
-                           </Button>
-                         </div>
-                       </div>
-                     </CardContent>
-                   </Card>
-                 ))}
-               </div>
-             </div>
-           )}
-
-           <DialogFooter>
-             <Button variant="outline" onClick={() => setShowCustomerSalesDialog(false)}>
-               Cancel
-             </Button>
-           </DialogFooter>
-         </DialogContent>
-       </Dialog>
-     </div>
-   );
- }
+          </div>
+        </DialogContent>
+      </Dialog>
+    </motion.div>
+  );
+}

@@ -21,18 +21,18 @@ const features = [
 
 export function FeaturesSection() {
   return (
-    <section className="w-full py-16   bg-muted/30">
-      <div className="container px-4">
-        <div className="flex justify-between max-w-[700px] md:flex-row flex-col gap-4 mx-auto items-center">
+    <section className="w-full bg-muted/60 py-16">
+      <div className="container">
+        <div className="grid gap-8 md:grid-cols-3">
           {features.map((feature) => {
             const Icon = feature.icon
             return (
-              <div key={feature.title} className="flex flex-col items-center text-center gap-4">
-                <div className="rounded-full bg-background p-4 shadow-sm">
-                  <Icon className="h-8 w-8" />
+              <div key={feature.title} className="border-l border-border pl-6">
+                <div className="mb-5">
+                  <Icon className="h-7 w-7 text-primary" strokeWidth={1.5} />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-lg mb-1">{feature.title}</h3>
+                  <h3 className="font-serif text-xl">{feature.title}</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
                 </div>
               </div>

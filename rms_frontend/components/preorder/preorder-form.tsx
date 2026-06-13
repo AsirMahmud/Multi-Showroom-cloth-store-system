@@ -44,6 +44,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { GridSkeleton } from "@/components/ui/professional";
 
 const formSchema = z.object({
   customer_name: z.string().min(1, "Customer name is required"),
@@ -74,7 +75,7 @@ export function PreorderForm({
   const [selectedVariants, setSelectedVariants] = useState<string[]>(
     preorder && preorder.items
       ? preorder.items
-          .map((item) => `${item.size}-${item.color}`)
+          .map((item) => `${item.design}-${item.color}`)
           .filter((id) => id !== "")
       : []
   );
@@ -86,7 +87,7 @@ export function PreorderForm({
     preorder && preorder.items
       ? Object.fromEntries(
           preorder.items
-            .map((item) => [`${item.size}-${item.color}`, item.quantity])
+            .map((item) => [`${item.design}-${item.color}`, item.quantity])
             .filter(([key]) => key !== "")
         )
       : {}
@@ -127,10 +128,13 @@ export function PreorderForm({
 
   // Memoize product variants and filter out those with no stock
   const productVariants = useMemo(() => {
-    if (!currentProduct?.variations) return [];
-    return currentProduct.variations.filter(
-      (v: any) => v.is_active && v.stock > 0
-    );
+    if (!currentProduct?.designs) return [];
+    return currentProduct.designs.flatMap((d: any) => 
+      d.colors.map((c: any) => ({
+        ...c,
+        design_name: d.name,
+      }))
+    ).filter((v: any) => v.is_active && v.stock > 0);
   }, [currentProduct]);
 
   // Memoize total amount calculation
@@ -140,12 +144,12 @@ export function PreorderForm({
     const variantsToCalculate = selectAllVariants
       ? productVariants
       : productVariants.filter((v: any) =>
-          selectedVariants.includes(`${v.size}-${v.color}`)
+          selectedVariants.includes(`${v.design_name}-${v.color}`)
         );
 
     return variantsToCalculate.reduce((sum: number, variant: any) => {
-      const qty = variantQuantities[`${variant.size}-${variant.color}`] || 0;
-      return sum + currentProduct.selling_price * qty;
+      const qty = variantQuantities[`${variant.design_name}-${variant.color}`] || 0;
+      return sum + currentProduct.retail_price * qty;
     }, 0);
   }, [
     currentProduct,
@@ -161,7 +165,7 @@ export function PreorderForm({
   // Memoize handlers to prevent unnecessary re-renders
   const handleVariantToggle = useCallback(
     (variant: any) => {
-      const variantKey = `${variant.size}-${variant.color}`;
+      const variantKey = `${variant.design_name}-${variant.color}`;
       let newSelected: string[];
       const newQuantities = { ...variantQuantities };
 
@@ -182,7 +186,7 @@ export function PreorderForm({
 
   const handleQuantityChange = useCallback(
     (variant: any, newQuantity: number, maxStock: number) => {
-      const variantKey = `${variant.size}-${variant.color}`;
+      const variantKey = `${variant.design_name}-${variant.color}`;
       const clampedQuantity = Math.max(1, Math.min(newQuantity, maxStock));
       setVariantQuantities((prev) => ({
         ...prev,
@@ -197,11 +201,11 @@ export function PreorderForm({
       setSelectAllVariants(checked);
       if (checked) {
         setSelectedVariants(
-          productVariants.map((v: any) => `${v.size}-${v.color}`)
+          productVariants.map((v: any) => `${v.design_name}-${v.color}`)
         );
         const newQuantities: { [variantKey: string]: number } = {};
         productVariants.forEach((v: any) => {
-          newQuantities[`${v.size}-${v.color}`] = 1;
+          newQuantities[`${v.design_name}-${v.color}`] = 1;
         });
         setVariantQuantities(newQuantities);
       } else {
@@ -217,11 +221,11 @@ export function PreorderForm({
     const variantsToUpdate = selectAllVariants
       ? productVariants
       : productVariants.filter((v: any) =>
-          selectedVariants.includes(`${v.size}-${v.color}`)
+          selectedVariants.includes(`${v.design_name}-${v.color}`)
         );
 
     variantsToUpdate.forEach((variant: any) => {
-      newQuantities[`${variant.size}-${variant.color}`] = variant.stock;
+      newQuantities[`${variant.design_name}-${variant.color}`] = variant.stock;
     });
 
     setVariantQuantities(newQuantities);
@@ -260,19 +264,19 @@ export function PreorderForm({
     const checkedVariants = selectAllVariants
       ? productVariants
       : productVariants.filter((v: any) =>
-          selectedVariants.includes(`${v.size}-${v.color}`)
+          selectedVariants.includes(`${v.design_name}-${v.color}`)
         );
 
     checkedVariants.forEach((variant: any) => {
-      const qty = variantQuantities[`${variant.size}-${variant.color}`] || 0;
+      const qty = variantQuantities[`${variant.design_name}-${variant.color}`] || 0;
       if (qty < 1) {
         setAmountError(
-          `Please enter quantity for variant ${variant.size} / ${variant.color}`
+          `Please enter quantity for variant ${variant.design_name} / ${variant.color}`
         );
         hasError = true;
       } else if (qty > variant.stock) {
         setAmountError(
-          `Cannot order more than available stock (${variant.stock}) for variant ${variant.size} / ${variant.color}`
+          `Cannot order more than available stock (${variant.stock}) for variant ${variant.design_name} / ${variant.color}`
         );
         hasError = true;
       }
@@ -307,7 +311,7 @@ export function PreorderForm({
       // Build items array for preorder
       let variantKeys: string[] = [];
       if (selectAllVariants) {
-        variantKeys = productVariants.map((v: any) => `${v.size}-${v.color}`);
+        variantKeys = productVariants.map((v: any) => `${v.design_name}-${v.color}`);
       } else {
         variantKeys = selectedVariants;
       }
@@ -321,7 +325,7 @@ export function PreorderForm({
       const items = variantKeys
         .map((variantKey) => {
           const variant = productVariants.find(
-            (v: any) => `${v.size}-${v.color}` === variantKey
+            (v: any) => `${v.design_name}-${v.color}` === variantKey
           );
           if (!variant) return null;
 
@@ -330,10 +334,10 @@ export function PreorderForm({
 
           return {
             product_id: currentProduct.id,
-            size: variant.size,
+            design: variant.design_name,
             color: variant.color,
             quantity: qty,
-            unit_price: currentProduct.selling_price,
+            unit_price: currentProduct.retail_price,
             discount: 0,
           };
         })
@@ -384,11 +388,7 @@ export function PreorderForm({
   }
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <GridSkeleton cols={2} rows={4} />;
   }
 
   return (
@@ -521,7 +521,7 @@ export function PreorderForm({
                               <div className="flex items-center justify-between w-full">
                                 <span>{option.label}</span>
                                 <Badge variant="secondary" className="ml-2">
-                                  ${option.product.selling_price}
+                                  ${option.product.retail_price}
                                 </Badge>
                               </div>
                             )}
@@ -573,16 +573,16 @@ export function PreorderForm({
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {productVariants.map((variant: any) => {
                         const isSelected = selectedVariants.includes(
-                          `${variant.size}-${variant.color}`
+                          `${variant.design_name}-${variant.color}`
                         );
                         const quantity =
                           variantQuantities[
-                            `${variant.size}-${variant.color}`
+                            `${variant.design_name}-${variant.color}`
                           ] || 0;
 
                         return (
                           <Card
-                            key={`${variant.size}-${variant.color}`}
+                            key={`${variant.design_name}-${variant.color}`}
                             className={`cursor-pointer transition-all duration-200 ${
                               isSelected
                                 ? "ring-2 ring-primary bg-primary/5"
@@ -606,7 +606,7 @@ export function PreorderForm({
                                       )}
                                     </div>
                                     <span className="font-medium">
-                                      {variant.size} / {variant.color}
+                                      {variant.design_name} / {variant.color}
                                     </span>
                                   </div>
                                   <div className="flex items-center space-x-2">
@@ -701,21 +701,21 @@ export function PreorderForm({
                             ? productVariants
                             : productVariants.filter((v: any) =>
                                 selectedVariants.includes(
-                                  `${v.size}-${v.color}`
+                                  `${v.design_name}-${v.color}`
                                 )
                               )
                           ).map((variant: any) => (
                             <div
-                              key={`${variant.size}-${variant.color}`}
+                              key={`${variant.design_name}-${variant.color}`}
                               className="flex justify-between"
                             >
                               <span>
-                                {variant.size} / {variant.color}
+                                {variant.design_name} / {variant.color}
                               </span>
                               <span className="font-medium">
                                 Qty:{" "}
                                 {variantQuantities[
-                                  `${variant.size}-${variant.color}`
+                                  `${variant.design_name}-${variant.color}`
                                 ] || 1}
                               </span>
                             </div>

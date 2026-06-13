@@ -1,6 +1,5 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   BarChart,
   Bar,
@@ -10,6 +9,8 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
+  ComposedChart,
+  Area
 } from "recharts";
 import {
   Table,
@@ -19,18 +20,35 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { MetricCard, DataPanel } from "@/components/ui/professional";
 import { useCategoryReport } from "@/hooks/queries/use-reports";
-import { DateRange } from "react-day-picker";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatCurrency, cn } from "@/lib/utils";
+import { motion } from "framer-motion";
+import { 
+  Layers, 
+  TrendingUp, 
+  Package, 
+  BarChart3, 
+  DollarSign, 
+  Activity,
+  ArrowRight
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 const COLORS = [
-  "#0088FE",
-  "#00C49F",
-  "#FFBB28",
-  "#FF8042",
-  "#8884d8",
-  "#82ca9d",
+  "#163625", // Brand Primary
+  "#34d399", // Emerald
+  "#818cf8", // Indigo
+  "#fbbf24", // Amber
+  "#f472b6", // Pink
+  "#2dd4bf", // Teal
 ];
+
+const item = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0 },
+};
 
 export function CategoryReport({
   dateRange,
@@ -41,198 +59,159 @@ export function CategoryReport({
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="space-y-8">
+        <div className="grid gap-4 md:grid-cols-3">
           {[...Array(3)].map((_, i) => (
-            <Card key={i}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <Skeleton className="h-4 w-[100px]" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-8 w-[60px]" />
-                <Skeleton className="h-4 w-[80px] mt-2" />
-              </CardContent>
-            </Card>
+            <Skeleton key={i} className="h-28 rounded-[24px]" />
           ))}
         </div>
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-[200px]" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-[300px] w-full" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-[200px]" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-[300px] w-full" />
-          </CardContent>
-        </Card>
+        <Skeleton className="h-[400px] rounded-[32px]" />
       </div>
     );
   }
 
   if (!categoryData) return null;
 
+  const topCategory = categoryData.top_categories[0];
+
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Categories
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {categoryData.total_categories}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {categoryData.total_products} total products
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Top Category</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {categoryData.top_categories[0]?.name || "N/A"}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              $
-              {parseFloat(
-                categoryData.top_categories[0]?.total_sales || "0"
-              ).toFixed(2)}{" "}
-              in sales
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Average Products
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {categoryData.total_categories > 0
-                ? Math.round(
-                    categoryData.total_products / categoryData.total_categories
-                  )
-                : 0}
-            </div>
-            <p className="text-xs text-muted-foreground">Per category</p>
-          </CardContent>
-        </Card>
+    <div className="space-y-8">
+      <div className="grid gap-4 md:grid-cols-3">
+        <motion.div variants={item}>
+          <MetricCard
+            label="Total Categories"
+            value={categoryData.total_categories.toString()}
+            icon={<Layers className="h-5 w-5" />}
+            tone="brand"
+            helper={`${categoryData.total_products} Active Products`}
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Leading Category"
+            value={topCategory?.name || "N/A"}
+            icon={<TrendingUp className="h-5 w-5" />}
+            tone="emerald"
+            helper={`${formatCurrency(parseFloat(topCategory?.total_sales || "0"))} total sales`}
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Category Depth"
+            value={categoryData.total_categories > 0 ? Math.round(categoryData.total_products / categoryData.total_categories).toString() : "0"}
+            icon={<Package className="h-5 w-5" />}
+            tone="indigo"
+            helper="Avg products per category"
+          />
+        </motion.div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Sales by Category</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
+      <div className="grid gap-8 lg:grid-cols-2">
+        <motion.div variants={item}>
+          <DataPanel title="Category Revenue" description="Total revenue generated by each product category.">
+            <div className="h-[350px] pt-4">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={categoryData.sales_by_category}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="category_name" />
-                  <YAxis />
-                  <Tooltip
-                    formatter={(value: string) =>
-                      `$${parseFloat(value).toFixed(2)}`
-                    }
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis 
+                    dataKey="category_name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
                   />
-                  <Bar dataKey="total_sales" name="Total Sales">
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
+                    tickFormatter={(val) => `$${val}`}
+                  />
+                  <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }} />
+                  <Bar dataKey="total_sales" radius={[8, 8, 0, 0]}>
                     {categoryData.sales_by_category.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
-                      />
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </CardContent>
-        </Card>
+          </DataPanel>
+        </motion.div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Stock by Category</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
+        <motion.div variants={item}>
+          <DataPanel title="Stock Valuation" description="Current inventory value across all categories.">
+            <div className="h-[350px] pt-4">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={categoryData.stock_by_category}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="category_name" />
-                  <YAxis />
-                  <Tooltip
-                    formatter={(value: string) =>
-                      `$${parseFloat(value).toFixed(2)}`
-                    }
+                <ComposedChart data={categoryData.stock_by_category}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis 
+                    dataKey="category_name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
                   />
-                  <Bar dataKey="total_value" name="Total Value">
-                    {categoryData.stock_by_category.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
+                    tickFormatter={(val) => `$${val}`}
+                  />
+                  <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }} />
+                  <Area type="monotone" dataKey="total_value" fill="#163625" fillOpacity={0.05} stroke="#163625" strokeWidth={3} name="Total Value" />
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
-          </CardContent>
-        </Card>
+          </DataPanel>
+        </motion.div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Category Details</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Category</TableHead>
-                <TableHead>Total Sales</TableHead>
-                <TableHead>Items Sold</TableHead>
-                <TableHead>Products</TableHead>
-                <TableHead>Stock</TableHead>
-                <TableHead className="text-right">Stock Value</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {categoryData.sales_by_category.map((category) => {
-                const stockInfo = categoryData.stock_by_category.find(
-                  (s) => s.category_name === category.category_name
-                );
-                return (
-                  <TableRow key={category.category_name}>
-                    <TableCell>{category.category_name}</TableCell>
-                    <TableCell>
-                      ${parseFloat(category.total_sales).toFixed(2)}
-                    </TableCell>
-                    <TableCell>{category.items_sold}</TableCell>
-                    <TableCell>{category.unique_products}</TableCell>
-                    <TableCell>{stockInfo?.total_stock || 0}</TableCell>
-                    <TableCell className="text-right">
-                      ${parseFloat(stockInfo?.total_value || "0").toFixed(2)}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <motion.div variants={item}>
+        <DataPanel title="Category Performance Overview" description="Detailed performance metrics for all business categories.">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b border-slate-100 hover:bg-transparent">
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">Category</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">Product Count</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6">Units Sold</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Total Revenue</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 text-right">Stock Value</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {categoryData.sales_by_category.map((category) => {
+                  const stockInfo = categoryData.stock_by_category.find(
+                    (s) => s.category_name === category.category_name
+                  );
+                  return (
+                    <TableRow key={category.category_name} className="border-b border-slate-50 group hover:bg-slate-50/50 transition-colors">
+                      <TableCell className="py-5">
+                        <span className="text-xs font-black text-slate-700">{category.category_name}</span>
+                      </TableCell>
+                      <TableCell className="py-5">
+                        <Badge variant="secondary" className="bg-slate-100 text-slate-500 border-none font-bold text-[10px]">
+                          {category.unique_products} Products
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="py-5">
+                        <div className="flex items-center gap-1.5">
+                          <Activity className="h-3 w-3 text-slate-300" />
+                          <span className="text-xs font-bold text-slate-500">{category.items_sold} Units</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-5 text-right font-black text-brand-primary text-xs">
+                        {formatCurrency(parseFloat(category.total_sales))}
+                      </TableCell>
+                      <TableCell className="py-5 text-right font-black text-slate-900 text-xs">
+                        {formatCurrency(parseFloat(stockInfo?.total_value || "0"))}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </DataPanel>
+      </motion.div>
     </div>
   );
 }

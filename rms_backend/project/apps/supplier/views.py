@@ -5,11 +5,12 @@ from rest_framework.decorators import action
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Supplier
 from .serializers import SupplierSerializer
+from apps.authentication.permissions import HasReadWritePermission
 
 class SupplierViewSet(viewsets.ModelViewSet):
     queryset = Supplier.objects.all()
     serializer_class = SupplierSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasReadWritePermission(read=None, write="manage_suppliers")]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['is_active']
     search_fields = ['company_name', 'contact_person', 'email', 'phone', 'tax_number']

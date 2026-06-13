@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next'
 import { ecommerceApi } from '@/lib/api'
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://rawstitch.com.bd'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://example.com'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const routes: MetadataRoute.Sitemap = [
@@ -46,7 +46,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     // Fetch all products to generate product URLs
     // Fetch in batches to handle large catalogs
-    let allProducts: Array<{ product_id: number; color_slug: string }> = []
+    let allProducts: Array<{ product_id: number; color_slug: string; product_url: string }> = []
     let currentPage = 1
     const pageSize = 1000
     let hasMore = true
@@ -70,7 +70,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     // Add product pages
     const productRoutes: MetadataRoute.Sitemap = allProducts.map((product) => ({
-      url: `${SITE_URL}/product/${product.product_id}/${product.color_slug}`,
+      url: `${SITE_URL}${product.product_url}`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.7,
@@ -109,4 +109,3 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return routes
 }
-

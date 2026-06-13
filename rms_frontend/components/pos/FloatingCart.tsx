@@ -4,13 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { usePOSStore } from "@/store/pos-store";
 import { motion, AnimatePresence } from "framer-motion";
-
-const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(amount);
-};
+import { formatCurrency } from "@/lib/utils";
 
 export default function FloatingCart() {
   const { cart, handleCompletePayment } = usePOSStore();

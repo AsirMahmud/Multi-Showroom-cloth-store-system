@@ -9,13 +9,14 @@ import { useInfiniteProducts } from "@/hooks/queries/useInventory";
 import { Product } from "@/types/inventory";
 import { Discount } from "@/lib/api/ecommerce";
 import { useDebounce } from "@/hooks/use-debounce";
+import { GridSkeleton } from "@/components/ui/professional";
 
 interface POSStyleProductGridProps {
     searchQuery?: string;
     discounts?: Discount[];
     onSelectItem: (item: {
         product: Product;
-        size: string;
+        design: string;
         color: string;
         colorHex?: string;
         finalPrice: number;
@@ -28,7 +29,7 @@ export default function POSStyleProductGrid({
     discounts = [],
     onSelectItem,
 }: POSStyleProductGridProps) {
-    const [selectedSizes, setSelectedSizes] = useState<Record<number, string>>({});
+    const [selectedDesigns, setSelectedDesigns] = useState<Record<number, string>>({});
     const [selectedColors, setSelectedColors] = useState<Record<number, string>>({});
     const observerTarget = useRef<HTMLDivElement>(null);
 
@@ -68,43 +69,43 @@ export default function POSStyleProductGrid({
 
     const products = data?.pages.flatMap((page) => page.results) || [];
 
-    const getUniqueValues = (
-        variations: Product["variations"] = [],
-        key: "size" | "color"
-    ): string[] => {
-        return [...new Set(variations.filter((v) => v.is_active).map((v) => v[key]))];
+    const getUniqueDesigns = (product: Product): string[] => {
+        return (product.designs || []).map(d => d.name);
     };
 
-    const getVariationStock = (
-        product: Product,
-        size?: string,
-        color?: string
-    ): number => {
-        const variation = (product.variations || []).find(
-            (v) =>
-                v.is_active &&
-                (!size || v.size === size) &&
-                (!color || v.color === color)
-        );
-        return variation?.stock || 0;
+    const getUniqueColors = (product: Product, designName?: string): string[] => {
+        if (!designName) {
+            const allColors = (product.designs || []).flatMap(d => d.colors.map(c => c.color));
+            return [...new Set(allColors)];
+        }
+        const design = (product.designs || []).find(d => d.name === designName);
+        return design ? design.colors.map(c => c.color) : [];
     };
 
     const getCurrentVariationStock = (product: Product): number => {
-        if (!selectedSizes[product.id] && !selectedColors[product.id]) {
-            return (product.variations || []).reduce((total, v) => v.is_active ? total + v.stock : total, 0);
+        const selectedDesign = selectedDesigns[product.id];
+        const selectedColor = selectedColors[product.id];
+
+        if (!selectedDesign && !selectedColor) {
+            return (product.designs || []).reduce((total, d) => 
+                total + d.colors.reduce((cTotal, c) => cTotal + c.stock, 0), 0);
         }
 
-        if (selectedSizes[product.id] && !selectedColors[product.id]) {
-            return (product.variations || []).reduce((total, v) =>
-                v.is_active && v.size === selectedSizes[product.id] ? total + v.stock : total, 0);
+        if (selectedDesign && !selectedColor) {
+            const design = (product.designs || []).find(d => d.name === selectedDesign);
+            return design ? design.colors.reduce((total, c) => total + c.stock, 0) : 0;
         }
 
-        if (!selectedSizes[product.id] && selectedColors[product.id]) {
-            return (product.variations || []).reduce((total, v) =>
-                v.is_active && v.color === selectedColors[product.id] ? total + v.stock : total, 0);
+        if (!selectedDesign && selectedColor) {
+            return (product.designs || []).reduce((total, d) => {
+                const colorMatch = d.colors.find(c => c.color === selectedColor);
+                return total + (colorMatch ? colorMatch.stock : 0);
+            }, 0);
         }
 
-        return getVariationStock(product, selectedSizes[product.id], selectedColors[product.id]);
+        const design = (product.designs || []).find(d => d.name === selectedDesign);
+        const colorMatch = design?.colors.find(c => c.color === selectedColor);
+        return colorMatch?.stock || 0;
     };
 
     const calculateDiscount = (product: Product) => {
@@ -149,11 +150,7 @@ export default function POSStyleProductGrid({
     };
 
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-        );
+        return <GridSkeleton cols={3} rows={2} />;
     }
 
     if (isError) {
@@ -169,11 +166,11 @@ export default function POSStyleProductGrid({
         <div className="flex flex-col gap-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {products.map((product) => {
-                    const sizes = getUniqueValues(product.variations, "size");
-                    const colors = getUniqueValues(product.variations, "color");
+                    const designs = getUniqueDesigns(product);
+                    const colors = getUniqueColors(product, selectedDesigns[product.id]);
                     const currentStock = getCurrentVariationStock(product);
                     const discountPercent = calculateDiscount(product);
-                    const originalPrice = product.selling_price || 0;
+                    const originalPrice = product.retail_price || 0;
                     const discountAmount = (originalPrice * discountPercent) / 100;
                     const finalPrice = originalPrice - discountAmount;
 
@@ -215,20 +212,20 @@ export default function POSStyleProductGrid({
 
                                 {/* Variant Selection */}
                                 <div className="space-y-3 mb-4">
-                                    {sizes.length > 0 && (
+                                    {designs.length > 0 && (
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-medium text-slate-500 uppercase">Size</p>
+                                            <p className="text-[10px] font-medium text-slate-500 uppercase">Design</p>
                                             <div className="flex flex-wrap gap-1">
-                                                {sizes.map((size) => (
+                                                {designs.map((design) => (
                                                     <button
-                                                        key={size}
-                                                        onClick={() => setSelectedSizes({ ...selectedSizes, [product.id]: size })}
-                                                        className={`px-2 py-1 text-xs rounded border transition-colors ${selectedSizes[product.id] === size
+                                                        key={design}
+                                                        onClick={() => setSelectedDesigns({ ...selectedDesigns, [product.id]: design })}
+                                                        className={`px-2 py-1 text-xs rounded border transition-colors ${selectedDesigns[product.id] === design
                                                             ? "bg-slate-900 text-white border-slate-900"
                                                             : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
                                                             }`}
                                                     >
-                                                        {size}
+                                                        {design}
                                                     </button>
                                                 ))}
                                             </div>
@@ -264,17 +261,16 @@ export default function POSStyleProductGrid({
                                     <Button
                                         size="sm"
                                         className="h-8 px-3"
-                                        disabled={currentStock === 0 || !selectedSizes[product.id] || !selectedColors[product.id]}
+                                        disabled={currentStock === 0 || !selectedDesigns[product.id] || !selectedColors[product.id]}
                                         onClick={() => {
-                                            const variation = product.variations.find(v =>
-                                                v.size === selectedSizes[product.id] &&
-                                                v.color === selectedColors[product.id]
-                                            );
+                                            const design = (product.designs || []).find(d => d.name === selectedDesigns[product.id]);
+                                            const colorVariation = design?.colors.find(c => c.color === selectedColors[product.id]);
+                                            
                                             onSelectItem({
                                                 product,
-                                                size: selectedSizes[product.id],
+                                                design: selectedDesigns[product.id],
                                                 color: selectedColors[product.id],
-                                                colorHex: variation?.color_hax,
+                                                colorHex: colorVariation?.color_hax,
                                                 finalPrice,
                                                 discountAmount
                                             });
@@ -298,8 +294,12 @@ export default function POSStyleProductGrid({
             </div>
 
             {hasNextPage && (
-                <div ref={observerTarget} className="flex justify-center py-4">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary opacity-50"></div>
+                <div ref={observerTarget} className="flex justify-center py-8">
+                    {isFetchingNextPage && (
+                        <div className="w-full">
+                            <GridSkeleton count={4} />
+                        </div>
+                    )}
                 </div>
             )}
         </div>

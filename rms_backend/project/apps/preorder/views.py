@@ -12,6 +12,7 @@ from .serializers import (
     PreorderDashboardSerializer
 )
 from apps.inventory.models import Product
+from apps.branches.permissions import get_allowed_branch_ids, get_requested_branch_id, is_admin
 
 
 class PreorderProductViewSet(viewsets.ModelViewSet):
@@ -84,6 +85,11 @@ class PreorderViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         queryset = Preorder.objects.all()
+        requested_branch_id = get_requested_branch_id(self.request)
+        if requested_branch_id:
+            queryset = queryset.filter(branch_id=requested_branch_id)
+        elif not is_admin(self.request.user):
+            queryset = queryset.filter(branch_id__in=get_allowed_branch_ids(self.request.user))
         status_filter = self.request.query_params.get('status', None)
         product_filter = self.request.query_params.get('product', None)
         source_filter = self.request.query_params.get('source', None)
@@ -98,6 +104,10 @@ class PreorderViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(source=source_filter)
         
         return queryset.order_by('-created_at')
+
+    def perform_create(self, serializer):
+        branch_id = get_requested_branch_id(self.request) or self.request.user.managed_branch_id
+        serializer.save(branch_id=branch_id)
     
     @action(detail=False, methods=['get'])
     def dashboard(self, request):

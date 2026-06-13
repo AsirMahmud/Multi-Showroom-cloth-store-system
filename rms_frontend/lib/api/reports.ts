@@ -1,5 +1,6 @@
 import axios from './axios-config';
 import { DateRange } from 'react-day-picker';
+import { toLocalDateString } from '@/lib/date';
 
 export interface ReportDateRange {
     date_from: string;
@@ -7,6 +8,9 @@ export interface ReportDateRange {
 }
 
 export interface SalesReport {
+    gross_sales: string;
+    returns_total: string;
+    net_sales: string;
     total_sales: string;
     total_orders: number;
     total_items_sold: number;
@@ -15,6 +19,9 @@ export interface SalesReport {
     sales_by_date: Array<{
         date: string;
         total: string;
+        gross_sales: string;
+        returns_total: string;
+        net_sales: string;
         items_count: number;
     }>;
     sales_by_category: Array<{
@@ -56,6 +63,7 @@ export interface ExpenseReport {
 export interface InventoryReport {
     total_products: number;
     total_stock_value: string;
+    potential_revenue?: string;
     low_stock_items: Array<{
         name: string;
         stock: number;
@@ -122,8 +130,11 @@ export interface CategoryReport {
 
 export interface ProfitLossReport {
     total_revenue: string;
+    gross_profit: string;
     total_expenses: string;
     net_profit: string;
+    net_revenue?: string;
+    profit_margin_basis?: string;
     profit_margin: string;
     revenue_by_date: Array<{
         date: string;
@@ -204,10 +215,16 @@ export interface ProductPerformanceReport {
 }
 
 export interface OverviewReport {
+    gross_sales?: string;
+    returns_total?: string;
+    net_sales?: string;
     total_sales: string;
     total_orders: number;
+    gross_profit: string;
     total_expenses: string;
     net_profit: string;
+    net_revenue?: string;
+    profit_margin_basis?: string;
     profit_margin: string;
     sales_by_date: Array<{
         date: string;
@@ -248,11 +265,31 @@ export interface OnlinePreorderAnalytics {
     status_breakdown: Record<string, number>;
 }
 
+export interface IntegrityReport {
+    summary: {
+        total_issues: number;
+        sale_mismatches: number;
+        payment_mismatches: number;
+        stock_mismatches: number;
+        profit_mismatches: number;
+        empty_categories: number;
+    };
+    details: {
+        sale_mismatches: any[];
+        payment_mismatches: any[];
+        stock_mismatches: any[];
+        profit_mismatches: any[];
+        empty_categories: any[];
+    };
+    timestamp: string;
+}
+
+
 export const formatDateRange = (dateRange: DateRange | undefined): ReportDateRange | null => {
     if (!dateRange?.from) return null;
     return {
-        date_from: dateRange.from.toISOString().split('T')[0],
-        date_to: (dateRange.to || dateRange.from).toISOString().split('T')[0],
+        date_from: toLocalDateString(dateRange.from),
+        date_to: toLocalDateString(dateRange.to || dateRange.from),
     };
 };
 
@@ -299,6 +336,11 @@ export const reportsApi = {
 
     getOnlinePreorderAnalytics: async (dateRange: ReportDateRange): Promise<OnlinePreorderAnalytics> => {
         const response = await axios.get('/reports/online-preorder-analytics/', { params: dateRange });
+        return response.data;
+    },
+    
+    getIntegrityCheck: async (): Promise<IntegrityReport> => {
+        const response = await axios.get('/reports/integrity_check/');
         return response.data;
     },
 }; 

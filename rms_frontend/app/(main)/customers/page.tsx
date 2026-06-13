@@ -1,46 +1,45 @@
 "use client";
-import { useState, useMemo, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DataTable } from "@/components/ui/data-table";
-import type { ColumnDef } from "@tanstack/react-table";
-import {
-  Download,
-  Search,
-  UserPlus,
-  Mail,
-  Phone,
-  Calendar,
-  Filter,
-  ArrowUpDown,
-  Trash2,
-  Crown,
-  Trophy,
-  Medal,
-  Award,
-  Star,
-  Users,
-  TrendingUp,
-  Target,
+
+import { useState, useEffect, useMemo } from "react";
+import { PageHeader, MetricCard, DataPanel } from "@/components/ui/professional";
+import { Skeleton } from "@/components/ui/skeleton";
+import { motion } from "framer-motion";
+import { 
+  Download, 
+  Search, 
+  UserPlus, 
+  Mail, 
+  Phone, 
+  Calendar, 
+  Filter, 
+  ArrowUpDown, 
+  Trash2, 
+  Crown, 
+  Trophy, 
+  Medal, 
+  Award, 
+  Star, 
+  Users, 
+  TrendingUp, 
+  Target, 
   Zap,
+  DollarSign,
+  ChevronRight,
+  UserCheck
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import { DataTable } from "@/components/ui/data-table";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import type { ColumnDef } from "@tanstack/react-table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -52,7 +51,6 @@ import {
   useBulkDeleteCustomers,
   useCustomerAnalytics,
 } from "@/hooks/queries/use-customer";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,12 +62,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { deleteAllCustomers } from "@/lib/api/customer";
 import { TopCustomersAnalysis } from "@/components/customers/top-customers-analysis";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useDebounce } from "@/hooks/use-debounce";
+import { cn } from "@/lib/utils";
 
 type Customer = {
   id: number;
@@ -362,6 +361,21 @@ const columns: ColumnDef<Customer>[] = [
   },
 ];
 
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+    },
+  },
+};
+
+const item = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0 },
+};
+
 export default function CustomersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
@@ -372,33 +386,24 @@ export default function CustomersPage() {
   const [sortBy, setSortBy] = useState("ranking");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   
-  // Debounce search query
   const debouncedQuery = useDebounce(searchQuery, 300);
   
   useEffect(() => {
     setDebouncedSearchQuery(debouncedQuery);
-    setCurrentPage(1); // Reset to first page when searching
+    setCurrentPage(1);
   }, [debouncedQuery]);
   
-  // Prepare filters for API
   const apiFilters = useMemo(() => {
     const filters: any = {};
-    
     if (filterBy !== "all") {
-      if (filterBy.startsWith("top-")) {
-        filters.ranking_filter = filterBy;
-      } else if (filterBy === "high-value" || filterBy === "low-value") {
-        filters.sales_filter = filterBy;
-      } else if (filterBy === "recent") {
-        filters.recent_filter = filterBy;
-      }
+      if (filterBy.startsWith("top-")) filters.ranking_filter = filterBy;
+      else if (filterBy === "high-value" || filterBy === "low-value") filters.sales_filter = filterBy;
+      else if (filterBy === "recent") filters.recent_filter = filterBy;
     }
-    
     if (sortBy) {
       const orderPrefix = sortOrder === "desc" ? "-" : "";
       filters.ordering = `${orderPrefix}${sortBy}`;
     }
-    
     return filters;
   }, [filterBy, sortBy, sortOrder]);
   
@@ -409,7 +414,6 @@ export default function CustomersPage() {
   const bulkDeleteCustomers = useBulkDeleteCustomers();
   const { toast } = useToast();
 
-  // Determine which data to display based on search
   let displayData = customersData;
   let isLoading = isLoadingCustomers;
   
@@ -421,6 +425,23 @@ export default function CustomersPage() {
   const customers = displayData?.results || [];
   const totalItems = displayData?.count || 0;
   const totalPages = Math.ceil(totalItems / pageSize);
+
+  if (isLoading && !customers.length) {
+    return (
+      <div className="space-y-8">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-10 w-64 rounded-xl" />
+          <Skeleton className="h-10 w-32 rounded-xl" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-28 rounded-[24px]" />
+          ))}
+        </div>
+        <Skeleton className="h-[600px] rounded-[32px]" />
+      </div>
+    );
+  }
 
   const handleBulkDelete = async () => {
     const selectedIds = Object.keys(rowSelection).map(
@@ -483,294 +504,191 @@ export default function CustomersPage() {
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Customer Management</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your customer relationships and track their activity
-          </p>
-        </div>
-      </div>
+    <motion.div
+      variants={container}
+      initial="hidden"
+      animate="show"
+      className="space-y-8"
+    >
+      <PageHeader
+        title="Customer Management"
+        description="Build and maintain strong relationships with your customer base."
+        icon={<Users className="h-6 w-6" />}
+        actions={
+          <div className="flex gap-2">
+            <Button
+              asChild
+              className="h-10 px-4 bg-brand-primary text-brand-secondary hover:bg-emerald-900 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-brand-primary/20"
+            >
+              <Link href="/customers/new">
+                <UserPlus className="h-3.5 w-3.5 mr-2" />
+                Add Customer
+              </Link>
+            </Button>
+            <Button
+              variant="outline"
+              className="h-10 px-4 bg-white border-brand-primary/5 shadow-sm rounded-xl font-bold text-xs uppercase tracking-widest text-brand-primary hover:bg-slate-50"
+            >
+              <Download className="h-3.5 w-3.5 mr-2" />
+              Export
+            </Button>
+          </div>
+        }
+      />
 
       {/* Analytics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Customers
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoadingAnalytics ? (
-              <Skeleton className="h-8 w-24" />
-            ) : (
-              <>
-                <div className="text-2xl font-bold">{analytics?.total_customers || 0}</div>
-                <div className="flex items-center gap-2 mt-1">
-                  <Progress value={15} className="h-2" />
-                  <p className="text-xs text-muted-foreground">
-                    +15% from last month
-                  </p>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">
-              Active Customers
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoadingAnalytics ? (
-              <Skeleton className="h-8 w-24" />
-            ) : (
-              <>
-                <div className="text-2xl font-bold">{analytics?.active_customers || 0}</div>
-                <div className="flex items-center gap-2 mt-1">
-                  <Progress
-                    value={analytics ? (analytics.active_customers / analytics.total_customers) * 100 : 0}
-                    className="h-2"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {analytics ? Math.round((analytics.active_customers / analytics.total_customers) * 100) : 0}% of total
-                  </p>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoadingAnalytics ? (
-              <Skeleton className="h-8 w-24" />
-            ) : (
-              <>
-                <div className="text-2xl font-bold">
-                  {new Intl.NumberFormat("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                  }).format(analytics?.total_sales || 0)}
-                </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <Progress value={5} className="h-2" />
-                  <p className="text-xs text-muted-foreground">
-                    +5% from last month
-                  </p>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Avg Order Value</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoadingAnalytics ? (
-              <Skeleton className="h-8 w-24" />
-            ) : (
-              <>
-                <div className="text-2xl font-bold">
-                  {new Intl.NumberFormat("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                  }).format(analytics?.average_order_value || 0)}
-                </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <Progress value={5} className="h-2" />
-                  <p className="text-xs text-muted-foreground">
-                    +5% from last month
-                  </p>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <motion.div variants={item}>
+          <MetricCard
+            label="Total Customers"
+            value={analytics?.total_customers || 0}
+            icon={<Users className="h-5 w-5" />}
+            tone="brand"
+            helper="+15% vs last month"
+            isLoading={isLoadingAnalytics}
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Active Base"
+            value={analytics?.active_customers || 0}
+            icon={<Target className="h-5 w-5" />}
+            tone="emerald"
+            helper={`${analytics ? Math.round((analytics.active_customers / analytics.total_customers) * 100) : 0}% Engagement`}
+            isLoading={isLoadingAnalytics}
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Total Revenue"
+            value={new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(analytics?.total_sales || 0)}
+            icon={<DollarSign className="h-5 w-5" />}
+            tone="brand"
+            helper="Cumulative LTV"
+            isLoading={isLoadingAnalytics}
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Avg Order Value"
+            value={new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(analytics?.average_order_value || 0)}
+            icon={<Zap className="h-5 w-5" />}
+            tone="indigo"
+            helper="Spend per visit"
+            isLoading={isLoadingAnalytics}
+          />
+        </motion.div>
       </div>
 
       {/* Top Customers Analysis */}
       <TopCustomersAnalysis />
 
-      <div className="flex items-center justify-between mb-4">
-        {Object.keys(rowSelection).length > 0 && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete Selected ({Object.keys(rowSelection).length})
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete
-                  {Object.keys(rowSelection).length === 1
-                    ? " the selected customer"
-                    : ` ${
-                        Object.keys(rowSelection).length
-                      } selected customers`}{" "}
-                  and all associated data from the database.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleBulkDelete}
-                  className="bg-red-600 hover:bg-red-700"
-                >
-                  Delete Permanently
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            Customer List
-            {debouncedSearchQuery && (
-              <span className="text-sm font-normal text-muted-foreground ml-2">
-                - Search results for "{debouncedSearchQuery}" ({totalItems} found)
-              </span>
-            )}
-          </CardTitle>
-          <CardDescription>
-            Manage your customers and view their purchase history.
-          </CardDescription>
-          <div className="flex flex-col sm:flex-row items-center gap-4 mt-4">
+      <motion.div variants={item}>
+        <DataPanel
+          title="Customer List"
+          description="Manage your customer relationships and view purchase history."
+        >
+          <div className="flex flex-col sm:flex-row items-center gap-4 mb-6">
             <div className="relative flex-1 w-full">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
               <Input
                 type="search"
-                placeholder="Search customers by name, email, or phone..."
-                className="pl-8"
+                placeholder="Search name, email, or phone..."
+                className="pl-10 h-11 bg-slate-50 border-none rounded-xl font-bold text-sm placeholder:text-slate-300"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
-              {debouncedSearchQuery && isLoadingSearch && (
-                <div className="absolute right-2.5 top-2.5">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                </div>
-              )}
             </div>
             <div className="flex gap-2 w-full sm:w-auto">
               <Select value={filterBy} onValueChange={setFilterBy}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter by" />
+                <SelectTrigger className="w-[180px] h-11 bg-slate-50 border-none rounded-xl font-bold text-xs uppercase tracking-widest text-brand-primary">
+                  <SelectValue placeholder="Filter" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-xl border-brand-primary/5">
                   <SelectItem value="all">All Customers</SelectItem>
                   <SelectItem value="recent">Recent Customers</SelectItem>
                   <SelectItem value="high-value">High Value</SelectItem>
                   <SelectItem value="low-value">Low Value</SelectItem>
                   <SelectItem value="top-20">Top 20</SelectItem>
-                  <SelectItem value="top-30">Top 30</SelectItem>
-                  <SelectItem value="top-50">Top 50</SelectItem>
                   <SelectItem value="top-100">Top 100</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={sortBy} onValueChange={handleSortChange}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ranking">Rank</SelectItem>
-                  <SelectItem value="name">Name</SelectItem>
-                  <SelectItem value="total_sales">Total Sales</SelectItem>
-                  <SelectItem value="sales_count">Sales Count</SelectItem>
-                  <SelectItem value="last_sale_date">Last Sale</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button 
-                variant="outline" 
-                size="icon"
-                onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-              >
-                <ArrowUpDown className="h-4 w-4" />
-              </Button>
+              {Object.keys(rowSelection).length > 0 && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" className="h-11 px-4 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-rose-500/20">
+                      Delete ({Object.keys(rowSelection).length})
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="rounded-[32px] border-none shadow-2xl">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="text-xl font-black text-brand-primary">Are you sure?</AlertDialogTitle>
+                      <AlertDialogDescription className="text-slate-500 font-medium">
+                        Permanently delete {Object.keys(rowSelection).length} customers? This cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleBulkDelete}
+                        className="bg-rose-500 hover:bg-rose-600 rounded-xl font-bold"
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="flex items-center space-x-4">
-                  <Skeleton className="h-12 w-12 rounded-full" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-[250px]" />
-                    <Skeleton className="h-4 w-[200px]" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <>
-              <DataTable
-                columns={columns}
-                data={customers || []}
-                enableRowSelection
-                rowSelection={rowSelection}
-                onRowSelectionChange={setRowSelection}
-              />
-              <DataTablePagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                totalItems={totalItems}
-                pageSize={pageSize}
-                onPageChange={handlePageChange}
-                onPageSizeChange={handlePageSizeChange}
-              />
-            </>
-          )}
-        </CardContent>
-      </Card>
 
-      <div className="flex justify-between items-center mt-6">
-        <div className="flex gap-2">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete All Customers
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete all
-                  customers and their associated data from the database.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDeleteAllCustomers}
-                  className="bg-red-600 hover:bg-red-700"
-                >
-                  Delete All Customers
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-          <Button asChild>
-            <Link href="/customers/new">
-              <UserPlus className="h-4 w-4 mr-2" />
-              Add Customer
-            </Link>
-          </Button>
-        </div>
+          <DataTable
+            columns={columns}
+            data={customers || []}
+            enableRowSelection
+            rowSelection={rowSelection}
+            onRowSelectionChange={setRowSelection}
+          />
+          <div className="mt-6">
+            <DataTablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+            />
+          </div>
+        </DataPanel>
+      </motion.div>
+
+      <div className="flex justify-start gap-3 mt-6">
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="ghost" className="h-10 text-rose-500 hover:text-rose-600 hover:bg-rose-50 font-bold text-xs uppercase tracking-widest">
+              <Trash2 className="h-3.5 w-3.5 mr-2" />
+              Delete All Database
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent className="rounded-[32px] border-none shadow-2xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-xl font-black text-brand-primary">Nuclear Option</AlertDialogTitle>
+              <AlertDialogDescription className="text-slate-500 font-medium">
+                Wipe all customers? This is irreversible and will delete all associated transaction history.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="rounded-xl font-bold">Safety On</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteAllCustomers}
+                className="bg-rose-500 hover:bg-rose-600 rounded-xl font-bold"
+              >
+                Wipe Everything
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
-    </div>
+    </motion.div>
   );
 }

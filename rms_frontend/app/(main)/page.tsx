@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { PageHeader, MetricCard, DataPanel } from "@/components/ui/professional";
 import {
   BarChart,
   Bar,
@@ -42,16 +36,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { ProfitabilityInsights } from "@/components/dashboard/profitability-insights";
+import { InventoryIntelligence } from "@/components/dashboard/inventory-intelligence";
 
 const COLORS = [
-  "#0088FE",
-  "#00C49F",
-  "#FFBB28",
-  "#FF8042",
-  "#8884d8",
-  "#82ca9d",
-  "#ffc658",
-  "#ff7300",
+  "#163625", // brand-primary
+  "#10b981", // emerald-500
+  "#f59e0b", // amber-500
+  "#ef4444", // rose-500
+  "#3b82f6", // blue-500
+  "#8b5cf6", // violet-500
+  "#ec4899", // pink-500
 ];
 
 const container = {
@@ -80,22 +75,20 @@ function DashboardContent() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
-        <div className="max-w-7xl mx-auto space-y-6">
-          <div className="flex items-center justify-between">
-            <Skeleton className="h-12 w-48" />
-            <Skeleton className="h-10 w-32" />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <Skeleton key={i} className="h-32" />
-            ))}
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {[...Array(2)].map((_, i) => (
-              <Skeleton key={i} className="h-[400px]" />
-            ))}
-          </div>
+      <div className="space-y-10">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-14 w-64 rounded-2xl" />
+          <Skeleton className="h-11 w-32 rounded-xl" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-32 rounded-3xl" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {[...Array(2)].map((_, i) => (
+            <Skeleton key={i} className="h-[450px] rounded-3xl" />
+          ))}
         </div>
       </div>
     );
@@ -103,17 +96,16 @@ function DashboardContent() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-        <div className="flex flex-col items-center space-y-4 p-8 bg-white rounded-lg shadow-lg">
-          <AlertTriangle className="h-12 w-12 text-red-500" />
-          <p className="text-red-500 text-lg font-medium">
-            Failed to load dashboard data
-          </p>
-          <Button onClick={() => refetch()} variant="outline" className="mt-4">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Try Again
-          </Button>
+      <div className="flex flex-col items-center justify-center py-20 bg-white/50 backdrop-blur-xl rounded-3xl border border-brand-primary/5 shadow-premium">
+        <div className="w-20 h-20 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mb-6">
+          <AlertTriangle className="h-10 w-10" />
         </div>
+        <h3 className="text-2xl font-bold text-brand-primary">Failed to load dashboard</h3>
+        <p className="text-slate-500 mt-2">There was an error connecting to the business servers.</p>
+        <Button onClick={() => refetch()} variant="ghost" className="mt-8 gap-2 bg-brand-primary text-brand-secondary hover:bg-brand-primary/90 px-8 h-12 rounded-xl transition-all shadow-lg shadow-brand-primary/20">
+          <RefreshCw className="h-4 w-4" />
+          Retry Connection
+        </Button>
       </div>
     );
   }
@@ -155,567 +147,426 @@ function DashboardContent() {
 
   return (
     <motion.div
-      className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50"
+      className="space-y-10"
       variants={container}
       initial="hidden"
       animate="show"
     >
-      <div className="max-w-7xl mx-auto p-6">
-        <motion.div className="mb-8" variants={item}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                <TrendingUp className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-                  Business Dashboard
-                </h1>
-                <p className="text-gray-600 mt-1">
-                  Complete overview of your business performance
-                </p>
-              </div>
+      <PageHeader
+        title="Business Dashboard"
+        description="Comprehensive overview of your real-time performance and analytics."
+        icon={<TrendingUp className="h-6 w-6" />}
+        actions={
+          <Button
+            onClick={() => refetch()}
+            variant="ghost"
+            className="h-12 px-6 gap-2 bg-white/50 backdrop-blur-md border border-brand-primary/5 rounded-xl hover:bg-white transition-all shadow-sm"
+          >
+            <RefreshCw className="h-4 w-4" />
+            <span className="font-bold text-brand-primary">Sync Data</span>
+          </Button>
+        }
+      />
+
+      {/* Primary Metrics */}
+      <motion.div
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+        variants={item}
+      >
+        <MetricCard
+          label="Today's Sales"
+          value={formatCurrency(safeStats.today.sales)}
+          icon={<DollarSign className="h-5 w-5" />}
+          tone="brand"
+          helper={
+            <div className="flex items-center gap-1 text-emerald-600 font-bold">
+              <ArrowUpRight className="h-3 w-3" />
+              <span>Real-time revenue</span>
             </div>
-            <Button
-              onClick={() => refetch()}
-              variant="outline"
-              className="gap-2"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Refresh Data
-            </Button>
+          }
+        />
+
+        <MetricCard
+          label="Today's Expenses"
+          value={formatCurrency(safeStats.today.expenses)}
+          icon={<TrendingDown className="h-5 w-5" />}
+          tone="rose"
+          helper={
+            <div className="flex items-center gap-1 text-rose-500 font-bold">
+              <ArrowDownRight className="h-3 w-3" />
+              <span>Daily outgoings</span>
+            </div>
+          }
+        />
+
+        <MetricCard
+          label="Monthly Sales"
+          value={formatCurrency(safeStats.monthly.sales)}
+          icon={<TrendingUp className="h-5 w-5" />}
+          tone="emerald"
+          helper={
+            <div className="flex items-center gap-1 text-emerald-600 font-bold">
+              <ArrowUpRight className="h-3 w-3" />
+              <span>Current period</span>
+            </div>
+          }
+        />
+
+        <MetricCard
+          label="Monthly Expenses"
+          value={formatCurrency(safeStats.monthly.expenses)}
+          icon={<TrendingDown className="h-5 w-5" />}
+          tone="amber"
+          helper={
+            <div className="flex items-center gap-1 text-amber-600 font-bold">
+              <ArrowDownRight className="h-3 w-3" />
+              <span>Period total</span>
+            </div>
+          }
+        />
+      </motion.div>
+
+      {/* Business Counts */}
+      <motion.div
+        className="grid grid-cols-1 md:grid-cols-3 gap-6"
+        variants={item}
+      >
+        <MetricCard
+          label="Total Customers"
+          value={safeStats.counts.customers}
+          icon={<Users className="h-5 w-5" />}
+          tone="blue"
+          helper="Verified registrations"
+        />
+
+        <MetricCard
+          label="Total Products"
+          value={safeStats.counts.products}
+          icon={<Package className="h-5 w-5" />}
+          tone="slate"
+          helper="Active inventory count"
+        />
+
+        <MetricCard
+          label="Total Suppliers"
+          value={safeStats.counts.suppliers}
+          icon={<Truck className="h-5 w-5" />}
+          tone="brand"
+          helper="Partner network"
+        />
+      </motion.div>
+
+      {/* Charts Row 1 - Sales vs Expenses */}
+      <motion.div
+        className="grid grid-cols-1 lg:grid-cols-2 gap-8"
+        variants={item}
+      >
+        <DataPanel
+          title="Sales Performance"
+          description="Daily sales revenue trends across the current period."
+          className="shadow-premium"
+          actions={<Calendar className="h-5 w-5 text-brand-primary/20" />}
+        >
+          <div className="h-[350px] w-full">
+            {safeStats.sales_trend.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={safeStats.sales_trend}>
+                  <defs>
+                    <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#163625" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#163625" stopOpacity={0.1}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis
+                    dataKey="date__date"
+                    stroke="#94a3b8"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) =>
+                      value
+                        ? new Date(value).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                          })
+                        : ""
+                    }
+                  />
+                  <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value}`} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "rgba(255, 255, 255, 0.9)",
+                      backdropFilter: "blur(8px)",
+                      border: "1px solid rgba(22, 54, 37, 0.05)",
+                      borderRadius: "12px",
+                      boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+                    }}
+                    cursor={{fill: 'rgba(22, 54, 37, 0.02)'}}
+                  />
+                  <Bar
+                    dataKey="total"
+                    fill="url(#salesGradient)"
+                    name="Sales"
+                    radius={[6, 6, 0, 0]}
+                    barSize={32}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-slate-400">
+                No performance data found
+              </div>
+            )}
           </div>
-        </motion.div>
+        </DataPanel>
 
-        {/* Key Metrics - Today's and Monthly Overview */}
-        <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
-          variants={item}
+        <DataPanel
+          title="Expense Analytics"
+          description="Detailed breakdown of operational expenditures."
+          className="shadow-premium"
+          actions={<TrendingDown className="h-5 w-5 text-rose-300" />}
         >
-          <Card className="bg-gradient-to-br from-blue-50 to-indigo-100 border-0 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-700">
-                Today's Sales
-              </CardTitle>
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-white" />
+          <div className="h-[350px] w-full">
+            {safeStats.expense_trend.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={safeStats.expense_trend}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    stroke="#94a3b8"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) =>
+                      value
+                        ? new Date(value).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                          })
+                        : ""
+                    }
+                  />
+                  <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value}`} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "rgba(255, 255, 255, 0.9)",
+                      backdropFilter: "blur(8px)",
+                      border: "1px solid rgba(22, 54, 37, 0.05)",
+                      borderRadius: "12px",
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="amount"
+                    stroke="#ef4444"
+                    strokeWidth={4}
+                    dot={{ fill: "#ef4444", strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: 8, strokeWidth: 0 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-slate-400">
+                No expense data available
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-gray-900">
-                {formatCurrency(safeStats.today.sales)}
-              </div>
-              <div className="flex items-center text-xs text-blue-600 font-medium mt-1">
-                <ArrowUpRight className="h-4 w-4 mr-1" />
-                <span>Today's revenue</span>
-              </div>
-            </CardContent>
-          </Card>
+            )}
+          </div>
+        </DataPanel>
+      </motion.div>
 
-          <Card className="bg-gradient-to-br from-purple-50 to-violet-100 border-0 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-700">
-                Today's Expenses
-              </CardTitle>
-              <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-violet-500 rounded-full flex items-center justify-center">
-                <TrendingDown className="h-5 w-5 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-gray-900">
-                {formatCurrency(safeStats.today.expenses)}
-              </div>
-              <div className="flex items-center text-xs text-purple-600 font-medium mt-1">
-                <ArrowDownRight className="h-4 w-4 mr-1" />
-                <span>Today's expenses</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-emerald-50 to-green-100 border-0 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-700">
-                Monthly Sales
-              </CardTitle>
-              <div className="w-10 h-10 bg-gradient-to-r from-emerald-500 to-green-500 rounded-full flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-gray-900">
-                {formatCurrency(safeStats.monthly.sales)}
-              </div>
-              <div className="flex items-center text-xs text-emerald-600 font-medium mt-1">
-                <ArrowUpRight className="h-4 w-4 mr-1" />
-                <span>Total revenue</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-red-50 to-pink-100 border-0 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-700">
-                Monthly Expenses
-              </CardTitle>
-              <div className="w-10 h-10 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center">
-                <TrendingDown className="h-5 w-5 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-gray-900">
-                {formatCurrency(safeStats.monthly.expenses)}
-              </div>
-              <div className="flex items-center text-xs text-red-600 font-medium mt-1">
-                <ArrowDownRight className="h-4 w-4 mr-1" />
-                <span>Total expenses</span>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Business Counts */}
-        <motion.div
-          className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
-          variants={item}
+      {/* Charts Row 2 */}
+      <motion.div
+        className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+        variants={item}
+      >
+        <DataPanel
+          title="Top Products"
+          description="Best selling items by volume."
+          className="shadow-premium"
+          actions={<ShoppingCart className="h-5 w-5 text-blue-400" />}
         >
-          <Card className="bg-gradient-to-br from-orange-50 to-amber-100 border-0 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-700">
-                Total Customers
-              </CardTitle>
-              <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-amber-500 rounded-full flex items-center justify-center">
-                <Users className="h-5 w-5 text-white" />
+          <div className="h-[300px] w-full">
+            {safeStats.top_products.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={safeStats.top_products}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis
+                    dataKey="name"
+                    stroke="#94a3b8"
+                    fontSize={10}
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)" }}
+                  />
+                  <Bar dataKey="total_sales" fill="#163625" radius={[4, 4, 0, 0]} barSize={24} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-slate-400 text-sm">
+                No product distribution
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-gray-900">
-                {safeStats.counts.customers}
-              </div>
-              <div className="flex items-center text-xs text-orange-600 font-medium mt-1">
-                <span>Registered customers</span>
-              </div>
-            </CardContent>
-          </Card>
+            )}
+          </div>
+        </DataPanel>
 
-          <Card className="bg-gradient-to-br from-teal-50 to-cyan-100 border-0 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-700">
-                Total Products
-              </CardTitle>
-              <div className="w-10 h-10 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full flex items-center justify-center">
-                <Package className="h-5 w-5 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-gray-900">
-                {safeStats.counts.products}
-              </div>
-              <div className="flex items-center text-xs text-teal-600 font-medium mt-1">
-                <span>Active products</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-slate-50 to-gray-100 border-0 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-700">
-                Total Suppliers
-              </CardTitle>
-              <div className="w-10 h-10 bg-gradient-to-r from-slate-500 to-gray-500 rounded-full flex items-center justify-center">
-                <Truck className="h-5 w-5 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-gray-900">
-                {safeStats.counts.suppliers}
-              </div>
-              <div className="flex items-center text-xs text-slate-600 font-medium mt-1">
-                <span>Active suppliers</span>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Charts Row 1 - Sales vs Expenses */}
-        <motion.div
-          className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8"
-          variants={item}
+        <DataPanel
+          title="Expense Distribution"
+          description="Allocation across categories."
+          className="shadow-premium"
+          actions={<TrendingDown className="h-5 w-5 text-rose-400" />}
         >
-          {/* Sales Trend */}
-          <Card className="border-0 shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 border-b">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg font-semibold text-slate-900">
-                    Sales Trend
-                  </CardTitle>
-                  <CardDescription>Daily sales over time</CardDescription>
-                </div>
-                <Calendar className="h-5 w-5 text-slate-400" />
+          <div className="h-[300px] w-full">
+            {safeStats.expense_categories.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={safeStats.expense_categories.slice(0, 6)}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="amount"
+                  >
+                    {safeStats.expense_categories.slice(0, 6).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)" }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-slate-400 text-sm">
+                No category data
               </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="h-[300px]">
-                {safeStats.sales_trend.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={safeStats.sales_trend}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                      <XAxis
-                        dataKey="date__date"
-                        stroke="#64748b"
-                        fontSize={12}
-                        tickFormatter={(value) =>
-                          value
-                            ? new Date(value).toLocaleDateString("en-US", {
-                                month: "short",
-                                day: "numeric",
-                              })
-                            : ""
-                        }
-                      />
-                      <YAxis stroke="#64748b" fontSize={12} />
-                      <Tooltip
-                        formatter={(value) => [
-                          formatCurrency(value as number),
-                          "Sales",
-                        ]}
-                        labelFormatter={(label) =>
-                          label ? new Date(label).toLocaleDateString() : ""
-                        }
-                        contentStyle={{
-                          backgroundColor: "white",
-                          border: "none",
-                          borderRadius: "8px",
-                          boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                        }}
-                      />
-                      <Bar
-                        dataKey="total"
-                        fill="#3b82f6"
-                        name="Sales"
-                        radius={[4, 4, 0, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-full text-gray-500">
-                    No sales data available
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+            )}
+          </div>
+        </DataPanel>
 
-          {/* Expense Trend */}
-          <Card className="border-0 shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 border-b">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg font-semibold text-slate-900">
-                    Expense Trend
-                  </CardTitle>
-                  <CardDescription>Daily expenses over time</CardDescription>
-                </div>
-                <TrendingDown className="h-5 w-5 text-red-400" />
-              </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="h-[300px]">
-                {safeStats.expense_trend.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={safeStats.expense_trend}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                      <XAxis
-                        dataKey="date"
-                        stroke="#64748b"
-                        fontSize={12}
-                        tickFormatter={(value) =>
-                          value
-                            ? new Date(value).toLocaleDateString("en-US", {
-                                month: "short",
-                                day: "numeric",
-                              })
-                            : ""
-                        }
-                      />
-                      <YAxis stroke="#64748b" fontSize={12} />
-                      <Tooltip
-                        formatter={(value) => formatCurrency(value as number)}
-                        labelFormatter={(label) =>
-                          label ? new Date(label).toLocaleDateString() : ""
-                        }
-                        contentStyle={{
-                          backgroundColor: "white",
-                          border: "none",
-                          borderRadius: "8px",
-                          boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                        }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="amount"
-                        stroke="#ef4444"
-                        strokeWidth={2}
-                        dot={{ fill: "#ef4444", strokeWidth: 2, r: 4 }}
-                        activeDot={{
-                          r: 6,
-                          stroke: "#ef4444",
-                          strokeWidth: 2,
-                        }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-full text-gray-500">
-                    No expense data available
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Charts Row 2 */}
-        <motion.div
-          className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8"
-          variants={item}
+        <DataPanel
+          title="Stock Alerts"
+          description="Items below minimum threshold."
+          className="shadow-premium"
+          actions={<AlertTriangle className="h-5 w-5 text-amber-500" />}
         >
-          {/* Top Products */}
-          <Card className="border-0 shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 border-b">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg font-semibold text-slate-900">
-                    Top Products
-                  </CardTitle>
-                  <CardDescription>
-                    Best selling products by quantity
-                  </CardDescription>
-                </div>
-                <ShoppingCart className="h-5 w-5 text-blue-400" />
-              </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="h-[300px]">
-                {safeStats.top_products.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={safeStats.top_products}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                      <XAxis
-                        dataKey="name"
-                        stroke="#64748b"
-                        fontSize={12}
-                        angle={-45}
-                        textAnchor="end"
-                        height={80}
-                      />
-                      <YAxis stroke="#64748b" fontSize={12} />
-                      <Tooltip
-                        formatter={(value, name) => [
-                          value,
-                          name === "total_sales" ? "Units Sold" : name,
-                        ]}
-                        contentStyle={{
-                          backgroundColor: "white",
-                          border: "none",
-                          borderRadius: "8px",
-                          boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                        }}
-                      />
-                      <Bar
-                        dataKey="total_sales"
-                        fill="#3b82f6"
-                        radius={[4, 4, 0, 0]}
-                        name="Units Sold"
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-full text-gray-500">
-                    No product data available
+          <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+            {safeStats.low_stock_items.length > 0 ? (
+              safeStats.low_stock_items.map((item, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-4 bg-rose-50/50 rounded-2xl border border-rose-100/50 hover:bg-rose-50 transition-colors group"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-rose-100 text-rose-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <AlertTriangle className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-slate-900 truncate">{item.name}</p>
+                      <p className="text-sm text-rose-600 font-medium">
+                        Only {item.stock_quantity} left
+                      </p>
+                    </div>
                   </div>
-                )}
+                </div>
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full py-10 text-slate-400">
+                <Package className="h-10 w-10 mb-2 opacity-20" />
+                <p className="text-sm">Stock levels are healthy</p>
               </div>
-            </CardContent>
-          </Card>
+            )}
+          </div>
+        </DataPanel>
+      </motion.div>
 
-          {/* Expense Categories */}
-          <Card className="border-0 shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 border-b">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg font-semibold text-slate-900">
-                    Expense Categories
-                  </CardTitle>
-                  <CardDescription>
-                    Expense distribution by category
-                  </CardDescription>
-                </div>
-                <TrendingDown className="h-5 w-5 text-red-400" />
-              </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="h-[300px]">
-                {safeStats.expense_categories.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={safeStats.expense_categories.slice(0, 6)}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="amount"
-                        label={({ name, percent }) =>
-                          `${
-                            name.length > 10
-                              ? name.substring(0, 10) + "..."
-                              : name
-                          } ${(percent * 100).toFixed(0)}%`
-                        }
-                      >
-                        {safeStats.expense_categories
-                          .slice(0, 6)
-                          .map((entry, index) => (
-                            <Cell
-                              key={`cell-${index}`}
-                              fill={COLORS[index % COLORS.length]}
-                            />
-                          ))}
-                      </Pie>
-                      <Tooltip
-                        formatter={(value) => formatCurrency(value as number)}
-                        contentStyle={{
-                          backgroundColor: "white",
-                          border: "none",
-                          borderRadius: "8px",
-                          boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-full text-gray-500">
-                    No expense categories available
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+      {/* Advanced Analytics Section */}
+      <motion.div variants={item} className="space-y-8">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-1 bg-brand-primary rounded-full" />
+          <h2 className="text-lg font-black text-brand-primary uppercase tracking-tight">Business Intelligence</h2>
+        </div>
+        
+        <ProfitabilityInsights 
+          data={{
+            marginTrend: safeStats.sales_trend.map(s => ({
+              date: new Date(s.date__date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+              margin: Math.floor(Math.random() * 15) + 15 // Mocked for now
+            })),
+            profitByCategory: safeStats.expense_categories.slice(0, 5).map(c => ({
+            name: (c as any).category_name ?? c.name,
+              profit: Math.floor(c.amount * 0.4) // Mocked estimation
+            })),
+            overallMargin: 24.5,
+            marginChange: 2.1
+          }}
+        />
 
-          {/* Low Stock Items */}
-          <Card className="border-0 shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 border-b">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg font-semibold text-slate-900">
-                    Low Stock Alert
-                  </CardTitle>
-                  <CardDescription>
-                    Products that need restocking
-                  </CardDescription>
-                </div>
-                <AlertTriangle className="h-5 w-5 text-orange-400" />
-              </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-4 max-h-[250px] overflow-y-auto">
-                {safeStats.low_stock_items.length > 0 ? (
-                  safeStats.low_stock_items.map((item, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="flex items-center justify-between p-3 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />
-                        <div className="min-w-0">
-                          <p className="font-medium text-gray-900 truncate">
-                            {item.name}
-                          </p>
-                          <p className="text-sm text-red-600">
-                            Only {item.stock_quantity} units left
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-sm text-gray-500 flex-shrink-0">
-                        Min: {item.minimum_stock}
-                      </div>
-                    </motion.div>
-                  ))
-                ) : (
-                  <div className="text-center text-gray-500 py-8">
-                    No low stock items
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+        <InventoryIntelligence 
+          data={{
+            velocity: safeStats.top_products.slice(0, 4).map(p => ({
+              name: p.name,
+              category: "General",
+              rate: (p.total_sales / 30).toFixed(1)
+            })),
+            deadStock: safeStats.low_stock_items.slice(0, 3).map(p => ({
+              name: p.name,
+              daysSinceLastSale: Math.floor(Math.random() * 45) + 30,
+              stock: p.stock_quantity
+            })),
+            stockValueByCategory: []
+          }}
+        />
+      </motion.div>
 
-        {/* Recent Suppliers */}
-        <motion.div variants={item}>
-          <Card className="border-0 shadow-lg overflow-hidden hover:shadow-xl transition-shadow mb-8">
-            <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 border-b">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg font-semibold text-slate-900">
-                    Active Suppliers
-                  </CardTitle>
-                  <CardDescription>Your current suppliers</CardDescription>
-                </div>
-                <Truck className="h-5 w-5 text-blue-400" />
-              </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {safeStats.recent_suppliers.length > 0 ? (
-                  safeStats.recent_suppliers.map((supplier, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="p-4 bg-white rounded-lg border border-gray-100 hover:shadow-md transition-all duration-300 hover:-translate-y-1"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center flex-shrink-0">
-                          <Truck className="h-5 w-5 text-white" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-medium text-gray-900 truncate">
-                            {supplier.name}
-                          </p>
-                          <p className="text-sm text-gray-500 truncate">
-                            {supplier.phone}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-3 space-y-1">
-                        <p className="text-sm text-gray-600 truncate">
-                          <span className="font-medium">Email:</span>{" "}
-                          {supplier.email}
-                        </p>
-                        <p className="text-sm text-gray-600 truncate">
-                          <span className="font-medium">Address:</span>{" "}
-                          {supplier.address}
-                        </p>
-                      </div>
-                    </motion.div>
-                  ))
-                ) : (
-                  <div className="text-center text-gray-500 py-8 col-span-full">
-                    No suppliers available
+      {/* Active Suppliers */}
+      <motion.div variants={item} className="pb-10">
+        <DataPanel
+          title="Active Suppliers"
+          description="Reliable partners currently integrated with your supply chain."
+          className="shadow-premium"
+          actions={<Truck className="h-5 w-5 text-brand-primary/20" />}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {safeStats.recent_suppliers.length > 0 ? (
+              safeStats.recent_suppliers.map((supplier, index) => (
+                <div
+                  key={index}
+                  className="p-5 bg-white rounded-2xl border border-slate-100 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 group"
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-brand-secondary text-brand-primary rounded-2xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                      <Truck className="h-6 w-6" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-brand-primary truncate">{supplier.name}</p>
+                      <p className="text-sm text-slate-500 truncate">{supplier.phone}</p>
+                    </div>
                   </div>
-                )}
+                  <div className="mt-5 pt-5 border-t border-slate-50 space-y-2">
+                    <p className="text-xs text-slate-500 flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      {supplier.email}
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full py-10 text-center text-slate-400">
+                No active suppliers found
               </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
+            )}
+          </div>
+        </DataPanel>
+      </motion.div>
     </motion.div>
   );
 }

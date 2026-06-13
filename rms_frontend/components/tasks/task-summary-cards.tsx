@@ -1,6 +1,6 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { MetricCard } from "@/components/ui/professional"
 import { useTasks } from "@/context/task-context"
 import { CheckCircle, Clock, AlertTriangle, ListChecks } from "lucide-react"
 
@@ -26,61 +26,37 @@ export function TaskSummaryCards() {
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
-          <ListChecks className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{totalTasks}</div>
-          <p className="text-xs text-muted-foreground">
-            {completedTasks} completed, {pendingTasks + inProgressTasks} active
-          </p>
-        </CardContent>
-      </Card>
+      <MetricCard
+        label="Total Backlog"
+        value={totalTasks}
+        icon={<ListChecks className="h-5 w-5" />}
+        tone="brand"
+        helper={`${completedTasks} finished, ${pendingTasks + inProgressTasks} active`}
+      />
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">In Progress</CardTitle>
-          <Clock className="h-4 w-4 text-blue-600" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{inProgressTasks}</div>
-          <p className="text-xs text-muted-foreground">
-            {inProgressTasks > 0
-              ? `${Math.round((inProgressTasks / totalTasks) * 100)}% of all tasks`
-              : "No tasks in progress"}
-          </p>
-        </CardContent>
-      </Card>
+      <MetricCard
+        label="Active Cycle"
+        value={inProgressTasks}
+        icon={<Clock className="h-5 w-5" />}
+        tone="amber"
+        helper={inProgressTasks > 0 ? `${Math.round((inProgressTasks / totalTasks) * 100)}% of total load` : "System idle"}
+      />
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
-          <CheckCircle className="h-4 w-4 text-green-600" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{completionRate}%</div>
-          <p className="text-xs text-muted-foreground">
-            {completedTasks} of {totalTasks} tasks completed
-          </p>
-        </CardContent>
-      </Card>
+      <MetricCard
+        label="Fulfillment"
+        value={`${completionRate}%`}
+        icon={<CheckCircle className="h-5 w-5" />}
+        tone="emerald"
+        helper={`${completedTasks} verified completions`}
+      />
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Overdue Tasks</CardTitle>
-          <AlertTriangle className="h-4 w-4 text-red-600" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{overdueTasks}</div>
-          <p className="text-xs text-muted-foreground">
-            {overdueTasks > 0
-              ? `${Math.round((overdueTasks / (pendingTasks + inProgressTasks)) * 100)}% of active tasks`
-              : "No overdue tasks"}
-          </p>
-        </CardContent>
-      </Card>
+      <MetricCard
+        label="Critical Delay"
+        value={overdueTasks}
+        icon={<AlertTriangle className="h-5 w-5" />}
+        tone="rose"
+        helper={overdueTasks > 0 ? "Immediate attention required" : "No outstanding lags"}
+      />
     </div>
   )
 }

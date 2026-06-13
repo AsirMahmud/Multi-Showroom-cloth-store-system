@@ -3,16 +3,20 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.utils import timezone
 from django.db.models import Q
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from datetime import datetime
-from .models import Discount, Brand, HomePageSettings, DeliverySettings, HeroSlide, PromotionalModal, ProductStatus
+from .models import (
+    Discount, Brand, HomePageSettings, DeliverySettings, HeroSlide, PromotionalModal, ProductStatus,
+    LandingPage, LandingPageSection, LandingPageCollageItem, LandingPageProductSelection
+)
 from .serializers import (
     DiscountSerializer, DiscountListSerializer, BrandSerializer, 
     HomePageSettingsSerializer, DeliverySettingsSerializer, 
-    HeroSlideSerializer, PromotionalModalSerializer, ProductStatusSerializer
+    HeroSlideSerializer, PromotionalModalSerializer, ProductStatusSerializer,
+    LandingPageSerializer, LandingPageSectionSerializer, LandingPageCollageItemSerializer
 )
 from django.utils.text import slugify
 from apps.inventory.models import Product, ProductVariation, Gallery, Image, OnlineCategory
@@ -23,6 +27,31 @@ from apps.online_preorder.serializers import OnlinePreorderSerializer, OnlinePre
 from django.db.models import Sum
 from decimal import Decimal
 from .discount_utils import calculate_discounted_price
+from apps.authentication.permissions import HasReadWritePermission
+
+
+def resolve_ecommerce_combination(
+    *,
+    combination_id=None,
+    product_id=None,
+    design_name='',
+    color='',
+):
+    """Resolve one active, online design-color combination."""
+    queryset = ProductVariation.objects.select_related('design__product').filter(
+        is_active=True,
+        design__product__is_active=True,
+        design__product__assign_to_online=True,
+    )
+    if combination_id:
+        queryset = queryset.filter(id=combination_id)
+    else:
+        queryset = queryset.filter(
+            design__product_id=product_id,
+            design__name__iexact=design_name,
+            color__iexact=color,
+        )
+    return queryset.first()
 
 
 class DiscountViewSet(viewsets.ModelViewSet):
@@ -37,7 +66,7 @@ class DiscountViewSet(viewsets.ModelViewSet):
     """
     queryset = Discount.objects.all()
     serializer_class = DiscountSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasReadWritePermission(read=None, write="manage_discounts")]
     
     def get_serializer_class(self):
         if self.action == 'list':
@@ -134,9 +163,10 @@ class ProductStatusViewSet(viewsets.ModelViewSet):
     """
     queryset = ProductStatus.objects.all()
     serializer_class = ProductStatusSerializer
-    permission_classes = [IsAuthenticated]
-    
+    permission_classes = [HasReadWritePermission(read=None, write="manage_product_status")]
+
     def get_permissions(self):
+        # Listing/retrieving stays public so the storefront can render sections.
         if self.action in ['list', 'retrieve']:
             return [AllowAny()]
         return super().get_permissions()
@@ -158,7 +188,7 @@ class BrandViewSet(viewsets.ModelViewSet):
     """
     queryset = Brand.objects.all()
     serializer_class = BrandSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasReadWritePermission(read=None, write="manage_brands")]
     
     def get_queryset(self):
         queryset = Brand.objects.all()
@@ -183,7 +213,9 @@ class HomePageSettingsViewSet(viewsets.ModelViewSet):
     """
     queryset = HomePageSettings.objects.all()
     serializer_class = HomePageSettingsSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [
+        HasReadWritePermission(read=None, write="manage_home_page_settings")
+    ]
     lookup_field = 'id'
     parser_classes = [MultiPartParser, FormParser]
     
@@ -258,6 +290,26 @@ class PublicHomePageSettingsView(APIView):
                 'stat_brands': '200+',
                 'stat_products': '2,000+',
                 'stat_customers': '30,000+',
+                'collage_enabled': False,
+                'collage_badge_text': None,
+                'collage_heading': None,
+                'collage_description': None,
+                'collage_card_1_title': None,
+                'collage_card_1_subtitle': None,
+                'collage_card_1_link': None,
+                'collage_card_1_image_url': None,
+                'collage_card_2_title': None,
+                'collage_card_2_subtitle': None,
+                'collage_card_2_link': None,
+                'collage_card_2_image_url': None,
+                'collage_card_3_title': None,
+                'collage_card_3_subtitle': None,
+                'collage_card_3_link': None,
+                'collage_card_3_image_url': None,
+                'collage_card_4_title': None,
+                'collage_card_4_subtitle': None,
+                'collage_card_4_link': None,
+                'collage_card_4_image_url': None,
             })
 
 
@@ -273,18 +325,20 @@ class PublicBrandsView(APIView):
 
 
 class PublicProductsByColorView(APIView):
-    """Public API: list products grouped by color as separate entries."""
+    """Public API: list each design-color combination as a separate product."""
     permission_classes = [AllowAny]
 
-    def get_cover_image_url(self, request, product: Product, color: str):
-        try:
-            gallery = Gallery.objects.get(product=product, color__iexact=color)
+    def get_cover_image_url(self, request, variation: ProductVariation):
+        product = variation.design.product
+        gallery = Gallery.objects.filter(
+            design=variation.design,
+            color__iexact=variation.color,
+        ).first()
+        if gallery:
             primary = gallery.images.filter(imageType='PRIMARY').first()
             image_obj = primary or gallery.images.first()
             if image_obj and image_obj.image:
                 return request.build_absolute_uri(image_obj.image.url)
-        except Gallery.DoesNotExist:
-            pass
         # Fallback to product.image
         if product.image:
             return request.build_absolute_uri(product.image.url)
@@ -374,9 +428,9 @@ class PublicProductsByColorView(APIView):
             price_min = request.query_params.get('price_min')
             price_max = request.query_params.get('price_max')
             if price_min is not None:
-                products = products.filter(selling_price__gte=price_min)
+                products = products.filter(retail_price__gte=price_min)
             if price_max is not None:
-                products = products.filter(selling_price__lte=price_max)
+                products = products.filter(retail_price__lte=price_max)
         except Exception:
             pass
         if product_id:
@@ -395,53 +449,45 @@ class PublicProductsByColorView(APIView):
         products = products.distinct()
 
         result = []
-        # Prefetch variations to reduce queries
-        for product in products:
-            # Consider all active variations, regardless of assign_to_online
-            variations = ProductVariation.objects.filter(
-                product=product,
-                is_active=True,
-            )
-            # group by color
-            color_to_stock = {}
-            for v in variations:
-                key = v.color.strip()
-                color_to_stock.setdefault(key, 0)
-                color_to_stock[key] += max(0, v.stock)
-            # If no variations captured any color, fall back to galleries as color sources
-            if not color_to_stock:
-                for g in Gallery.objects.filter(product=product):
-                    color_name = g.color.strip()
-                    # Sum stock for this color if any variations exist; else 0
-                    total_stock = variations.filter(color__iexact=color_name).aggregate(total=Sum('stock'))['total'] or 0
-                    color_to_stock[color_name] = max(0, total_stock)
-            for color_name, total_stock in color_to_stock.items():
-                # Color filter
-                if wanted_colors and color_name.strip().lower() not in wanted_colors:
-                    continue
-                if only_in_stock and total_stock <= 0:
-                    continue
-                # Size filter: must have at least one variation with requested size for this color
-                if wanted_sizes:
-                    has_size = variations.filter(
-                        color__iexact=color_name,
-                        size__isnull=False,
-                    ).filter(size__in=list(wanted_sizes)).exists()
-                    if not has_size:
-                        continue
-                # Calculate priority-based discount for this product
-                discount_info = calculate_discounted_price(product)
-                item = {
-                    'product_id': product.id,
-                    'product_name': product.name,
-                    'product_price': str(product.selling_price),
-                    'discount_info': discount_info if discount_info['discount_type'] else None,
-                    'color_name': color_name,
-                    'color_slug': slugify(color_name),
-                    'total_stock': total_stock,
-                    'cover_image_url': self.get_cover_image_url(request, product, color_name),
-                }
-                result.append(item)
+        variations = ProductVariation.objects.filter(
+            design__product__in=products,
+            is_active=True,
+        ).select_related('design__product').order_by('design__product_id', 'design_id', 'id')
+        for variation in variations:
+            product = variation.design.product
+            color_name = variation.color.strip()
+            design_name = variation.design.name.strip()
+            total_stock = max(0, variation.stock)
+            if wanted_colors and color_name.lower() not in wanted_colors:
+                continue
+            if wanted_sizes and design_name.lower() not in wanted_sizes:
+                continue
+            if only_in_stock and total_stock <= 0:
+                continue
+
+            discount_info = calculate_discounted_price(product)
+            color_slug = slugify(color_name)
+            design_slug = slugify(design_name)
+            result.append({
+                'combination_id': variation.id,
+                'parent_product_id': product.id,
+                'product_id': product.id,
+                'product_name': product.name,
+                'display_name': f'{product.name} - {design_name} - {color_name}',
+                'product_price': str(discount_info['final_price']),
+                'discount_info': discount_info if discount_info['discount_type'] else None,
+                'design_id': variation.design_id,
+                'design_name': design_name,
+                'design_slug': design_slug,
+                'color_name': color_name,
+                'color_slug': color_slug,
+                'total_stock': total_stock,
+                'cover_image_url': self.get_cover_image_url(request, variation),
+                'product_url': (
+                    f'/product/{product.id}/{color_slug}'
+                    f'?design={design_slug}&combination_id={variation.id}'
+                ),
+            })
 
         # Sorting (on resulting flat list)
         sort = request.query_params.get('sort') or ''
@@ -472,7 +518,7 @@ class PublicProductsByColorView(APIView):
 
 
 class PublicProductDetailByColorView(APIView):
-    """Public API: product detail for a given product and color, with sizes/stock/images."""
+    """Public API: product detail for a design-color combination."""
     permission_classes = [AllowAny]
 
     def get(self, request, product_id: int, color_slug: str):
@@ -484,15 +530,18 @@ class PublicProductDetailByColorView(APIView):
 
         # Resolve actual color name by matching slug against variations
         variations_qs = ProductVariation.objects.filter(
-            product=product,
+            design__product=product,
             is_active=True,
-        )
-        # Build available colors with stock + hex
-        color_meta = {}
+        ).select_related('design')
+        requested_combination_id = request.query_params.get('combination_id')
+        requested_design_slug = slugify(request.query_params.get('design', ''))
+
+        # Build product-wide color metadata for backward-compatible color-only links.
+        product_color_meta = {}
         for v in variations_qs:
             color_name = v.color.strip()
             color_key = slugify(color_name)
-            meta = color_meta.setdefault(color_key, {
+            meta = product_color_meta.setdefault(color_key, {
                 'color_name': color_name,
                 'color_slug': color_key,
                 'total_stock': 0,
@@ -501,15 +550,92 @@ class PublicProductDetailByColorView(APIView):
             meta['total_stock'] += max(0, v.stock)
 
         # Find requested color
-        if color_slug not in color_meta:
+        if color_slug not in product_color_meta:
             return Response({'detail': 'Color not found for this product'}, status=status.HTTP_404_NOT_FOUND)
-        current_color_name = color_meta[color_slug]['color_name']
-        current_color_hex = color_meta[color_slug].get('color_hex')
+        current_color_name = product_color_meta[color_slug]['color_name']
+
+        matching_designs = []
+        for variation in variations_qs.filter(color__iexact=current_color_name).select_related('design'):
+            design_slug = slugify(variation.design.name)
+            if not any(item['slug'] == design_slug for item in matching_designs):
+                matching_designs.append({
+                    'id': variation.design_id,
+                    'name': variation.design.name,
+                    'slug': design_slug,
+                })
+
+        selected_combination = None
+        if requested_combination_id:
+            try:
+                selected_combination = variations_qs.get(
+                    id=int(requested_combination_id),
+                    color__iexact=current_color_name,
+                )
+            except (TypeError, ValueError, ProductVariation.DoesNotExist):
+                return Response(
+                    {'detail': 'Combination not found for this product'},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+        selected_design_meta = (
+            {
+                'id': selected_combination.design_id,
+                'name': selected_combination.design.name,
+                'slug': slugify(selected_combination.design.name),
+            }
+            if selected_combination
+            else next(
+                (item for item in matching_designs if item['slug'] == requested_design_slug),
+                matching_designs[0] if matching_designs and not requested_design_slug else None,
+            )
+        )
+        if not selected_design_meta:
+            return Response({'detail': 'Design not found for this color'}, status=status.HTTP_404_NOT_FOUND)
+
+        selected_design_id = selected_design_meta['id']
+        selected_design_variations = variations_qs.filter(design_id=selected_design_id)
+        current_variations = selected_design_variations.filter(color__iexact=current_color_name)
+        selected_combination = selected_combination or current_variations.first()
+        current_color_hex = current_variations.values_list('color_hax', flat=True).first()
+
+        available_colors = {}
+        for variation in selected_design_variations:
+            variant_color = variation.color.strip()
+            variant_slug = slugify(variant_color)
+            meta = available_colors.setdefault(variant_slug, {
+                'color_name': variant_color,
+                'color_slug': variant_slug,
+                'combination_id': variation.id,
+                'total_stock': 0,
+                'color_hex': variation.color_hax or None,
+            })
+            meta['total_stock'] += max(0, variation.stock)
+
+        available_designs = []
+        for design in product.designs.prefetch_related('colors').all():
+            active_colors = [color for color in design.colors.all() if color.is_active]
+            if not active_colors:
+                continue
+            selected_color = next(
+                (color for color in active_colors if slugify(color.color) == color_slug),
+                active_colors[0],
+            )
+            available_designs.append({
+                'id': design.id,
+                'name': design.name,
+                'slug': slugify(design.name),
+                'color_slug': slugify(selected_color.color),
+                'combination_id': selected_color.id,
+                'total_stock': sum(max(0, color.stock) for color in active_colors),
+            })
 
         # Images for current color
         images = []
-        try:
-            gallery = Gallery.objects.get(product=product, color__iexact=current_color_name)
+        gallery = Gallery.objects.filter(
+            design_id=selected_design_id,
+            color__iexact=current_color_name,
+        ).first()
+        if gallery:
             images_qs = gallery.images.order_by('imageType')
             for img in images_qs:
                 if img.image:
@@ -517,29 +643,49 @@ class PublicProductDetailByColorView(APIView):
                         'type': img.imageType,
                         'url': request.build_absolute_uri(img.image.url)
                     })
-        except Gallery.DoesNotExist:
-            # Fallback to product default image
-            if product.image:
-                images.append({'type': 'PRIMARY', 'url': request.build_absolute_uri(product.image.url)})
+        elif product.image:
+            images.append({'type': 'PRIMARY', 'url': request.build_absolute_uri(product.image.url)})
 
-        # Sizes and stock for current color
+        # Variations for current color. Grouped by design (removing size-based logic)
+        # while keeping `sizes` key populated for storefront compatibility.
+        variation_entries = []
         size_entries = []
-        current_variations = variations_qs.filter(color__iexact=current_color_name)
-        for v in current_variations.order_by('size'):
+        design_to_variation = {}
+        for v in current_variations:
+            design_name = v.design.name
+            stock_qty = max(0, v.stock)
+            if design_name not in design_to_variation:
+                design_to_variation[design_name] = {
+                    'id': v.id,
+                    'combination_id': v.id,
+                    'design_name': design_name,
+                    'size': design_name,  # Map design_name to size for client
+                    'stock_qty': stock_qty,
+                    'in_stock': stock_qty > 0,
+                }
+            else:
+                design_to_variation[design_name]['stock_qty'] += stock_qty
+                design_to_variation[design_name]['in_stock'] = (
+                    design_to_variation[design_name]['stock_qty'] > 0
+                )
+        
+        for design_name, entry in design_to_variation.items():
+            variation_entries.append(entry)
             size_entries.append({
-                'size': v.size,
-                'stock_qty': max(0, v.stock),
-                'in_stock': v.stock > 0,
+                'size': design_name,
+                'stock_qty': entry['stock_qty'],
+                'in_stock': entry['in_stock'],
             })
 
         # Calculate priority-based discount
         discount_info = calculate_discounted_price(product)
         
         data = {
+            'combination_id': selected_combination.id if selected_combination else None,
             'product': {
                 'id': product.id,
                 'name': product.name,
-                'price': str(product.selling_price),
+                'price': str(discount_info['final_price']),
                 'category': product.category.name if product.category else None,
                 'online_categories': [
                     {'id': cat.id, 'name': cat.name, 'slug': cat.slug}
@@ -552,10 +698,13 @@ class PublicProductDetailByColorView(APIView):
                 'slug': color_slug,
                 'hex': current_color_hex,
             },
+            'design': selected_design_meta,
             'images': images,
             'sizes': size_entries,
-            'available_colors': list(color_meta.values()),
-            'total_stock_for_color': sum(e['stock_qty'] for e in size_entries),
+            'variations': variation_entries,
+            'available_colors': list(available_colors.values()),
+            'available_designs': available_designs,
+            'total_stock_for_color': sum(e['stock_qty'] for e in variation_entries),
         }
         return Response(data)
 
@@ -593,7 +742,7 @@ class HeroSlideViewSet(viewsets.ModelViewSet):
     """
     queryset = HeroSlide.objects.all()
     serializer_class = HeroSlideSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasReadWritePermission(read=None, write="manage_hero_slides")]
     parser_classes = [MultiPartParser, FormParser]
     
     def get_queryset(self):
@@ -621,7 +770,9 @@ class PromotionalModalViewSet(viewsets.ModelViewSet):
     """
     queryset = PromotionalModal.objects.all()
     serializer_class = PromotionalModalSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [
+        HasReadWritePermission(read=None, write="manage_promotional_modals")
+    ]
     parser_classes = [MultiPartParser, FormParser]
 
     def get_queryset(self):
@@ -672,10 +823,23 @@ class PublicCartPriceView(APIView):
                 if qty <= 0:
                     continue
                 variations = line.get('variations') or {}
+                raw_combination_id = (
+                    line.get('combination_id')
+                    or line.get('combinationId')
+                    or (variations.get('combination_id') if isinstance(variations, dict) else None)
+                )
+                combination_id = int(raw_combination_id) if raw_combination_id else None
                 color = (variations.get('color') or '').strip() if isinstance(variations, dict) else ''
-                size = (variations.get('size') or '').strip() if isinstance(variations, dict) else ''
+                design_name = (variations.get('design_name') or variations.get('design') or variations.get('size') or '').strip() if isinstance(variations, dict) else ''
                 product_ids.append(pid)
-                normalized.append({'product_id': pid, 'quantity': qty, 'color': color, 'size': size})
+                normalized.append({
+                    'product_id': pid,
+                    'combination_id': combination_id,
+                    'quantity': qty,
+                    'color': color,
+                    'size': design_name,
+                    'design_name': design_name
+                })
             except Exception:
                 continue
 
@@ -689,54 +853,84 @@ class PublicCartPriceView(APIView):
             'supplier'
         ).prefetch_related(
             'online_categories',
-            'galleries__images',
-            'variations'
+            'ecommerce_statuses',
+            'designs__colors',
+            'designs__galleries__images',
         )
         prod_map = {p.id: p for p in products}
 
         result_items = []
-        subtotal = 0
+        errors = []
+        subtotal = Decimal('0.00')
         for line in normalized:
             p = prod_map.get(line['product_id'])
             if not p:
+                errors.append({
+                    'productId': line['product_id'],
+                    'code': 'PRODUCT_UNAVAILABLE',
+                    'detail': 'This product is not available online.',
+                })
                 continue
             
             # Apply priority-based discount (Product > Category > Global)
             discount_info = calculate_discounted_price(p)
-            unit_price = discount_info['final_price']
-            original_price = discount_info['original_price']
+            unit_price = Decimal(str(discount_info['final_price']))
+            original_price = Decimal(str(discount_info['original_price']))
 
-            # Determine available stock based on requested variant
-            max_stock = 0
-            variant_color = line.get('color') or None
-            variant_size = line.get('size') or None
-            try:
-                q = ProductVariation.objects.filter(product=p, is_active=True)
-                if variant_color:
-                    q = q.filter(color__iexact=variant_color)
-                if variant_size:
-                    q = q.filter(size__iexact=variant_size)
-                max_stock = max(0, q.aggregate(total=Sum('stock'))['total'] or 0)
-            except Exception:
-                max_stock = max(0, getattr(p, 'stock_quantity', 0))
+            combination = resolve_ecommerce_combination(
+                combination_id=line.get('combination_id'),
+                product_id=p.id,
+                design_name=line.get('design_name'),
+                color=line.get('color'),
+            )
+            if combination and combination.design.product_id != p.id:
+                combination = None
 
-            # Cap effective quantity by stock for pricing summary
-            effective_qty = min(line['quantity'], max_stock) if max_stock > 0 else line['quantity']
-            line_total = unit_price * effective_qty
+            if not combination:
+                errors.append({
+                    'productId': p.id,
+                    'code': 'VARIANT_REQUIRED',
+                    'detail': 'A valid design-color combination is required.',
+                })
+                continue
+            variant_color = combination.color
+            variant_design = combination.design.name
+            max_stock = max(0, combination.stock)
+            if max_stock <= 0:
+                errors.append({
+                    'productId': p.id,
+                    'code': 'OUT_OF_STOCK',
+                    'detail': f'{variant_color} / {variant_design} is out of stock.',
+                    'variant': {'color': variant_color, 'size': variant_design},
+                })
+                continue
+            if line['quantity'] > max_stock:
+                errors.append({
+                    'productId': p.id,
+                    'code': 'INSUFFICIENT_STOCK',
+                    'detail': f'Only {max_stock} item(s) are available.',
+                    'max_stock': max_stock,
+                    'variant': {'color': variant_color, 'size': variant_design},
+                })
+                continue
+
+            line_total = unit_price * line['quantity']
             subtotal += line_total
             
             # Get primary image from gallery, fallback to product image
             # Use prefetched galleries to avoid additional queries
             image_url = None
             try:
-                # Try to get primary image from prefetched galleries
-                for gallery in p.galleries.all():
-                    for img in gallery.images.all():
-                        if img.imageType == 'PRIMARY' and img.image:
-                            image_url = request.build_absolute_uri(img.image.url)
-                            break
-                    if image_url:
-                        break
+                gallery = Gallery.objects.filter(
+                    design__product=p,
+                    design__name__iexact=variant_design,
+                    color__iexact=variant_color,
+                ).first()
+                if gallery:
+                    primary = gallery.images.filter(imageType='PRIMARY').first()
+                    image = primary or gallery.images.first()
+                    if image and image.image:
+                        image_url = request.build_absolute_uri(image.image.url)
             except Exception:
                 pass
             
@@ -746,16 +940,20 @@ class PublicCartPriceView(APIView):
             
             result_items.append({
                 'productId': p.id,
+                'combination_id': combination.id,
                 'name': p.name,
                 'image_url': image_url,
                 'unit_price': unit_price,
                 'original_price': original_price,
                 'discount_info': discount_info if discount_info['discount_type'] else None,
                 'quantity': line['quantity'],
+                'validated_quantity': line['quantity'],
                 'max_stock': max_stock,
                 'variant': {
+                    'combination_id': combination.id,
                     'color': variant_color,
-                    'size': variant_size,
+                    'size': variant_design,
+                    'design_name': variant_design,
                 },
                 'line_total': line_total,
             })
@@ -774,6 +972,7 @@ class PublicCartPriceView(APIView):
             'products': product_serializer.data,  # Array of products with full info
             'subtotal': subtotal,
             'delivery': DeliverySettingsSerializer(delivery).data,
+            'errors': errors,
         })
 
 
@@ -840,15 +1039,72 @@ class CreateOnlinePreorderView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Validate each item
+        authoritative_items = []
         for item in items:
-            required_fields = ['product_id', 'size', 'color', 'quantity', 'unit_price', 'discount']
-            for field in required_fields:
-                if field not in item:
-                    return Response(
-                        {'error': f'Each item must include {field} field'},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+            try:
+                product_id = int(item.get('product_id'))
+                quantity = int(item.get('quantity'))
+                raw_combination_id = item.get('combination_id') or item.get('combinationId')
+                combination_id = int(raw_combination_id) if raw_combination_id else None
+                design_name = str(item.get('design_name') or item.get('design') or item.get('size') or '').strip()
+                color = str(item.get('color') or '').strip()
+            except (TypeError, ValueError):
+                return Response({'error': 'Invalid order item.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            if quantity <= 0 or (not combination_id and (not design_name or not color)):
+                return Response(
+                    {'error': 'Each item requires a positive quantity and a valid combination.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            try:
+                product = Product.objects.get(
+                    id=product_id,
+                    is_active=True,
+                    assign_to_online=True,
+                )
+            except Product.DoesNotExist:
+                return Response(
+                    {'error': f'Product {product_id} is not available.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            combination = resolve_ecommerce_combination(
+                combination_id=combination_id,
+                product_id=product.id,
+                design_name=design_name,
+                color=color,
+            )
+            if not combination or combination.design.product_id != product.id:
+                return Response(
+                    {'error': f'Combination is not available for product {product.id}.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            design_name = combination.design.name
+            color = combination.color
+            stock = max(0, combination.stock)
+            if stock < quantity:
+                return Response(
+                    {'error': f'Only {stock} item(s) are available for {product.name} ({color} / {design_name}).'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            discount_info = calculate_discounted_price(product)
+            original_price = Decimal(str(discount_info['original_price']))
+            final_price = Decimal(str(discount_info['final_price']))
+            authoritative_items.append({
+                'combination_id': combination.id,
+                'product_id': product.id,
+                'product_sku': product.sku,
+                'product_name': product.name,
+                'design_name': design_name,
+                'size': design_name,  # for backward compatibility
+                'color': color,
+                'quantity': quantity,
+                'unit_price': float(original_price),
+                'discount': float((original_price - final_price) * quantity),
+            })
 
         # Create or get customer
         try:
@@ -916,12 +1172,24 @@ class CreateOnlinePreorderView(APIView):
         # Build shipping address JSON
         shipping_address_data = request.data.get('shipping_address', {})
         
-        # Calculate total amount
+        delivery_settings = DeliverySettings.load()
+        delivery_method = request.data.get('delivery_method', '')
+        delivery_charges = {
+            'Inside Dhaka': delivery_settings.inside_dhaka_charge,
+            'Inside Gazipur': delivery_settings.inside_gazipur_charge,
+            'Outside Dhaka': delivery_settings.outside_dhaka_charge,
+        }
+        if delivery_method not in delivery_charges:
+            return Response(
+                {'error': 'Invalid delivery method.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         items_subtotal = sum(
             float(item.get('quantity', 0)) * float(item.get('unit_price', 0)) - float(item.get('discount', 0) or 0)
-            for item in items
+            for item in authoritative_items
         )
-        delivery_charge = float(request.data.get('delivery_charge', 0) or 0)
+        delivery_charge = float(delivery_charges[delivery_method])
         total_amount = Decimal(str(items_subtotal + delivery_charge))
 
         # Create online preorder (standalone model)
@@ -929,10 +1197,10 @@ class CreateOnlinePreorderView(APIView):
             'customer_name': customer_name,
             'customer_phone': customer_phone,
             'customer_email': customer_email if customer_email else '',
-            'items': items,
+            'items': authoritative_items,
             'shipping_address': shipping_address_data if shipping_address_data else None,
             'delivery_charge': Decimal(str(delivery_charge)),
-            'delivery_method': request.data.get('delivery_method', ''),
+            'delivery_method': delivery_method,
             'total_amount': total_amount,
             'notes': request.data.get('notes', '') or '',
             'status': 'PENDING',
@@ -954,7 +1222,8 @@ class CreateOnlinePreorderView(APIView):
         serializer = OnlinePreorderCreateSerializer(data=preorder_data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        online_preorder = serializer.save()
+        with transaction.atomic():
+            online_preorder = serializer.save()
         
         # Send notification alerts
         try:
@@ -967,3 +1236,361 @@ class CreateOnlinePreorderView(APIView):
             logger.error(f"Failed to trigger notifications in ecommerce view: {str(e)}")
             
         return Response(OnlinePreorderSerializer(online_preorder).data, status=status.HTTP_201_CREATED)
+
+
+class LandingPageSectionViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing draft LandingPageSection configurations.
+    Allows CRUD on status='DRAFT' sections.
+    """
+    queryset = LandingPageSection.objects.filter(status='DRAFT')
+    serializer_class = LandingPageSectionSerializer
+    permission_classes = [HasReadWritePermission(read=None, write="manage_landing_page")]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get_queryset(self):
+        return LandingPageSection.objects.filter(status='DRAFT').order_by('display_order', 'id')
+
+    @action(detail=False, methods=['post'])
+    def reorder(self, request):
+        """Reorder sections by updating display_order in one batch request"""
+        orders = request.data  # Expected format: [id1, id2, id3] or [{'id': 1, 'display_order': 0}, ...]
+        if not isinstance(orders, list):
+            return Response({"error": "Expected a list of orders"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        with transaction.atomic():
+            for index, item in enumerate(orders):
+                if isinstance(item, dict):
+                    sec_id = item.get('id')
+                    disp_order = item.get('display_order', index)
+                else:
+                    sec_id = item
+                    disp_order = index
+                
+                LandingPageSection.objects.filter(id=sec_id, status='DRAFT').update(display_order=disp_order)
+        
+        return Response({"status": "ordered"})
+
+    @action(detail=True, methods=['post'])
+    def duplicate(self, request, pk=None):
+        """Duplicate a section (including related collage items)"""
+        section = self.get_object()
+        with transaction.atomic():
+            # Create a clone of the section
+            section_clone = LandingPageSection.objects.create(
+                landing_page=section.landing_page,
+                section_type=section.section_type,
+                layout_variant=section.layout_variant,
+                display_order=section.display_order + 1,
+                is_active=section.is_active,
+                status='DRAFT',
+                start_date=section.start_date,
+                end_date=section.end_date,
+                config=section.config,
+                image=section.image,
+                mobile_image=section.mobile_image
+            )
+            # Duplicate collage items
+            for item in section.collage_items.all():
+                LandingPageCollageItem.objects.create(
+                    section=section_clone,
+                    category=item.category,
+                    online_category=item.online_category,
+                    title_override=item.title_override,
+                    link_override=item.link_override,
+                    image=item.image,
+                    display_order=item.display_order
+                )
+            # Duplicate product selections
+            for prod in section.product_selections.all():
+                LandingPageProductSelection.objects.create(
+                    section=section_clone,
+                    product=prod.product,
+                    display_order=prod.display_order
+                )
+                
+        serializer = self.get_serializer(section_clone)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['post'])
+    def publish(self, request):
+        """Publish the current draft sections: overwrites the published storefront."""
+        # Find default landing page
+        landing_page, _ = LandingPage.objects.get_or_create(
+            name="Main Storefront Home",
+            defaults={"is_active": True}
+        )
+        
+        with transaction.atomic():
+            # 1. Clear all currently PUBLISHED sections
+            LandingPageSection.objects.filter(landing_page=landing_page, status='PUBLISHED').delete()
+            
+            # 2. Get all currently DRAFT sections
+            draft_sections = LandingPageSection.objects.filter(landing_page=landing_page, status='DRAFT')
+            
+            # 3. Duplicate drafts to published status
+            for section in draft_sections:
+                published_section = LandingPageSection.objects.create(
+                    landing_page=landing_page,
+                    section_type=section.section_type,
+                    layout_variant=section.layout_variant,
+                    display_order=section.display_order,
+                    is_active=section.is_active,
+                    status='PUBLISHED',
+                    start_date=section.start_date,
+                    end_date=section.end_date,
+                    config=section.config,
+                    image=section.image,
+                    mobile_image=section.mobile_image
+                )
+                # Duplicate collage items
+                for item in section.collage_items.all():
+                    LandingPageCollageItem.objects.create(
+                        section=published_section,
+                        category=item.category,
+                        online_category=item.online_category,
+                        title_override=item.title_override,
+                        link_override=item.link_override,
+                        image=item.image,
+                        display_order=item.display_order
+                    )
+                # Duplicate product selections
+                for prod in section.product_selections.all():
+                    LandingPageProductSelection.objects.create(
+                        section=published_section,
+                        product=prod.product,
+                        display_order=prod.display_order
+                    )
+                    
+        return Response({"status": "published"})
+
+    @action(detail=False, methods=['get'])
+    def preview(self, request):
+        """Preview complete draft tree"""
+        landing_page, _ = LandingPage.objects.get_or_create(
+            name="Main Storefront Home",
+            defaults={"is_active": True}
+        )
+        # Fetch all draft sections, and dynamically resolve product cards for editor preview
+        sections = LandingPageSection.objects.filter(landing_page=landing_page, status='DRAFT').order_by('display_order', 'id')
+        
+        # We can construct the dynamic data here
+        data = self.get_serializer(sections, many=True).data
+        for idx, item in enumerate(data):
+            sec_type = item.get('section_type')
+            if sec_type == 'PRODUCT_SECTION':
+                # Dynamically fetch products by status/category/manual selection
+                sec_id = item.get('id')
+                section_obj = sections[idx]
+                products_qs = _resolve_section_products(section_obj)
+                item['products'] = format_products_by_color(request, products_qs)
+        
+        return Response(data)
+
+
+class LandingPageCollageItemViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing category collage cards under draft sections.
+    """
+    queryset = LandingPageCollageItem.objects.all()
+    serializer_class = LandingPageCollageItemSerializer
+    permission_classes = [HasReadWritePermission(read=None, write="manage_landing_page")]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get_queryset(self):
+        section_id = self.request.query_params.get('section_id')
+        if section_id:
+            return LandingPageCollageItem.objects.filter(section_id=section_id, section__status='DRAFT').order_by('display_order', 'id')
+        return LandingPageCollageItem.objects.filter(section__status='DRAFT').order_by('display_order', 'id')
+
+    @action(detail=False, methods=['post'])
+    def reorder(self, request):
+        orders = request.data
+        if not isinstance(orders, list):
+            return Response({"error": "Expected a list of orders"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        with transaction.atomic():
+            for index, item in enumerate(orders):
+                if isinstance(item, dict):
+                    card_id = item.get('id')
+                    disp_order = item.get('display_order', index)
+                else:
+                    card_id = item
+                    disp_order = index
+                LandingPageCollageItem.objects.filter(id=card_id, section__status='DRAFT').update(display_order=disp_order)
+        return Response({"status": "ordered"})
+
+
+class PublicLandingPageView(APIView):
+    """
+    Public landing page API. Returns active, scheduled, and published section configs.
+    If empty, indicates storefront should fallback to legacy home configuration.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        landing_page = LandingPage.objects.filter(is_active=True).first()
+        if not landing_page:
+            return Response([])
+
+        now = timezone.now()
+        # Find active published sections
+        sections = LandingPageSection.objects.filter(
+            landing_page=landing_page,
+            status='PUBLISHED',
+            is_active=True
+        ).filter(
+            Q(start_date__isnull=True) | Q(start_date__lte=now)
+        ).filter(
+            Q(end_date__isnull=True) | Q(end_date__gte=now)
+        ).order_by('display_order', 'id')
+
+        if not sections.exists():
+            return Response([])
+
+        # Serialize sections
+        data = LandingPageSectionSerializer(sections, many=True, context={'request': request}).data
+
+        # Populate products for PRODUCT_SECTION sections dynamically
+        for idx, item in enumerate(data):
+            sec_type = item.get('section_type')
+            if sec_type == 'PRODUCT_SECTION':
+                section_obj = sections[idx]
+                products_qs = _resolve_section_products(section_obj)
+                item['products'] = format_products_by_color(request, products_qs)
+
+        return Response(data)
+
+
+def _resolve_section_products(section):
+    """
+    Helper to fetch products matching a section's configuration or manual selection.
+    """
+    # 1. Manual products selection override
+    selections = section.product_selections.select_related('product').all()
+    if selections.exists():
+        # Get active products that assign online
+        prod_ids = [s.product_id for s in selections]
+        # Keep original ordering
+        preserved_order = {p_id: i for i, p_id in enumerate(prod_ids)}
+        products = Product.objects.filter(id__in=prod_ids, is_active=True, assign_to_online=True)
+        # Sort by selection display_order
+        return sorted(products, key=lambda p: preserved_order.get(p.id, 0))
+
+    # 2. Config filtering query
+    config = section.config or {}
+    products = Product.objects.filter(is_active=True, assign_to_online=True)
+
+    # Filter status slug
+    status_slug = config.get('status_slug')
+    if status_slug:
+        products = products.filter(ecommerce_statuses__slug=status_slug)
+
+    # Filter category
+    category_slug = config.get('category_slug')
+    if category_slug:
+        products = products.filter(category__slug=category_slug)
+
+    # Filter online category
+    online_category_slug = config.get('online_category_slug')
+    if online_category_slug:
+        try:
+            from apps.inventory.models import OnlineCategory
+            category = OnlineCategory.objects.get(slug=online_category_slug)
+            child_ids = [category.id]
+            children = OnlineCategory.objects.filter(parent=category)
+            child_ids.extend([child.id for child in children])
+            products = products.filter(online_categories__id__in=child_ids)
+        except Exception:
+            pass
+
+    # Filter gender
+    gender = config.get('gender')
+    if gender:
+        gender_upper = gender.strip().upper()
+        # Handle convenience mappings
+        gender_mapping = {
+            'MEN': 'MALE',
+            'WOMEN': 'FEMALE',
+            'MAN': 'MALE',
+            'WOMAN': 'FEMALE',
+            'UNISEX': 'UNISEX',
+        }
+        gender_val = gender_mapping.get(gender_upper, gender_upper)
+        if gender_val in ['MALE', 'FEMALE']:
+            products = products.filter(Q(gender=gender_val) | Q(gender='UNISEX'))
+        elif gender_val == 'UNISEX':
+            products = products.filter(gender='UNISEX')
+
+    # Order distinct queryset
+    products = products.distinct().order_by('-created_at')
+
+    # Apply limit
+    limit = int(config.get('product_limit', 8))
+    return products[:limit]
+
+
+def format_products_by_color(request, products_queryset):
+    """
+    Format products as color-scoped flat listings.
+    """
+    from apps.ecommerce.discount_utils import calculate_discounted_price
+    from django.utils.text import slugify
+    
+    result = []
+    
+    # Resolve design variations for these products
+    from apps.inventory.models import ProductVariation, Gallery
+    variations = ProductVariation.objects.filter(
+        design__product__in=products_queryset,
+        is_active=True,
+    ).select_related('design__product').order_by('design__product_id', 'design_id', 'id')
+    
+    # Sort variation list to group by product matching the ordering of products_queryset if needed,
+    # but let's keep it sorted by variations order.
+    for variation in variations:
+        product = variation.design.product
+        color_name = variation.color.strip()
+        design_name = variation.design.name.strip()
+        total_stock = max(0, variation.stock)
+        
+        # Cover image url
+        cover_image_url = None
+        gallery = Gallery.objects.filter(
+            design=variation.design,
+            color__iexact=variation.color,
+        ).first()
+        if gallery:
+            primary = gallery.images.filter(imageType='PRIMARY').first()
+            image_obj = primary or gallery.images.first()
+            if image_obj and image_obj.image:
+                cover_image_url = request.build_absolute_uri(image_obj.image.url)
+        if not cover_image_url and product.image:
+            cover_image_url = request.build_absolute_uri(product.image.url)
+            
+        discount_info = calculate_discounted_price(product)
+        color_slug = slugify(color_name)
+        design_slug = slugify(design_name)
+        
+        result.append({
+            'combination_id': variation.id,
+            'parent_product_id': product.id,
+            'product_id': product.id,
+            'product_name': product.name,
+            'display_name': f'{product.name} - {design_name} - {color_name}',
+            'product_price': str(discount_info['final_price']),
+            'discount_info': discount_info if discount_info['discount_type'] else None,
+            'design_id': variation.design_id,
+            'design_name': design_name,
+            'design_slug': design_slug,
+            'color_name': color_name,
+            'color_slug': color_slug,
+            'total_stock': total_stock,
+            'cover_image_url': cover_image_url,
+            'product_url': (
+                f'/product/{product.id}/{color_slug}'
+                f'?design={design_slug}&combination_id={variation.id}'
+            ),
+        })
+    return result
+

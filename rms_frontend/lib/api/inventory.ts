@@ -29,7 +29,7 @@ export interface ProductAnalytics {
         sku: string;
         current_stock: number;
         cost_price: number;
-        selling_price: number;
+        retail_price: number;
         profit_margin_percentage: number;
     };
     stock_analytics: {
@@ -104,7 +104,7 @@ export interface SalesHistory {
     sale_id: number;
     invoice_number: string;
     quantity: number;
-    size: string;
+    design: string;
     color: string;
     unit_price: number;
     discount: number;
@@ -115,6 +115,23 @@ export interface SalesHistory {
     customer_name: string;
     payment_method: string;
 }
+
+export interface WholesalePricingSettings {
+    global_wholesale_cutoff: number;
+    updated_at?: string;
+}
+
+export const wholesaleSettingsApi = {
+    get: async (): Promise<WholesalePricingSettings> => {
+        const { data } = await axiosInstance.get('/inventory/wholesale-settings/');
+        return data;
+    },
+
+    update: async (payload: Pick<WholesalePricingSettings, 'global_wholesale_cutoff'>): Promise<WholesalePricingSettings> => {
+        const { data } = await axiosInstance.post('/inventory/wholesale-settings/', payload);
+        return data;
+    },
+};
 
 // Categories API
 export const categoriesApi = {

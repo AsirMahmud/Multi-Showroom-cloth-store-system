@@ -1,14 +1,31 @@
-import { CustomerCredit } from "@/components/customers/customer-credit"
+"use client";
+
+import { useEffect, useState } from "react";
+import { CustomerCredit } from "@/components/customers/customer-credit";
+import axiosInstance from "@/lib/api/axios-config";
 
 interface CustomerCreditPageProps {
   params: {
-    id: string
-  }
+    id: string;
+  };
 }
 
 export default function CustomerCreditPage({ params }: CustomerCreditPageProps) {
-  // In a real app, you would fetch the customer name based on the ID
-  const customerName = "John Doe"
+  const [customerName, setCustomerName] = useState<string>("Loading...");
+
+  useEffect(() => {
+    const fetchCustomer = async () => {
+      try {
+        const res = await axiosInstance.get(`/api/customer/customers/${params.id}/`);
+        const data = res.data;
+        const name = [data.first_name, data.last_name].filter(Boolean).join(" ") || `Customer #${params.id}`;
+        setCustomerName(name);
+      } catch {
+        setCustomerName(`Customer #${params.id}`);
+      }
+    };
+    fetchCustomer();
+  }, [params.id]);
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -18,5 +35,5 @@ export default function CustomerCreditPage({ params }: CustomerCreditPageProps) 
 
       <CustomerCredit customerId={params.id} customerName={customerName} />
     </div>
-  )
+  );
 }

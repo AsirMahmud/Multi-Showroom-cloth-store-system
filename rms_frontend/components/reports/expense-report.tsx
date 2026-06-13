@@ -1,6 +1,5 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   PieChart,
   Pie,
@@ -8,6 +7,11 @@ import {
   ResponsiveContainer,
   Tooltip,
   Legend,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  BarChart,
+  Bar
 } from "recharts";
 import {
   Table,
@@ -17,18 +21,33 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { MetricCard, DataPanel, TableSkeleton, ChartSkeleton } from "@/components/ui/professional";
 import { useExpenseReport } from "@/hooks/queries/use-reports";
-import { DateRange } from "react-day-picker";
-import { Skeleton } from "@/components/ui/skeleton";
+import { formatCurrency, cn } from "@/lib/utils";
+import { motion } from "framer-motion";
+import { 
+  TrendingDown, 
+  DollarSign, 
+  PieChart as PieChartIcon, 
+  Calendar,
+  AlertCircle,
+  BarChart3
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 const COLORS = [
-  "#0088FE",
-  "#00C49F",
-  "#FFBB28",
-  "#FF8042",
-  "#8884D8",
-  "#82CA9D",
+  "#ef4444", // Rose/Red (for expenses)
+  "#f97316", // Orange
+  "#f59e0b", // Amber
+  "#6366f1", // Indigo
+  "#8b5cf6", // Violet
+  "#ec4899", // Pink
 ];
+
+const item = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0 },
+};
 
 export function ExpenseReport({
   dateRange,
@@ -39,31 +58,17 @@ export function ExpenseReport({
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <Card
-              key={i}
-              className="bg-gradient-to-br from-emerald-50 to-teal-100 border-0 shadow-xl"
-            >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <Skeleton className="h-4 w-[100px]" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-8 w-[60px]" />
-                <Skeleton className="h-4 w-[80px] mt-2" />
-              </CardContent>
-            </Card>
+      <div className="space-y-8">
+        <div className="grid gap-6 md:grid-cols-3">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-28 rounded-[24px] bg-slate-100 animate-pulse" />
           ))}
         </div>
-        <Card className="border-0 shadow-lg overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 border-b">
-            <Skeleton className="h-6 w-[200px]" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-[300px] w-full" />
-          </CardContent>
-        </Card>
+        <div className="grid gap-8 lg:grid-cols-2">
+          <ChartSkeleton />
+          <TableSkeleton cols={3} rows={5} />
+        </div>
+        <ChartSkeleton />
       </div>
     );
   }
@@ -76,122 +81,139 @@ export function ExpenseReport({
   );
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Expenses
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${parseFloat(expenseData.total_expenses).toFixed(2)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {expenseData.expenses_by_date.length} days with expenses
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Largest Expense Category
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${parseFloat(largestExpense.total).toFixed(2)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {largestExpense.category_name}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Expense Categories
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {expenseData.expenses_by_category.length}
-            </div>
-            <p className="text-xs text-muted-foreground">Active categories</p>
-          </CardContent>
-        </Card>
+    <div className="space-y-8">
+      <div className="grid gap-4 md:grid-cols-3">
+        <motion.div variants={item}>
+          <MetricCard
+            label="Total Expenses"
+            value={formatCurrency(parseFloat(expenseData.total_expenses))}
+            icon={<TrendingDown className="h-5 w-5" />}
+            tone="rose"
+            helper={`Over ${expenseData.expenses_by_date.length} active days`}
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Largest Expense"
+            value={formatCurrency(parseFloat(largestExpense.total))}
+            icon={<AlertCircle className="h-5 w-5" />}
+            tone="brand"
+            helper={`${largestExpense.category_name} category`}
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Expense Categories"
+            value={expenseData.expenses_by_category.length.toString()}
+            icon={<PieChartIcon className="h-5 w-5" />}
+            tone="indigo"
+            helper="Active expense categories"
+          />
+        </motion.div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Expense Distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
+      <div className="grid gap-8 lg:grid-cols-2">
+        <motion.div variants={item}>
+          <DataPanel title="Expense Distribution" description="How your expenses are split across different categories.">
+            <div className="h-[350px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={expenseData.expenses_by_category}
                     cx="50%"
                     cy="50%"
-                    labelLine={false}
-                    outerRadius={80}
-                    fill="#8884d8"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={5}
                     dataKey={(data) => parseFloat(data.total)}
                     nameKey="category_name"
-                    label={({ category_name, percent }) =>
-                      `${category_name} ${(percent * 100).toFixed(0)}%`
-                    }
                   >
                     {expenseData.expenses_by_category.map((entry, index) => (
                       <Cell
                         key={`cell-${index}`}
                         fill={COLORS[index % COLORS.length]}
+                        className="stroke-white stroke-2"
                       />
                     ))}
                   </Pie>
-                  <Tooltip
-                    formatter={(value: string) =>
-                      `$${parseFloat(value).toFixed(2)}`
-                    }
+                  <Tooltip 
+                    formatter={(value: string) => formatCurrency(parseFloat(value))}
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
                   />
-                  <Legend />
+                  <Legend iconType="circle" />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-          </CardContent>
-        </Card>
+          </DataPanel>
+        </motion.div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Expenses by Date</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Count</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {expenseData.expenses_by_date.map((expense, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{expense.date}</TableCell>
-                    <TableCell>{expense.count}</TableCell>
-                    <TableCell className="text-right">
-                      ${parseFloat(expense.total).toFixed(2)}
-                    </TableCell>
+        <motion.div variants={item}>
+          <DataPanel title="Daily Expenses" description="A day-by-day record of your business expenses.">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-b border-slate-100 hover:bg-transparent">
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4">Date</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4 text-center">Entries</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4 text-right">Total Amount</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                </TableHeader>
+                <TableBody>
+                  {expenseData.expenses_by_date.map((expense, index) => (
+                    <TableRow key={index} className="border-b border-slate-50 group hover:bg-slate-50/50 transition-colors">
+                      <TableCell className="py-4">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-3 w-3 text-slate-300" />
+                          <span className="text-xs font-bold text-slate-600">{expense.date}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-4 text-center">
+                        <Badge variant="secondary" className="bg-slate-100 text-slate-500 border-none font-bold text-[10px]">
+                          {expense.count}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="py-4 text-right font-black text-rose-600 text-xs">
+                        {formatCurrency(parseFloat(expense.total))}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </DataPanel>
+        </motion.div>
       </div>
+
+      <motion.div variants={item}>
+        <DataPanel title="Expenses by Category" description="Detailed breakdown of expenses for each category.">
+          <div className="h-[300px] w-full pt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={expenseData.expenses_by_category}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis 
+                  dataKey="category_name" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
+                />
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
+                  tickFormatter={(val) => `$${val}`}
+                />
+                <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }} />
+                <Bar
+                  dataKey={(data) => parseFloat(data.total)}
+                  fill="#ef4444"
+                  radius={[8, 8, 0, 0]}
+                  name="Category Total"
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </DataPanel>
+      </motion.div>
     </div>
   );
 }

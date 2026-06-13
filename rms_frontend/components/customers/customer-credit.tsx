@@ -51,7 +51,7 @@ interface CustomerCreditProps {
 
 export function CustomerCredit({
   customerId,
-  customerName = "John Doe",
+  customerName = "Customer",
 }: CustomerCreditProps) {
   // Mock data - in a real app, this would be fetched based on customerId
   const creditBalance = 150.0;

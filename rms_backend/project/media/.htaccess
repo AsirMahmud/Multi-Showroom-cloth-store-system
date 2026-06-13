@@ -1,11 +1,14 @@
 # Media directory .htaccess
-# This file should be placed in /home/rawstitc/public_html/media/.htaccess
+# This file should be placed in /home/torongox/public_html/media/.htaccess
 
-# Allow access to media files
+# Prevent execution of scripts in the media directory
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    
-    # Allow direct access to all files in media directory
+
+    RewriteCond %{REQUEST_FILENAME} \.(php|py|pl|sh|rb)$ [NC]
+    RewriteRule ^ - [F,L]
+
+    # Allow direct access to normal media files
     RewriteRule ^(.*)$ - [L]
 </IfModule>
 
@@ -35,24 +38,4 @@
         Header set X-Content-Type-Options nosniff
     </FilesMatch>
 </IfModule>
-
-# Prevent execution of scripts in media directory
-<IfModule mod_rewrite.c>
-    RewriteCond %{REQUEST_FILENAME} \.(php|py|pl|sh|rb)$
-    RewriteRule ^(.*)$ - [F,L]
-</IfModule>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

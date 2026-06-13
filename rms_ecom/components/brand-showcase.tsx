@@ -42,12 +42,12 @@ export function BrandShowcase() {
 
   if (loading) {
     return (
-      <section className="w-full bg-primary py-8">
+      <section className="w-full border-y border-border bg-white py-8">
         <div className="container px-4">
           <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12 lg:gap-16">
-            <div className="h-8 w-32 bg-white/20 animate-pulse rounded" />
-            <div className="h-8 w-32 bg-white/20 animate-pulse rounded" />
-            <div className="h-8 w-32 bg-white/20 animate-pulse rounded" />
+            <div className="h-8 w-32 animate-pulse bg-muted" />
+            <div className="h-8 w-32 animate-pulse bg-muted" />
+            <div className="h-8 w-32 animate-pulse bg-muted" />
           </div>
         </div>
       </section>
@@ -59,11 +59,11 @@ export function BrandShowcase() {
   }
 
   return (
-    <section className="w-full bg-primary py-8">
-      <div className="container px-4">
-        <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12 lg:gap-16">
+    <section className="w-full border-y border-border/70 bg-white py-8">
+      <div className="container">
+        <div className="flex flex-wrap items-center justify-center gap-8 opacity-70 grayscale md:gap-12 lg:gap-16">
           {brands.map((brand) => (
-            <div key={brand.id} className="text-2xl md:text-3xl font-bold text-primary-foreground tracking-wider">
+            <div key={brand.id} className="font-serif text-xl tracking-wide md:text-2xl">
               {brand.logo_image_url ? (
                 <Image 
                   src={brand.logo_image_url} 

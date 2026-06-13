@@ -1,6 +1,6 @@
 // API configuration and functions for ecommerce frontend
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 // Types
 export interface ProductVariant {
@@ -9,6 +9,7 @@ export interface ProductVariant {
   color_hex: string;
   stock: number;
   variant_id: number;
+  combination_id?: number;
 }
 
 export interface EcommerceProduct {
@@ -59,14 +60,21 @@ export interface DiscountInfo {
 
 // Public per-color listing entry
 export interface ProductByColorEntry {
+  combination_id: number;
+  parent_product_id: number;
   product_id: number;
   product_name: string;
+  display_name: string;
   product_price: string;
   discount_info?: DiscountInfo | null;  // Priority-based discount from backend
   color_name: string;
   color_slug: string;
+  design_id: number;
+  design_name: string;
+  design_slug: string;
   total_stock: number;
   cover_image_url?: string | null;
+  product_url: string;
 }
 
 export interface Paginated<T> {
@@ -76,8 +84,17 @@ export interface Paginated<T> {
   results: T[]
 }
 
+export interface CartPricingError {
+  productId: number
+  code: 'PRODUCT_UNAVAILABLE' | 'VARIANT_REQUIRED' | 'OUT_OF_STOCK' | 'INSUFFICIENT_STOCK'
+  detail: string
+  max_stock?: number
+  variant?: { color?: string | null; size?: string | null }
+}
+
 // Public per-color detail response
 export interface ProductDetailByColorResponse {
+  combination_id: number;
   product: {
     id: number;
     name: string;
@@ -91,9 +108,23 @@ export interface ProductDetailByColorResponse {
     slug: string;
     hex?: string | null;
   };
+  design: {
+    id: number;
+    name: string;
+    slug: string;
+  };
   images: Array<{ type: string; url: string }>;
   sizes: Array<{ size: string; stock_qty: number; in_stock: boolean }>;
-  available_colors: Array<{ color_name: string; color_slug: string; total_stock: number; color_hex?: string | null }>;
+  variations?: Array<{
+    id: number;
+    combination_id: number;
+    design_name: string;
+    size?: string;
+    stock_qty: number;
+    in_stock: boolean;
+  }>;
+  available_colors: Array<{ combination_id: number; color_name: string; color_slug: string; total_stock: number; color_hex?: string | null }>;
+  available_designs: Array<{ id: number; name: string; slug: string; color_slug: string; combination_id: number; total_stock: number }>;
   total_stock_for_color: number;
 }
 
@@ -298,8 +329,12 @@ export const ecommerceApi = {
   },
 
   // Public: Get product detail by color (color-scoped images and stock)
-  getProductDetailByColor: async (productId: number, colorSlug: string): Promise<ProductDetailByColorResponse> => {
-    const response = await fetch(`${API_BASE_URL}/ecommerce/public/product-details/${productId}/${colorSlug}/`)
+  getProductDetailByColor: async (productId: number, colorSlug: string, designSlug?: string, combinationId?: number): Promise<ProductDetailByColorResponse> => {
+    const searchParams = new URLSearchParams()
+    if (designSlug) searchParams.set('design', designSlug)
+    if (combinationId) searchParams.set('combination_id', String(combinationId))
+    const params = searchParams.size ? `?${searchParams.toString()}` : ''
+    const response = await fetch(`${API_BASE_URL}/ecommerce/public/product-details/${productId}/${colorSlug}/${params}`)
     if (!response.ok) throw new Error('Failed to fetch product detail by color')
     return response.json()
   },
@@ -339,6 +374,26 @@ export const ecommerceApi = {
     stat_brands?: string;
     stat_products?: string;
     stat_customers?: string;
+    collage_enabled?: boolean;
+    collage_badge_text?: string;
+    collage_heading?: string;
+    collage_description?: string;
+    collage_card_1_title?: string;
+    collage_card_1_subtitle?: string;
+    collage_card_1_link?: string;
+    collage_card_1_image_url?: string;
+    collage_card_2_title?: string;
+    collage_card_2_subtitle?: string;
+    collage_card_2_link?: string;
+    collage_card_2_image_url?: string;
+    collage_card_3_title?: string;
+    collage_card_3_subtitle?: string;
+    collage_card_3_link?: string;
+    collage_card_3_image_url?: string;
+    collage_card_4_title?: string;
+    collage_card_4_subtitle?: string;
+    collage_card_4_link?: string;
+    collage_card_4_image_url?: string;
   }> => {
     const response = await fetch(`${API_BASE_URL}/ecommerce/public/home-page-settings/`, {
       // Always fetch fresh settings so footer reflects latest admin changes
@@ -401,7 +456,7 @@ export const ecommerceApi = {
 
   // Public: Price cart items on the server
   priceCart: async (items: Array<{ productId: string | number; quantity: number; variations?: Record<string, string> }>): Promise<{
-    items: Array<{ productId: number; name: string; image_url?: string | null; unit_price: number; quantity: number; line_total: number; max_stock?: number; variant?: { color?: string | null; size?: string | null } }>
+    items: Array<{ productId: number; combination_id: number; name: string; image_url?: string | null; unit_price: number; original_price: number; quantity: number; validated_quantity?: number; line_total: number; max_stock?: number; variant?: { combination_id?: number; color?: string | null; size?: string | null } }>
     products: Array<{
       id: number
       name: string
@@ -425,6 +480,7 @@ export const ecommerceApi = {
     }>
     subtotal: number
     delivery: { inside_dhaka_charge: number; inside_gazipur_charge: number; outside_dhaka_charge: number; updated_at: string }
+    errors: CartPricingError[]
   }> => {
     const response = await fetch(`${API_BASE_URL}/ecommerce/public/cart/price/`, {
       method: 'POST',
@@ -432,7 +488,11 @@ export const ecommerceApi = {
       body: JSON.stringify({ items }),
     })
     if (!response.ok) throw new Error('Failed to price cart')
-    return response.json()
+    const data = await response.json()
+    if (data.errors?.length) {
+      throw new Error(data.errors.map((error: CartPricingError) => error.detail).join(' '))
+    }
+    return data
   },
 
   // Create Online Preorder (COD-only). Backend enforces COD and online type.
@@ -445,6 +505,7 @@ export const ecommerceApi = {
     notes?: string;
     items: Array<{
       product_id: number;
+      combination_id?: number;
       size: string;
       color: string;
       quantity: number;
@@ -514,4 +575,14 @@ export const ecommerceApi = {
     if (!response.ok) throw new Error('Failed to fetch promotional modals')
     return response.json()
   },
+
+  // Public: Get landing page published section tree
+  getLandingPageTree: async (): Promise<any[]> => {
+    const response = await fetch(`${API_BASE_URL}/ecommerce/public/landing-page/`, {
+      cache: 'no-store',
+    })
+    if (!response.ok) throw new Error('Failed to fetch landing page tree')
+    return response.json()
+  },
 };
+

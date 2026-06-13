@@ -32,6 +32,7 @@ import { useQuery } from "@tanstack/react-query";
 import { productsApi, type StockMovement } from "@/lib/api/inventory";
 import { getImageUrl } from "@/lib/utils";
 import QRCodeSVG from "react-qr-code";
+import { useBranch } from "@/contexts/branch-context";
 
 export default function ProductPage() {
   const params = useParams();
@@ -152,6 +153,7 @@ interface ProductDetailsProps {
 
 function ProductDetails({ product }: ProductDetailsProps) {
   const router = useRouter();
+  const { selectedBranchId } = useBranch();
   const deleteProduct = useDeleteProduct();
   const categoryName =
     typeof product.category === "object" ? product.category?.name : "N/A";
@@ -161,8 +163,9 @@ function ProductDetails({ product }: ProductDetailsProps) {
       : "N/A";
 
   const costPrice = Number(product.cost_price);
-  const sellingPrice = Number(product.selling_price);
-  const profitMargin = ((sellingPrice - costPrice) / sellingPrice) * 100;
+  const wholesalePrice = Number(product.wholesale_price);
+  const retailPrice = Number(product.retail_price);
+  const profitMargin = retailPrice > 0 ? ((retailPrice - costPrice) / retailPrice) * 100 : 0;
   const isLowStock = product.stock_quantity <= product.minimum_stock;
   const isOutOfStock = product.stock_quantity <= 0;
 
@@ -179,7 +182,7 @@ function ProductDetails({ product }: ProductDetailsProps) {
 
   // Fetch stock history and filter additions
   const { data: stockHistoryData, isLoading: isLoadingStockHistory } = useQuery({
-    queryKey: ["product-stock-history", product.id],
+    queryKey: ["product-stock-history", product.id, selectedBranchId ?? "all"],
     queryFn: () => productsApi.getStockHistory(product.id), // Get all-time data by default
   });
   const stockAdditions: StockMovement[] = (stockHistoryData?.stock_history || []).filter(
@@ -323,10 +326,18 @@ function ProductDetails({ product }: ProductDetailsProps) {
                       </div>
                       <div>
                         <p className="text-sm font-medium text-muted-foreground">
-                          Selling Price
+                          Wholesale Price
                         </p>
                         <p className="font-medium text-lg">
-                          ${sellingPrice.toFixed(2)}
+                          ${wholesalePrice.toFixed(2)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">
+                          Retail Price
+                        </p>
+                        <p className="font-medium text-lg text-emerald-600">
+                          ${retailPrice.toFixed(2)}
                         </p>
                       </div>
                       <div>
@@ -357,60 +368,6 @@ function ProductDetails({ product }: ProductDetailsProps) {
                     </div>
                   </div>
 
-                  {/* Size Information */}
-                  {(product.size_type ||
-                    product.size_category ||
-                    product.gender) && (
-                      <div>
-                        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="h-5 w-5 text-indigo-500"
-                          >
-                            <path d="M4 7V4a2 2 0 0 1 2-2h8.5L20 7.5V20a2 2 0 0 1-2 2h-12a2 2 0 0 1-2-2Z" />
-                            <polyline points="14,2 14,8 20,8" />
-                            <line x1="16" x2="8" y1="13" y2="13" />
-                            <line x1="16" x2="8" y1="17" y2="17" />
-                            <polyline points="10,9 9,9 8,9" />
-                          </svg>
-                          Size Information
-                        </h3>
-                        <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-                          {product.size_type && (
-                            <div>
-                              <p className="text-sm font-medium text-muted-foreground">
-                                Size Type
-                              </p>
-                              <p className="font-medium capitalize">
-                                {product.size_type}
-                              </p>
-                            </div>
-                          )}
-                          {product.size_category && (
-                            <div>
-                              <p className="text-sm font-medium text-muted-foreground">
-                                Size Category
-                              </p>
-                              <p className="font-medium">{product.size_category}</p>
-                            </div>
-                          )}
-                          {product.gender && (
-                            <div>
-                              <p className="text-sm font-medium text-muted-foreground">
-                                Gender
-                              </p>
-                              <p className="font-medium">{product.gender}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
 
                   <Separator className="my-2" />
                 </div>
@@ -864,70 +821,54 @@ function ProductDetails({ product }: ProductDetailsProps) {
         </TabsContent>
 
         <TabsContent value="variations">
-          {/* Product variations */}
-          {product.variations && product.variations.length > 0 && (
+          {/* Product Designs & Colors */}
+          {product.designs && product.designs.length > 0 && (
             <Card className="overflow-hidden border-0 shadow-lg">
               <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700 p-6 border-b flex items-center justify-between">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   <Tag className="h-5 w-5 text-blue-500" />
-                  Product Variations
+                  Designs & Colors
                 </h3>
                 <div className="flex items-center gap-2">
-                  <AddStockDialog
-                    productId={product.id}
-                    variations={product.variations.map((v: any) => ({ id: v.id, size: v.size, color: v.color, stock: v.stock }))}
-                  />
                   <Button
                     size="sm"
                     variant="default"
                     onClick={async () => await handlePrintAllVariantsByStock(product)}
                   >
-                    Print All by Stock
+                    Print All Labels
                   </Button>
                 </div>
               </div>
-              <div className="p-6">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="px-6 py-3 text-left font-medium text-sm text-muted-foreground">
-                          Size
-                        </th>
-                        <th className="px-6 py-3 text-left font-medium text-sm text-muted-foreground">
-                          Color
-                        </th>
-                        <th className="px-6 py-3 text-left font-medium text-sm text-muted-foreground">
-                          Waist Size
-                        </th>
-                        <th className="px-6 py-3 text-left font-medium text-sm text-muted-foreground">
-                          Chest Size
-                        </th>
-                        <th className="px-6 py-3 text-left font-medium text-sm text-muted-foreground">
-                          Height
-                        </th>
-                        <th className="px-6 py-3 text-left font-medium text-sm text-muted-foreground">
-                          Stock
-                        </th>
-                        <th className="px-6 py-3 text-left font-medium text-sm text-muted-foreground">
-                          Status
-                        </th>
-                        <th className="px-6 py-3 text-left font-medium text-sm text-muted-foreground">
-                          Print Label
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {product.variations.map((variation) => (
-                        <VariantPrintRow
-                          key={variation.id}
-                          product={product}
-                          variation={variation}
-                        />
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+              <div className="p-6 space-y-8">
+                {product.designs.map((design) => (
+                  <div key={design.id} className="space-y-4">
+                    <h4 className="text-md font-bold text-slate-700 dark:text-slate-200 border-b pb-2">
+                      Design: {design.name}
+                    </h4>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b text-slate-400 text-xs uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left font-bold">Color</th>
+                            <th className="px-6 py-3 text-left font-bold">Stock</th>
+                            <th className="px-6 py-3 text-left font-bold">Status</th>
+                            <th className="px-6 py-3 text-right font-bold">Label Printing</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {design.colors.map((color) => (
+                            <VariantPrintRow
+                              key={color.id}
+                              product={product}
+                              design={design}
+                              colorVariant={color}
+                            />
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ))}
               </div>
             </Card>
           )}
@@ -939,21 +880,21 @@ function ProductDetails({ product }: ProductDetailsProps) {
 
 function VariantPrintRow({
   product,
-  variation,
+  design,
+  colorVariant,
 }: {
   product: Product;
-  variation: any;
+  design: any;
+  colorVariant: any;
 }) {
   const [customCount, setCustomCount] = useState(1);
   return (
     <tr className="hover:bg-muted/30 transition-colors">
-      <td className="px-6 py-4 font-medium">{variation.size}</td>
       <td className="px-6 py-4">
         <div className="flex items-center gap-3">
-          {/* Find the gallery for this color and show first image */}
           {(() => {
             const gallery = product.galleries?.find(g =>
-              g.color.toLowerCase() === variation.color.toLowerCase()
+              g.color.toLowerCase() === colorVariant.color.toLowerCase()
             );
             const firstImage = gallery?.images?.[0];
             const imageUrl = getImageUrl((firstImage as any)?.image_url || firstImage?.image);
@@ -962,7 +903,7 @@ function VariantPrintRow({
               <div className="w-8 h-8 rounded-lg overflow-hidden border border-gray-200">
                 <Image
                   src={imageUrl}
-                  alt={`${variation.color} variant`}
+                  alt={`${colorVariant.color} variant`}
                   width={32}
                   height={32}
                   className="w-full h-full object-cover"
@@ -972,93 +913,70 @@ function VariantPrintRow({
               <div
                 className="w-8 h-8 rounded-lg border-2 border-gray-300 flex items-center justify-center"
                 style={{
-                  backgroundColor: variation.color_hax ||
-                    (variation.color.toLowerCase() === "white" ? "#ffffff" :
-                      variation.color.toLowerCase() === "blue" ? "#3b82f6" :
-                        variation.color.toLowerCase() === "black" ? "#000000" :
-                          variation.color.toLowerCase())
+                  backgroundColor: colorVariant.color_hax || '#ccc'
                 }}
               >
                 <Package className="h-4 w-4 text-white opacity-70" />
               </div>
             );
           })()}
-          <div>
-            <span className="font-medium">{variation.color}</span>
-            {variation.color_hax && (
-              <div className="text-xs text-muted-foreground">
-                {variation.color_hax}
-              </div>
-            )}
-          </div>
+          <span className="font-medium">{colorVariant.color}</span>
         </div>
       </td>
-      <td className="px-6 py-4 font-medium">
-        {variation.waist_size ? `${variation.waist_size}"` : "N/A"}
-      </td>
-      <td className="px-6 py-4 font-medium">
-        {variation.chest_size ? `${variation.chest_size}"` : "N/A"}
-      </td>
-      <td className="px-6 py-4 font-medium">
-        {variation.height ? `${variation.height}"` : "N/A"}
-      </td>
-      <td className="px-6 py-4 font-medium">{variation.stock}</td>
+      <td className="px-6 py-4 font-bold text-slate-600">{colorVariant.stock}</td>
       <td className="px-6 py-4">
         <Badge
           variant={
-            variation.stock <= 0
+            colorVariant.stock <= 0
               ? "destructive"
-              : variation.stock <= 5
+              : colorVariant.stock <= 5
                 ? "outline"
                 : "default"
           }
+          className="font-bold text-[10px] uppercase"
         >
-          {variation.stock <= 0
+          {colorVariant.stock <= 0
             ? "Out of Stock"
-            : variation.stock <= 5
-              ? "Low Stock"
+            : colorVariant.stock <= 5
+              ? "Low"
               : "In Stock"}
         </Badge>
       </td>
-      <td className="px-6 py-4 space-x-1 flex items-center">
+      <td className="px-6 py-4 space-x-1 flex items-center justify-end">
         <Button
           size="sm"
           variant="outline"
-          onClick={() => handlePrintLabel(product, variation, 1)}
+          className="h-8 px-2 text-[10px] uppercase font-bold"
+          onClick={() => handlePrintLabel(product, design, colorVariant, 1)}
         >
           Print 1
         </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => handlePrintLabel(product, variation, variation.stock)}
-          disabled={variation.stock <= 0}
-        >
-          Print by Stock
-        </Button>
-        <input
-          type="number"
-          min={1}
-          max={variation.stock}
-          value={customCount}
-          onChange={(e) => setCustomCount(Number(e.target.value))}
-          className="w-14 px-1 py-0.5 border rounded text-sm mx-1"
-        />
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => handlePrintLabel(product, variation, customCount)}
-          disabled={customCount < 1}
-        >
-          Print Custom
-        </Button>
+        <div className="flex items-center bg-slate-50 rounded-lg border px-1">
+          <input
+            type="number"
+            min={1}
+            max={colorVariant.stock > 0 ? colorVariant.stock : 100}
+            value={customCount}
+            onChange={(e) => setCustomCount(Number(e.target.value))}
+            className="w-12 h-8 bg-transparent text-center text-xs font-bold focus:outline-none"
+          />
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 px-2 text-[10px] uppercase font-bold text-blue-600"
+            onClick={() => handlePrintLabel(product, design, colorVariant, customCount)}
+            disabled={customCount < 1}
+          >
+            Print Custom
+          </Button>
+        </div>
       </td>
     </tr>
   );
 }
 
 // Helper function to generate QR code data URL
-function generateQRCodeDataURL(productId: number, size: string, color: string): Promise<string> {
+function generateQRCodeDataURL(productId: number, design: string, color: string): Promise<string> {
   return new Promise((resolve) => {
     // Create cart data structure similar to ReceiptModal
     const cartData = {
@@ -1067,7 +985,7 @@ function generateQRCodeDataURL(productId: number, size: string, color: string): 
         quantity: 1,
         variations: {
           color: color || "",
-          size: size || "",
+          design: design || "",
         },
       }],
     };
@@ -1185,14 +1103,14 @@ function generateQRCodeDataURL(productId: number, size: string, color: string): 
   });
 }
 
-async function handlePrintLabel(product: Product, variation: any, count: number) {
+async function handlePrintLabel(product: Product, design: any, colorVariant: any, count: number) {
   if (!count || count < 1) return;
 
   // Generate QR code data URL
   const qrCodeDataURL = await generateQRCodeDataURL(
     product.id,
-    variation.size,
-    variation.color
+    design.name,
+    colorVariant.color
   );
 
   // Log for debugging
@@ -1308,9 +1226,9 @@ async function handlePrintLabel(product: Product, variation: any, count: number)
         <div class="label-content">
           <div class="label-text">
             <div class="sku">SKU: ${product.sku}</div>
-            <div class="price">Price: ৳${product.selling_price}</div>
-            <div class="size">Size: ${variation.size}</div>
-            <div class="color">Color: <span class="color-swatch" style="background:${variation.color_hax || variation.color};"></span>${variation.color}</div>
+            <div class="price">Price: ৳${product.retail_price}</div>
+            <div class="size">Design: ${design.name}</div>
+            <div class="color">Color: <span class="color-swatch" style="background:${colorVariant.color_hax || colorVariant.color};"></span>${colorVariant.color}</div>
           </div>
           ${qrCodeDataURL ? `<img src="${qrCodeDataURL.replace(/"/g, '&quot;')}" alt="QR Code" class="qr-code" />` : '<div class="qr-code" style="display: flex; align-items: center; justify-content: center; text-align: center; font-size: 10px; color: #000;">No QR</div>'}
         </div>
@@ -1378,17 +1296,19 @@ async function handlePrintAllVariantsByStock(product: Product) {
   if (!printWindow) return;
 
   // Generate QR codes for all variations
-  const variations = product.variations ?? [];
+  const designs = product.designs ?? [];
   const qrCodeMap: Record<string, string> = {};
 
-  for (const variation of variations) {
-    const key = `${variation.size}-${variation.color}`;
-    if (!qrCodeMap[key]) {
-      qrCodeMap[key] = await generateQRCodeDataURL(
-        product.id,
-        variation.size,
-        variation.color
-      );
+  for (const design of designs) {
+    for (const color of design.colors) {
+      const key = `${design.id}-${color.color}`;
+      if (!qrCodeMap[key]) {
+        qrCodeMap[key] = await generateQRCodeDataURL(
+          product.id,
+          design.name,
+          color.color
+        );
+      }
     }
   }
   const style = `
@@ -1489,25 +1409,26 @@ async function handlePrintAllVariantsByStock(product: Product) {
     </style>
   `;
   let labels = "";
-  const productVariations = product.variations ?? [];
-  for (const variation of productVariations) {
-    const key = `${variation.size}-${variation.color}`;
-    const qrCodeDataURL = qrCodeMap[key] || "";
+  for (const design of designs) {
+    for (const color of design.colors) {
+      const key = `${design.id}-${color.color}`;
+      const qrCodeDataURL = qrCodeMap[key] || "";
 
-    for (let i = 0; i < variation.stock; i++) {
-      labels += `
-        <div class="label">
-          <div class="label-content">
-            <div class="label-text">
-              <div class="sku">SKU: ${product.sku}</div>
-              <div class="price">Price: ৳${product.selling_price}</div>
-              <div class="size">Size: ${variation.size}</div>
-              <div class="color">Color: <span class="color-swatch" style="background:${variation.color_hax || variation.color};"></span>${variation.color}</div>
+      for (let i = 0; i < color.stock; i++) {
+        labels += `
+          <div class="label">
+            <div class="label-content">
+              <div class="label-text">
+                <div class="sku">SKU: ${product.sku}</div>
+                <div class="price">Price: ৳${product.retail_price}</div>
+                <div class="size">Design: ${design.name}</div>
+                <div class="color">Color: <span class="color-swatch" style="background:${color.color_hax || color.color};"></span>${color.color}</div>
+              </div>
+              ${qrCodeDataURL ? `<img src="${qrCodeDataURL.replace(/"/g, '&quot;')}" alt="QR Code" class="qr-code" />` : '<div class="qr-code" style="display: flex; align-items: center; justify-content: center; text-align: center; font-size: 10px; color: #000;">No QR</div>'}
             </div>
-            ${qrCodeDataURL ? `<img src="${qrCodeDataURL.replace(/"/g, '&quot;')}" alt="QR Code" class="qr-code" />` : '<div class="qr-code" style="display: flex; align-items: center; justify-content: center; text-align: center; font-size: 10px; color: #000;">No QR</div>'}
           </div>
-        </div>
-      `;
+        `;
+      }
     }
   }
   const html = `

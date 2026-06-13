@@ -240,6 +240,32 @@ class HomePageSettings(models.Model):
     stat_brands = models.CharField(max_length=50, default="200+")
     stat_products = models.CharField(max_length=50, default="2,000+")
     stat_customers = models.CharField(max_length=50, default="30,000+")
+
+    # Category collage settings
+    collage_enabled = models.BooleanField(default=False)
+    collage_badge_text = models.CharField(max_length=100, null=True, blank=True)
+    collage_heading = models.CharField(max_length=150, null=True, blank=True)
+    collage_description = models.TextField(null=True, blank=True)
+
+    collage_card_1_title = models.CharField(max_length=100, null=True, blank=True)
+    collage_card_1_subtitle = models.CharField(max_length=150, null=True, blank=True)
+    collage_card_1_link = models.CharField(max_length=255, null=True, blank=True)
+    collage_card_1_image = models.ImageField(upload_to='collage/', null=True, blank=True)
+
+    collage_card_2_title = models.CharField(max_length=100, null=True, blank=True)
+    collage_card_2_subtitle = models.CharField(max_length=150, null=True, blank=True)
+    collage_card_2_link = models.CharField(max_length=255, null=True, blank=True)
+    collage_card_2_image = models.ImageField(upload_to='collage/', null=True, blank=True)
+
+    collage_card_3_title = models.CharField(max_length=100, null=True, blank=True)
+    collage_card_3_subtitle = models.CharField(max_length=150, null=True, blank=True)
+    collage_card_3_link = models.CharField(max_length=255, null=True, blank=True)
+    collage_card_3_image = models.ImageField(upload_to='collage/', null=True, blank=True)
+
+    collage_card_4_title = models.CharField(max_length=100, null=True, blank=True)
+    collage_card_4_subtitle = models.CharField(max_length=150, null=True, blank=True)
+    collage_card_4_link = models.CharField(max_length=255, null=True, blank=True)
+    collage_card_4_image = models.ImageField(upload_to='collage/', null=True, blank=True)
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -261,6 +287,16 @@ class HomePageSettings(models.Model):
             
         if self.hero_secondary_image:
             optimize_image(self.hero_secondary_image)
+
+        for field_name in [
+            'collage_card_1_image',
+            'collage_card_2_image',
+            'collage_card_3_image',
+            'collage_card_4_image',
+        ]:
+            image = getattr(self, field_name, None)
+            if image:
+                optimize_image(image)
 
         # Ensure only one instance exists
         self.pk = 1
@@ -450,3 +486,128 @@ class PromotionalModal(models.Model):
             except (ValueError, OSError):
                 pass
         super().delete(*args, **kwargs)
+
+
+class LandingPage(models.Model):
+    """Container model representing a landing page configuration"""
+    name = models.CharField(max_length=200)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Landing Page'
+        verbose_name_plural = 'Landing Pages'
+
+    def __str__(self):
+        return self.name
+
+
+class LandingPageSection(models.Model):
+    """Individual layout sections/blocks for a landing page"""
+    SECTION_TYPE_CHOICES = [
+        ('HERO', 'Hero Section'),
+        ('CATEGORY_COLLAGE', 'Category Collage'),
+        ('AD_BANNER', 'Advertisement Banner'),
+        ('PRODUCT_SECTION', 'Product Section'),
+    ]
+
+    STATUS_CHOICES = [
+        ('DRAFT', 'Draft'),
+        ('PUBLISHED', 'Published'),
+    ]
+
+    landing_page = models.ForeignKey(LandingPage, on_delete=models.CASCADE, related_name='sections')
+    section_type = models.CharField(max_length=50, choices=SECTION_TYPE_CHOICES)
+    layout_variant = models.CharField(max_length=50)
+    display_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='DRAFT')
+    
+    # Scheduling fields
+    start_date = models.DateTimeField(null=True, blank=True)
+    end_date = models.DateTimeField(null=True, blank=True)
+    
+    # Section specific flexible parameters
+    config = models.JSONField(default=dict, blank=True)
+    
+    # Optional image assets
+    image = models.ImageField(upload_to='landing_pages/', null=True, blank=True)
+    mobile_image = models.ImageField(upload_to='landing_pages/', null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['display_order', 'id']
+        verbose_name = 'Landing Page Section'
+        verbose_name_plural = 'Landing Page Sections'
+
+    def __str__(self):
+        return f"{self.section_type} - {self.layout_variant} ({self.status})"
+
+    def save(self, *args, **kwargs):
+        if self.image:
+            optimize_image(self.image)
+        if self.mobile_image:
+            optimize_image(self.mobile_image)
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        for img in [self.image, self.mobile_image]:
+            if img:
+                try:
+                    if os.path.isfile(img.path):
+                        os.remove(img.path)
+                except (ValueError, OSError):
+                    pass
+        super().delete(*args, **kwargs)
+
+
+class LandingPageCollageItem(models.Model):
+    """Custom categories or pages to display in Category Collage layout"""
+    section = models.ForeignKey(LandingPageSection, on_delete=models.CASCADE, related_name='collage_items')
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True)
+    online_category = models.ForeignKey(OnlineCategory, on_delete=models.SET_NULL, null=True, blank=True)
+    title_override = models.CharField(max_length=150, null=True, blank=True)
+    link_override = models.CharField(max_length=255, null=True, blank=True)
+    image = models.ImageField(upload_to='landing_pages/collage/', null=True, blank=True)
+    display_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['display_order', 'id']
+        verbose_name = 'Landing Page Collage Item'
+        verbose_name_plural = 'Landing Page Collage Items'
+
+    def __str__(self):
+        return self.title_override or (self.category.name if self.category else (self.online_category.name if self.online_category else f"Card {self.id}"))
+
+    def save(self, *args, **kwargs):
+        if self.image:
+            optimize_image(self.image)
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self.image:
+            try:
+                if os.path.isfile(self.image.path):
+                    os.remove(self.image.path)
+            except (ValueError, OSError):
+                pass
+        super().delete(*args, **kwargs)
+
+
+class LandingPageProductSelection(models.Model):
+    """Explicitly mapped list of products for custom featured lists"""
+    section = models.ForeignKey(LandingPageSection, on_delete=models.CASCADE, related_name='product_selections')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    display_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['display_order', 'id']
+        verbose_name = 'Landing Page Product Selection'
+        verbose_name_plural = 'Landing Page Product Selections'
+
+    def __str__(self):
+        return f"{self.section} -> {self.product.name}"
+

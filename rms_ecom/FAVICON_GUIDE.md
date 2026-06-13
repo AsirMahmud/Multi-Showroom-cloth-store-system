@@ -1,4 +1,4 @@
-# Favicon Setup Guide for Raw Stitch
+# Favicon Setup Guide for Ferdous Textile
 
 ## What is a Favicon?
 A favicon is the small icon that appears in:
@@ -52,10 +52,10 @@ A favicon is the small icon that appears in:
 - ✅ Use transparent background (PNG) or solid color (ICO)
 - ✅ Test at different sizes to ensure readability
 
-### For Raw Stitch:
+### For Ferdous Textile:
 - Use your logo or brand symbol
 - Fashion/fabric theme works well
-- Consider using initials "RS" or a stylized needle/thread icon
+- Consider using initials "FT" or a stylized needle/thread icon
 - Match your brand colors
 
 ## How to Create Favicons

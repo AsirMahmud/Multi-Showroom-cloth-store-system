@@ -15,11 +15,13 @@ import {
     rejectReturn,
     lookupCustomer,
     getDashboardStats,
+    CreateReturnPayload,
     PaginatedResponse,
     deleteAllSales
 } from '@/lib/api/sales';
 import type { Sale, Payment, Return } from '@/types/sales';
 import { useToast } from '../use-toast';
+import { useBranch } from '@/contexts/branch-context';
 
 export const useSales = (params?: {
     start_date?: string;
@@ -37,8 +39,9 @@ export const useSales = (params?: {
     const queryClient = useQueryClient();
     const { toast } = useToast();
 
+    const { selectedBranchId } = useBranch();
     const salesQuery = useQuery({
-        queryKey: ['sales', params],
+        queryKey: ['sales', params, selectedBranchId],
         queryFn: () => getSales(params)
     });
 
@@ -161,8 +164,9 @@ export const useDueSales = (params?: {
     page?: number;
     page_size?: number;
 }) => {
+    const { selectedBranchId } = useBranch();
     const salesQuery = useQuery({
-        queryKey: ['due-sales', params],
+        queryKey: ['due-sales', params, selectedBranchId],
         queryFn: () => getDueSales(params)
     });
 
@@ -184,9 +188,11 @@ export const useSale = (id: number) => {
     const queryClient = useQueryClient();
     const { toast } = useToast();
 
+    const { selectedBranchId } = useBranch();
     const saleQuery = useQuery({
-        queryKey: ['sale', id],
-        queryFn: () => getSale(id)
+        queryKey: ['sale', id, selectedBranchId],
+        queryFn: () => getSale(id),
+        enabled: id > 0,
     });
 
     const addPaymentMutation = useMutation({
@@ -208,9 +214,11 @@ export const useSale = (id: number) => {
     });
 
     const createReturnMutation = useMutation({
-        mutationFn: ({ saleId, data }: { saleId: number; data: Partial<Return> }) => createReturn(saleId, data),
+        mutationFn: ({ saleId, data }: { saleId: number; data: CreateReturnPayload }) => createReturn(saleId, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['sale', id] });
+            queryClient.invalidateQueries({ queryKey: ['returns'] });
+            queryClient.invalidateQueries({ queryKey: ['sales'] });
             toast({
                 title: 'Success',
                 description: 'Return created successfully'
@@ -246,8 +254,9 @@ export const useReturns = (params?: {
     const queryClient = useQueryClient();
     const { toast } = useToast();
 
+    const { selectedBranchId } = useBranch();
     const returnsQuery = useQuery({
-        queryKey: ['returns', params],
+        queryKey: ['returns', params, selectedBranchId],
         queryFn: () => getReturns(params)
     });
 
@@ -299,8 +308,9 @@ export const useReturns = (params?: {
 };
 
 export const useCustomerLookup = (phone: string) => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: ['customer-lookup', phone],
+        queryKey: ['customer-lookup', phone, selectedBranchId],
         queryFn: () => lookupCustomer(phone),
         enabled: !!phone
     });
@@ -314,8 +324,9 @@ export const useDashboardStats = (params?: {
     payment_method?: string;
     customer_phone?: string;
 }) => {
+    const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: ['dashboard-stats', params],
+        queryKey: ['dashboard-stats', params, selectedBranchId],
         queryFn: () => getDashboardStats(params)
     });
 }; 

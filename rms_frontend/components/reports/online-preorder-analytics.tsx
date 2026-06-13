@@ -1,8 +1,9 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+"use client";
+
+import React from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import React from "react";
 import {
   DollarSign,
   ShoppingCart,
@@ -10,6 +11,8 @@ import {
   Tag,
   BarChart3,
   Package,
+  Activity,
+  ArrowRight
 } from "lucide-react";
 import {
   BarChart,
@@ -20,41 +23,39 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  Area,
+  AreaChart,
+  ComposedChart
 } from "recharts";
 import { useOnlinePreorderAnalytics } from "@/hooks/queries/use-reports";
 import { DateRange } from "react-day-picker";
+import { MetricCard, DataPanel } from "@/components/ui/professional";
+import { formatCurrency, cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 interface OnlinePreorderAnalyticsProps {
   dateRange: DateRange;
 }
 
+const item = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0 },
+};
+
 export function OnlinePreorderAnalytics({ dateRange }: OnlinePreorderAnalyticsProps) {
   const { data: analyticsData, isLoading, error } = useOnlinePreorderAnalytics(dateRange);
 
-  // Process chart data with better error handling - MUST be before any conditional returns
   const chartData = React.useMemo(() => {
     if (!analyticsData?.sales_by_date || !Array.isArray(analyticsData.sales_by_date)) {
       return [];
     }
     
     return analyticsData.sales_by_date
-      .filter((item: any) => item && item.date) // Filter out null dates
+      .filter((item: any) => item && item.date)
       .map((item: any) => {
         try {
-          // Handle different date formats
-          let date: Date;
-          if (typeof item.date === 'string') {
-            date = new Date(item.date);
-          } else if (item.date instanceof Date) {
-            date = item.date;
-          } else {
-            return null;
-          }
-          
-          // Check if date is valid
-          if (isNaN(date.getTime())) {
-            return null;
-          }
+          const date = new Date(item.date);
+          if (isNaN(date.getTime())) return null;
           
           return {
             date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
@@ -62,283 +63,192 @@ export function OnlinePreorderAnalytics({ dateRange }: OnlinePreorderAnalyticsPr
             orders: parseInt(String(item.orders_count || '0'), 10),
           };
         } catch (e) {
-          console.error('Error parsing chart data:', e, item);
           return null;
         }
       })
-      .filter((item: any) => item !== null && item !== undefined); // Remove any null entries
+      .filter((item: any) => item !== null);
   }, [analyticsData?.sales_by_date]);
-
-  // Debug logging
-  React.useEffect(() => {
-    if (analyticsData) {
-      console.log('Online Preorder Analytics Data:', analyticsData);
-      console.log('Sales by date:', analyticsData.sales_by_date);
-    }
-    if (error) {
-      console.error('Online Preorder Analytics Error:', error);
-    }
-  }, [analyticsData, error]);
 
   if (isLoading) {
     return (
       <div className="space-y-8">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
+        <div className="grid gap-4 md:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-28 rounded-[24px]" />
+          ))}
         </div>
-        <Skeleton className="h-80" />
-        <Skeleton className="h-80" />
+        <Skeleton className="h-[400px] rounded-[32px]" />
       </div>
     );
   }
 
   if (!analyticsData) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <p className="text-gray-500">No analytics data available</p>
-        {error && (
-          <p className="text-red-500 text-sm mt-2">Error: {error.message || 'Failed to load data'}</p>
-        )}
-      </div>
+      <DataPanel title="System Conflict" description="Protocol failure while retrieving online analytics.">
+        <div className="text-center py-12">
+          <Activity className="h-12 w-12 text-rose-500 mx-auto mb-4" />
+          <p className="text-slate-600 font-bold">No analytics delta available.</p>
+          {error && (
+            <p className="text-xs text-slate-400 mt-2 uppercase tracking-widest">{error.message || 'Failed to load data'}</p>
+          )}
+        </div>
+      </DataPanel>
     );
   }
 
   return (
     <div className="space-y-8">
-      {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200 shadow-lg">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-semibold text-indigo-900">Total Orders</CardTitle>
-            <ShoppingCart className="h-5 w-5 text-indigo-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-indigo-900">{analyticsData.total_orders}</div>
-            <p className="text-xs text-indigo-700 mt-1">All online preorders</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200 shadow-lg">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-semibold text-emerald-900">Total Sales</CardTitle>
-            <BarChart3 className="h-5 w-5 text-emerald-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-emerald-900">{analyticsData.total_sales_count}</div>
-            <p className="text-xs text-emerald-700 mt-1">Completed orders</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 shadow-lg">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-semibold text-blue-900">Total Revenue</CardTitle>
-            <DollarSign className="h-5 w-5 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-blue-900">
-              ৳{Number(analyticsData.total_revenue).toLocaleString()}
-            </div>
-            <p className="text-xs text-blue-700 mt-1">From completed orders</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 shadow-lg">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-semibold text-purple-900">Avg Order Value</CardTitle>
-            <TrendingUp className="h-5 w-5 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-purple-900">
-              ৳{Number(analyticsData.average_order_value).toLocaleString()}
-            </div>
-            <p className="text-xs text-purple-700 mt-1">Per completed order</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <motion.div variants={item}>
+          <MetricCard
+            label="Inbound Traffic"
+            value={analyticsData.total_orders.toString()}
+            icon={<ShoppingCart className="h-5 w-5" />}
+            tone="brand"
+            helper="All online bookings"
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Conversion Delta"
+            value={analyticsData.total_sales_count.toString()}
+            icon={<Activity className="h-5 w-5" />}
+            tone="emerald"
+            helper="Successfully completed"
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Gross Inflow"
+            value={formatCurrency(parseFloat(analyticsData.total_revenue))}
+            icon={<DollarSign className="h-5 w-5" />}
+            tone="emerald"
+            helper="Aggregate online revenue"
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Mean Order Yield"
+            value={formatCurrency(parseFloat(analyticsData.average_order_value))}
+            icon={<TrendingUp className="h-5 w-5" />}
+            tone="indigo"
+            helper="Yield per conversion"
+          />
+        </motion.div>
       </div>
 
-      {/* Sales Trend Chart */}
-      <Card className="border-0 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 border-b">
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
-            Sales Trend Over Time
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <div className="h-[350px] w-full">
-            {chartData && chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart 
-                  data={chartData}
-                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis 
-                    dataKey="date" 
-                    tickLine={false}
-                    axisLine={false}
-                    fontSize={12}
-                    tickMargin={10}
-                  />
-                  <YAxis 
-                    yAxisId="left"
-                    tickLine={false}
-                    axisLine={false}
-                    fontSize={12}
-                    tickFormatter={(value) => `৳${value.toLocaleString()}`}
-                  />
-                  <YAxis 
-                    yAxisId="right"
-                    orientation="right"
-                    tickLine={false}
-                    axisLine={false}
-                    fontSize={12}
-                  />
-                  <Tooltip 
-                    formatter={(value: any, name: string) => {
-                      if (name === 'revenue') {
-                        return [`৳${Number(value).toLocaleString()}`, 'Revenue'];
-                      }
-                      if (name === 'orders') {
-                        return [value, 'Orders'];
-                      }
-                      return [value, name];
-                    }}
-                    contentStyle={{
-                      backgroundColor: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                    }}
-                  />
-                  <Legend />
-                  <Bar 
-                    yAxisId="left"
-                    dataKey="revenue" 
-                    fill="#6366f1" 
-                    name="Revenue (৳)"
-                    radius={[4, 4, 0, 0]}
-                  />
-                  <Bar 
-                    yAxisId="right"
-                    dataKey="orders" 
-                    fill="#10b981" 
-                    name="Orders"
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-gray-500">
-                <BarChart3 className="h-12 w-12 mb-2 opacity-50" />
-                <p>No sales data available for the selected period</p>
-                {analyticsData?.sales_by_date && (
-                  <p className="text-xs mt-2 text-gray-400">
-                    {Array.isArray(analyticsData.sales_by_date) 
-                      ? `${analyticsData.sales_by_date.length} date entries found but couldn't be parsed`
-                      : 'No date entries in response'}
-                  </p>
-                )}
-              </div>
-            )}
+      <motion.div variants={item}>
+        <DataPanel title="Revenue Velocity" description="Multi-axis analysis of online conversion delta and revenue trajectory.">
+          <div className="h-[400px] w-full pt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis 
+                  dataKey="date" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
+                />
+                <YAxis 
+                  yAxisId="left"
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
+                  tickFormatter={(val) => `$${val}`}
+                />
+                <YAxis 
+                  yAxisId="right"
+                  orientation="right"
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    borderRadius: '16px', 
+                    border: 'none', 
+                    boxShadow: '0 20px 50px rgba(0,0,0,0.1)',
+                    fontSize: '12px',
+                    fontWeight: 700
+                  }}
+                />
+                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em' }} />
+                <Area yAxisId="left" type="monotone" dataKey="revenue" fill="#163625" fillOpacity={0.05} stroke="#163625" strokeWidth={3} name="Revenue (৳)" />
+                <Bar yAxisId="right" dataKey="orders" fill="#10b981" radius={[4, 4, 0, 0]} name="Order Count" />
+              </ComposedChart>
+            </ResponsiveContainer>
           </div>
-        </CardContent>
-      </Card>
+        </DataPanel>
+      </motion.div>
 
-      {/* Top Products and Categories */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Top Products */}
-        <Card className="border-0 shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 border-b">
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5" />
-              Top Selling Products
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
-            {analyticsData.top_products && analyticsData.top_products.length > 0 ? (
-              <div className="space-y-4">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead className="text-right">Quantity</TableHead>
-                      <TableHead className="text-right">Revenue</TableHead>
+      <div className="grid gap-8 lg:grid-cols-2">
+        <motion.div variants={item}>
+          <DataPanel title="Asset Performance" description="Top performing inventory units within the online channel.">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-b border-slate-100 hover:bg-transparent">
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4">SKU</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4">Volume</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4 text-right">Revenue</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {analyticsData.top_products?.map((product: any, idx: number) => (
+                    <TableRow key={product.product_id || idx} className="border-b border-slate-50 group hover:bg-slate-50/50 transition-colors">
+                      <TableCell className="py-4">
+                        <div>
+                          <div className="text-xs font-black text-slate-700">{product.product_name}</div>
+                          <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{product.category_name}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-4 font-bold text-slate-500 text-xs">
+                        {product.quantity_sold} Units
+                      </TableCell>
+                      <TableCell className="py-4 text-right font-black text-brand-primary text-xs">
+                        {formatCurrency(parseFloat(product.total_sales))}
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {analyticsData.top_products.map((product: any, idx: number) => (
-                      <TableRow key={product.product_id || idx}>
-                        <TableCell className="font-medium">{product.product_name || 'Unknown'}</TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">{product.category_name || 'Uncategorized'}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right">{product.quantity_sold || 0}</TableCell>
-                        <TableCell className="text-right font-semibold">
-                          ৳{Number(product.total_sales || 0).toLocaleString()}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                <Package className="h-12 w-12 mb-2 opacity-50" />
-                <p>No product data available for the selected period</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </DataPanel>
+        </motion.div>
 
-        {/* Top Categories */}
-        <Card className="border-0 shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 border-b">
-            <CardTitle className="flex items-center gap-2">
-              <Tag className="h-5 w-5" />
-              Top Categories by Sales
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
-            {analyticsData.top_categories && analyticsData.top_categories.length > 0 ? (
-              <div className="space-y-4">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Category</TableHead>
-                      <TableHead className="text-right">Orders</TableHead>
-                      <TableHead className="text-right">Quantity</TableHead>
-                      <TableHead className="text-right">Revenue</TableHead>
+        <motion.div variants={item}>
+          <DataPanel title="Departmental Inflow" description="Revenue distribution by category for online preorders.">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-b border-slate-100 hover:bg-transparent">
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4">Department</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4 text-right">Volume</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4 text-right">Revenue</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {analyticsData.top_categories?.map((category: any, idx: number) => (
+                    <TableRow key={category.category_name || idx} className="border-b border-slate-50 group hover:bg-slate-50/50 transition-colors">
+                      <TableCell className="py-4">
+                        <Badge variant="secondary" className="bg-slate-100 text-slate-500 border-none font-black text-[9px] uppercase tracking-widest">
+                          {category.category_name}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="py-4 text-right font-bold text-slate-500 text-xs">
+                        {category.quantity_sold} Units
+                      </TableCell>
+                      <TableCell className="py-4 text-right font-black text-brand-primary text-xs">
+                        {formatCurrency(parseFloat(category.total_sales))}
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {analyticsData.top_categories.map((category: any, idx: number) => (
-                      <TableRow key={category.category_name || idx}>
-                        <TableCell className="font-medium">{category.category_name || 'Uncategorized'}</TableCell>
-                        <TableCell className="text-right">{category.order_count || 0}</TableCell>
-                        <TableCell className="text-right">{category.quantity_sold || 0}</TableCell>
-                        <TableCell className="text-right font-semibold">
-                          ৳{Number(category.total_sales || 0).toLocaleString()}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                <Tag className="h-12 w-12 mb-2 opacity-50" />
-                <p>No category data available for the selected period</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </DataPanel>
+        </motion.div>
       </div>
     </div>
   );
 }
-

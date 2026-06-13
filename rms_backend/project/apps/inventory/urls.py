@@ -12,7 +12,8 @@ from .views import (
     WhoIsThisForViewSet,
     FeaturesViewSet,
     GalleryViewSet,
-    ImageViewSet
+    ImageViewSet,
+    WholesalePricingSettingsViewSet,
 )
 
 router = DefaultRouter()
@@ -28,6 +29,7 @@ router.register(r'who-is-this-for', WhoIsThisForViewSet)
 router.register(r'features', FeaturesViewSet)
 router.register(r'galleries', GalleryViewSet)
 router.register(r'images', ImageViewSet)
+router.register(r'wholesale-settings', WholesalePricingSettingsViewSet, basename='wholesale-settings')
 
 
 urlpatterns = [

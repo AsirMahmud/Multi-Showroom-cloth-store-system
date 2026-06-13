@@ -5,11 +5,17 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatCurrency(amount: number) {
-  return new Intl.NumberFormat("en-US", {
+/**
+ * Format a number as Bangladeshi Taka (BDT). Single source of truth for
+ * currency rendering across POS, dashboards, reports, and receipts.
+ */
+export function formatCurrency(amount: number, currency: string = "BDT") {
+  return new Intl.NumberFormat("en-BD", {
     style: "currency",
-    currency: "USD",
-  }).format(amount)
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(amount || 0)
 }
 
 /**
@@ -30,20 +36,14 @@ export function getImageUrl(imagePath: string | null | undefined): string {
     return imagePath;
   }
 
-  // If the path starts with /media/, use it as is
   if (imagePath.startsWith('/media/')) {
     const baseUrl = process.env.NEXT_PUBLIC_IMAGEURL || "http://127.0.0.1:8000";
-    const fullUrl = `${baseUrl}${imagePath}`;
-    console.log('Generated image URL:', fullUrl, 'from path:', imagePath);
-    return fullUrl;
+    return `${baseUrl}${imagePath}`;
   }
 
-  // For other paths, add /media/ prefix
   const baseUrl = process.env.NEXT_PUBLIC_IMAGEURL || "http://127.0.0.1:8000";
   const cleanPath = imagePath.startsWith('/') ? imagePath.slice(1) : imagePath;
-  const fullUrl = `${baseUrl}/media/${cleanPath}`;
-  console.log('Generated image URL:', fullUrl, 'from path:', imagePath);
-  return fullUrl;
+  return `${baseUrl}/media/${cleanPath}`;
 }
 
 export function slugify(text: string) {

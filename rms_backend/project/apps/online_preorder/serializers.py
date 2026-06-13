@@ -99,7 +99,7 @@ class OnlinePreorderCreateSerializer(serializers.ModelSerializer):
         customer_phone = validated_data.get('customer_phone')
         customer_name = validated_data.get('customer_name', '')
         customer_email = validated_data.get('customer_email')
-        shipping_address = validated_data.get('shipping_address', {})
+        shipping_address = validated_data.get('shipping_address') or {}
 
         # Build address string from structured shipping address
         address_parts = []
@@ -195,7 +195,7 @@ class OnlinePreorderCreateSerializer(serializers.ModelSerializer):
         customer_phone = validated_data.get('customer_phone', instance.customer_phone)
         customer_name = validated_data.get('customer_name', instance.customer_name)
         customer_email = validated_data.get('customer_email', instance.customer_email)
-        shipping_address = validated_data.get('shipping_address', instance.shipping_address)
+        shipping_address = validated_data.get('shipping_address') or instance.shipping_address or {}
 
         # Build address string from structured shipping address
         address_parts = []
@@ -298,14 +298,33 @@ class OnlinePreorderSerializer(serializers.ModelSerializer):
                         
                         from apps.inventory.models import Gallery, Image
                         
-                        # 1. Try first variant's primary photo
-                        first_variant = product.variations.first()
-                        if first_variant:
-                            gallery = Gallery.objects.filter(product=product, color=first_variant.color).first()
+                        # 1. Try item-specific color primary photo
+                        item_color = item.get('color')
+                        item_design = item.get('design_name') or item.get('design') or item.get('size')
+                        if item_color:
+                            gallery_query = Gallery.objects.filter(
+                                design__product=product,
+                                color__iexact=item_color,
+                            )
+                            if item_design:
+                                gallery_query = gallery_query.filter(
+                                    design__name__iexact=item_design,
+                                )
+                            gallery = gallery_query.first()
                             if gallery:
                                 primary_img = Image.objects.filter(gallery=gallery, imageType='PRIMARY').first()
                                 if primary_img and primary_img.image:
                                     image_url = primary_img.image.url
+                        
+                        # Fallback to first variant if item color not found
+                        if not image_url:
+                            first_variant = product.variations.first()
+                            if first_variant:
+                                gallery = Gallery.objects.filter(design__product=product, color=first_variant.color).first()
+                                if gallery:
+                                    primary_img = Image.objects.filter(gallery=gallery, imageType='PRIMARY').first()
+                                    if primary_img and primary_img.image:
+                                        image_url = primary_img.image.url
                         
                         # 2. Fallback to main product image
                         if not image_url and product.image:
@@ -374,6 +393,5 @@ class OnlinePreorderScanResultSerializer(serializers.Serializer):
     result = serializers.ChoiceField(choices=['MATCHED', 'NOT_IN_ORDER', 'OVER_SCAN'])
     message = serializers.CharField()
     verification = OnlinePreorderVerificationSerializer()
-
 
 

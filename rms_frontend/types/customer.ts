@@ -1,6 +1,6 @@
 export interface CustomerPurchaseItem {
     product_name: string;
-    size: string;
+    design: string;
     color: string;
     quantity: number;
     unit_price: string;

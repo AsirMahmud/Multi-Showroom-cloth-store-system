@@ -1,6 +1,5 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   LineChart,
   Line,
@@ -12,6 +11,9 @@ import {
   BarChart,
   Bar,
   Legend,
+  Area,
+  AreaChart,
+  ComposedChart
 } from "recharts";
 import {
   Table,
@@ -21,9 +23,26 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { MetricCard, DataPanel, TableSkeleton, ChartSkeleton } from "@/components/ui/professional";
 import { useProfitLossReport } from "@/hooks/queries/use-reports";
-import { DateRange } from "react-day-picker";
-import { Skeleton } from "@/components/ui/skeleton";
+import { formatCurrency, cn } from "@/lib/utils";
+import { motion } from "framer-motion";
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  DollarSign, 
+  PieChart as PieChartIcon, 
+  ArrowRightLeft,
+  Activity,
+  BarChart3,
+  Percent
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+
+const item = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0 },
+};
 
 export function ProfitLossReport({
   dateRange,
@@ -34,39 +53,24 @@ export function ProfitLossReport({
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="space-y-8">
+        <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-4">
           {[...Array(4)].map((_, i) => (
-            <Card
-              key={i}
-              className="bg-gradient-to-br from-orange-50 to-amber-100 border-0 shadow-xl"
-            >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <Skeleton className="h-4 w-[100px]" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-8 w-[60px]" />
-                <Skeleton className="h-4 w-[80px] mt-2" />
-              </CardContent>
-            </Card>
+            <div key={i} className="h-28 rounded-[24px] bg-slate-100 animate-pulse" />
           ))}
         </div>
-        <Card className="border-0 shadow-lg overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 border-b">
-            <Skeleton className="h-6 w-[200px]" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-[300px] w-full" />
-          </CardContent>
-        </Card>
+        <ChartSkeleton />
+        <div className="grid gap-8 lg:grid-cols-2">
+          <ChartSkeleton />
+          <TableSkeleton cols={3} rows={5} />
+        </div>
       </div>
     );
   }
 
   if (!profitLossData) return null;
 
-  // --- Patch: Construct chart data if missing from API ---
-  // Build a map for quick lookup
+  // Build chart data
   const revenueMap = Object.fromEntries(
     (profitLossData.revenue_by_date || []).map((item) => [
       item.date,
@@ -79,231 +83,161 @@ export function ProfitLossReport({
       parseFloat(item.total),
     ])
   );
-  // Get all unique dates
   const allDates = Array.from(
     new Set([...Object.keys(revenueMap), ...Object.keys(expenseMap)])
   ).sort();
-  // Build revenue_vs_expense_by_date
-  const revenueVsExpenseData =
-    profitLossData.revenue_vs_expense_by_date ??
-    allDates.map((date) => ({
-      date,
-      revenue: revenueMap[date] || 0,
-      expense: expenseMap[date] || 0,
-    }));
-  // Build expenses_over_time
-  const expensesOverTimeData =
-    profitLossData.expenses_over_time ??
-    (profitLossData.expenses_by_date || []).map((item) => ({
-      date: item.date,
-      amount: item.total,
-    }));
-
-  console.log(profitLossData);
-  console.log(expensesOverTimeData);
-  // --- End Patch ---
+  const revenueVsExpenseData = allDates.map((date) => ({
+    date,
+    revenue: revenueMap[date] || 0,
+    expense: expenseMap[date] || 0,
+    profit: (revenueMap[date] || 0) - (expenseMap[date] || 0)
+  }));
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${parseFloat(profitLossData.total_revenue).toFixed(2)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {profitLossData.revenue_by_date.length} days of sales
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Expenses
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${parseFloat(profitLossData.total_expenses).toFixed(2)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {profitLossData.expenses_by_date.length} days of expenses
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Net Profit</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${parseFloat(profitLossData.net_profit).toFixed(2)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {parseFloat(profitLossData.profit_margin).toFixed(1)}% profit
-              margin
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Profit Margin</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {parseFloat(profitLossData.profit_margin).toFixed(2)}%
-            </div>
-          </CardContent>
-        </Card>
+    <div className="space-y-8">
+      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
+        <motion.div variants={item}>
+          <MetricCard
+            label="Gross Revenue"
+            value={formatCurrency(parseFloat(profitLossData.total_revenue))}
+            icon={<DollarSign className="h-5 w-5" />}
+            tone="brand"
+            helper="Top-line sales before tax adjustment"
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Gross Profit"
+            value={formatCurrency(parseFloat(profitLossData.gross_profit))}
+            icon={<Activity className="h-5 w-5" />}
+            tone="emerald"
+            helper="After COGS, before operating expenses"
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Operating Expense"
+            value={formatCurrency(parseFloat(profitLossData.total_expenses))}
+            icon={<TrendingDown className="h-5 w-5" />}
+            tone="rose"
+            helper="Approved operating expenses"
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Net Profit"
+            value={formatCurrency(parseFloat(profitLossData.net_profit))}
+            icon={<TrendingUp className="h-5 w-5" />}
+            tone="emerald"
+            helper="Gross profit minus operating expenses"
+          />
+        </motion.div>
+        <motion.div variants={item} className="lg:col-span-4">
+          <MetricCard
+            label="Profit Margin"
+            value={`${parseFloat(profitLossData.profit_margin).toFixed(1)}%`}
+            icon={<Percent className="h-5 w-5" />}
+            tone="indigo"
+            helper={profitLossData.profit_margin_basis === "net_revenue" ? "Net profit as a share of net revenue" : "Net profit as a share of total revenue"}
+          />
+        </motion.div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Revenue vs Expenses Over Time</CardTitle>
-          </CardHeader>
-          <CardContent className="h-96">
-            <ResponsiveContainer>
-              <LineChart
-                data={revenueVsExpenseData}
-                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip
-                  formatter={(value: string) =>
-                    `$${parseFloat(value).toFixed(2)}`
-                  }
+      <motion.div variants={item}>
+        <DataPanel title="Revenue vs Expense" description="Comparison of money earned versus operational costs.">
+          <div className="h-[400px] w-full pt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={revenueVsExpenseData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis 
+                  dataKey="date" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
                 />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="#0088FE"
-                  name="Revenue"
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
+                  tickFormatter={(val) => `$${val}`}
                 />
-                <Line
-                  type="monotone"
-                  dataKey="expense"
-                  stroke="#FF8042"
-                  name="Expense"
+                <Tooltip 
+                  contentStyle={{ 
+                    borderRadius: '16px', 
+                    border: 'none', 
+                    boxShadow: '0 20px 50px rgba(0,0,0,0.1)',
+                    fontSize: '12px',
+                    fontWeight: 700
+                  }}
                 />
-              </LineChart>
+                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em' }} />
+                <Area type="monotone" dataKey="revenue" fill="#163625" fillOpacity={0.05} stroke="#163625" strokeWidth={3} name="Total Revenue" />
+                <Area type="monotone" dataKey="expense" fill="#ef4444" fillOpacity={0.05} stroke="#ef4444" strokeWidth={3} name="Total Expense" />
+                <Bar dataKey="profit" fill="#10b981" radius={[4, 4, 0, 0]} name="Profit" />
+              </ComposedChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Expenses Over Time</CardTitle>
-          </CardHeader>
-          <CardContent className="h-96">
-            <ResponsiveContainer>
-              <LineChart
-                data={expensesOverTimeData}
-                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip
-                  formatter={(value: string) =>
-                    `$${parseFloat(value).toFixed(2)}`
-                  }
-                />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="amount"
-                  stroke="#FF8042"
-                  name="Expenses"
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          </div>
+        </DataPanel>
+      </motion.div>
+
+      <div className="grid gap-8 lg:grid-cols-2">
+        <motion.div variants={item}>
+          <DataPanel title="Profit by Category" description="Analysis of revenue and costs for each business category.">
+            <div className="h-[400px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={profitLossData.profit_by_category} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                  <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} />
+                  <YAxis type="category" dataKey="category_name" width={100} axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} />
+                  <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }} />
+                  <Bar dataKey="revenue" fill="#163625" radius={[0, 4, 4, 0]} name="Revenue" />
+                  <Bar dataKey="cost" fill="#94a3b8" radius={[0, 4, 4, 0]} name="Cost" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </DataPanel>
+        </motion.div>
+
+        <motion.div variants={item}>
+          <DataPanel title="Category Performance" description="Detailed profit analysis for each category.">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-b border-slate-100 hover:bg-transparent">
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4">Category</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4 text-right">Net Profit</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 py-4 text-right">Margin</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {profitLossData.profit_by_category.map((item) => {
+                    const revenue = parseFloat(item.revenue);
+                    const margin = revenue > 0 ? (parseFloat(item.profit) / revenue) * 100 : 0;
+                    return (
+                      <TableRow key={item.category_name} className="border-b border-slate-50 group hover:bg-slate-50/50 transition-colors">
+                        <TableCell className="py-4">
+                          <span className="text-xs font-bold text-slate-600">{item.category_name}</span>
+                        </TableCell>
+                        <TableCell className="py-4 text-right font-black text-brand-primary text-xs">
+                          {formatCurrency(parseFloat(item.profit))}
+                        </TableCell>
+                        <TableCell className="py-4 text-right">
+                          <Badge variant="secondary" className={cn(
+                            "border-none font-black text-[9px] uppercase tracking-widest",
+                            margin > 20 ? "bg-emerald-50 text-emerald-600" : "bg-orange-50 text-orange-600"
+                          )}>
+                            {margin.toFixed(1)}%
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </DataPanel>
+        </motion.div>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Profit by Category</CardTitle>
-        </CardHeader>
-        <CardContent className="h-96">
-          <ResponsiveContainer>
-            <BarChart
-              data={profitLossData.profit_by_category}
-              layout="vertical"
-              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" />
-              <YAxis type="category" dataKey="category_name" width={100} />
-              <Tooltip
-                formatter={(value: string) =>
-                  `$${parseFloat(value).toFixed(2)}`
-                }
-              />
-              <Legend />
-              <Bar
-                dataKey={(data) => parseFloat(data.profit)}
-                name="Profit"
-                fill="#8884d8"
-              />
-              <Bar
-                dataKey={(data) => parseFloat(data.revenue)}
-                fill="#82ca9d"
-                name="Revenue"
-              />
-              <Bar
-                dataKey={(data) => parseFloat(data.cost)}
-                fill="#ff8042"
-                name="Cost"
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Category Profit Details</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Category</TableHead>
-                <TableHead>Revenue</TableHead>
-                <TableHead>Cost</TableHead>
-                <TableHead>Profit</TableHead>
-                <TableHead>Items Sold</TableHead>
-                <TableHead className="text-right">Profit Margin</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {profitLossData.profit_by_category.map((item) => (
-                <TableRow key={item.category_name}>
-                  <TableCell>{item.category_name}</TableCell>
-                  <TableCell>${parseFloat(item.revenue).toFixed(2)}</TableCell>
-                  <TableCell>${parseFloat(item.cost).toFixed(2)}</TableCell>
-                  <TableCell>${parseFloat(item.profit).toFixed(2)}</TableCell>
-                  <TableCell>{item.items_sold}</TableCell>
-                  <TableCell className="text-right">
-                    {(
-                      (parseFloat(item.profit) / parseFloat(item.revenue)) *
-                      100
-                    ).toFixed(1)}
-                    %
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
     </div>
   );
 }

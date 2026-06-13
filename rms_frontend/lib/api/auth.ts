@@ -1,6 +1,5 @@
-import axios from 'axios';
-
-export const API_URL ="https://rawstitch.info/demo/api" || 'http://localhost:8000/api';
+import axiosInstance from '@/lib/api/axios-config';
+import type { AuthResponse } from '@/types/auth';
 
 
 export interface LoginCredentials {
@@ -8,18 +7,13 @@ export interface LoginCredentials {
     password: string;
 }
 
-export interface AuthResponse {
-    access: string,
-    refresh: string
-}
-
 export const authApi = {
     login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-        const { data } = await axios.post(`${API_URL}/auth/login/`, credentials);
+        const { data } = await axiosInstance.post('/auth/login/', credentials);
         return data;
     },
 
     logout: async (): Promise<void> => {
-        await axios.post(`${API_URL}/auth/logout/`);
+        await axiosInstance.post('/auth/logout/');
     }
-}; 
+};

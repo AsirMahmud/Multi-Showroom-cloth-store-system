@@ -1,19 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PageHeader, DataPanel, MetricCard } from "@/components/ui/professional";
+import { Skeleton } from "@/components/ui/skeleton";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Truck, Save } from "lucide-react";
+import { Truck, Save, MapPin, Navigation, Globe, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import axiosInstance from "@/lib/api/axios-config";
+import { cn, formatCurrency } from "@/lib/utils";
 
 interface DeliverySettings {
   inside_dhaka_charge: number;
@@ -21,6 +18,22 @@ interface DeliverySettings {
   outside_dhaka_charge: number;
   updated_at?: string;
 }
+
+// Framer motion variants
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+    },
+  },
+};
+
+const item = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0 },
+};
 
 export default function DeliveryChargesSettingsPage() {
   const [inside, setInside] = useState<string>("");
@@ -40,10 +53,9 @@ export default function DeliveryChargesSettingsPage() {
         setGazipur(String(data.inside_gazipur_charge ?? "0"));
         setOutside(String(data.outside_dhaka_charge ?? "0"));
       } catch (error) {
-        console.error("Failed to fetch delivery settings:", error);
         toast({
           title: "Error",
-          description: "Failed to load delivery settings. Please try again.",
+          description: "Failed to load delivery settings.",
           variant: "destructive",
         });
       } finally {
@@ -71,7 +83,7 @@ export default function DeliveryChargesSettingsPage() {
     if (isNaN(insideNum) || isNaN(gazipurNum) || isNaN(outsideNum) || insideNum < 0 || gazipurNum < 0 || outsideNum < 0) {
       toast({
         title: "Validation Error",
-        description: "Please enter valid positive numbers for delivery charges.",
+        description: "Please enter valid positive numbers.",
         variant: "destructive",
       });
       return;
@@ -87,13 +99,12 @@ export default function DeliveryChargesSettingsPage() {
 
       toast({
         title: "Success",
-        description: "Delivery charges saved successfully!",
+        description: "Logistics updated successfully!",
       });
     } catch (error: any) {
-      console.error("Failed to save delivery settings:", error);
       toast({
         title: "Error",
-        description: error?.response?.data?.detail || "Failed to save delivery charges. Please try again.",
+        description: error?.response?.data?.detail || "Failed to save delivery charges.",
         variant: "destructive",
       });
     } finally {
@@ -103,101 +114,118 @@ export default function DeliveryChargesSettingsPage() {
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <p className="text-muted-foreground">Loading delivery settings...</p>
+      <div className="space-y-8">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-10 w-64 rounded-xl" />
         </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[...Array(3)].map((_, i) => (
+            <Skeleton key={i} className="h-28 rounded-[24px]" />
+          ))}
+        </div>
+        <Skeleton className="h-[400px] rounded-[32px]" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-2">
-        <Truck className="h-6 w-6" />
-        <h1 className="text-3xl font-bold tracking-tight">Delivery Charges</h1>
+    <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
+      <PageHeader
+        title="Delivery charges"
+        description="Set the shipping fee customers pay in each delivery area."
+        icon={<Truck className="h-6 w-6" />}
+        actions={
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="h-10 px-6 bg-brand-primary text-brand-secondary hover:bg-emerald-900 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-brand-primary/20"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+            Save charges
+          </Button>
+        }
+      />
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <motion.div variants={item}>
+          <MetricCard
+            label="Metropolitan"
+            value={formatCurrency(parseFloat(inside) || 0)}
+            icon={<MapPin className="h-5 w-5" />}
+            tone="brand"
+            helper="Inside Dhaka City"
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="Satellite Zone"
+            value={formatCurrency(parseFloat(gazipur) || 0)}
+            icon={<Navigation className="h-5 w-5" />}
+            tone="indigo"
+            helper="Inside Gazipur Area"
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <MetricCard
+            label="National"
+            value={formatCurrency(parseFloat(outside) || 0)}
+            icon={<Globe className="h-5 w-5" />}
+            tone="emerald"
+            helper="Outside Dhaka Division"
+          />
+        </motion.div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Configure Delivery Charges</CardTitle>
-          <CardDescription>
-            Set the delivery charges for inside Dhaka, inside Gazipur, and outside Dhaka. These charges will be applied during checkout.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-3 max-w-4xl">
+      <motion.div variants={item}>
+        <DataPanel 
+          title="Delivery areas"
+          description="Enter the charge applied to orders in each region."
+        >
+          <div className="grid gap-8 md:grid-cols-3">
             <div className="space-y-2">
-              <Label htmlFor="inside" className="text-base font-semibold">
-                Inside Dhaka Charge (৳)
-              </Label>
-              <Input
-                id="inside"
-                type="number"
-                min="0"
-                step="0.01"
-                value={inside}
-                onChange={(e) => setInside(e.target.value)}
-                placeholder="Enter delivery charge"
-                className="text-base"
-              />
-              <p className="text-sm text-muted-foreground">
-                Delivery charge for orders within Dhaka city
-              </p>
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Inside Dhaka (৳)</Label>
+              <div className="relative">
+                <Input
+                  type="number"
+                  value={inside}
+                  onChange={(e) => setInside(e.target.value)}
+                  className="h-12 rounded-xl bg-slate-50 border-none font-black text-lg pl-10"
+                />
+                <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+              </div>
+              <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">Primary metro coverage</p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="gazipur" className="text-base font-semibold">
-                Inside Gazipur Charge (৳)
-              </Label>
-              <Input
-                id="gazipur"
-                type="number"
-                min="0"
-                step="0.01"
-                value={gazipur}
-                onChange={(e) => setGazipur(e.target.value)}
-                placeholder="Enter delivery charge"
-                className="text-base"
-              />
-              <p className="text-sm text-muted-foreground">
-                Delivery charge for orders within Gazipur
-              </p>
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Gazipur Hub (৳)</Label>
+              <div className="relative">
+                <Input
+                  type="number"
+                  value={gazipur}
+                  onChange={(e) => setGazipur(e.target.value)}
+                  className="h-12 rounded-xl bg-slate-50 border-none font-black text-lg pl-10"
+                />
+                <Navigation className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+              </div>
+              <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">Strategic industrial zone</p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="outside" className="text-base font-semibold">
-                Outside Dhaka Charge (৳)
-              </Label>
-              <Input
-                id="outside"
-                type="number"
-                min="0"
-                step="0.01"
-                value={outside}
-                onChange={(e) => setOutside(e.target.value)}
-                placeholder="Enter delivery charge"
-                className="text-base"
-              />
-              <p className="text-sm text-muted-foreground">
-                Delivery charge for orders outside Dhaka city
-              </p>
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Remote/National (৳)</Label>
+              <div className="relative">
+                <Input
+                  type="number"
+                  value={outside}
+                  onChange={(e) => setOutside(e.target.value)}
+                  className="h-12 rounded-xl bg-slate-50 border-none font-black text-lg pl-10"
+                />
+                <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+              </div>
+              <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">Extended domestic network</p>
             </div>
           </div>
-
-          <div className="flex items-center gap-3 pt-4">
-            <Button
-              onClick={handleSave}
-              disabled={saving || loading}
-              size="lg"
-              className="min-w-[120px]"
-            >
-              <Save className="mr-2 h-4 w-4" />
-              {saving ? "Saving..." : "Save Changes"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+        </DataPanel>
+      </motion.div>
+    </motion.div>
   );
 }

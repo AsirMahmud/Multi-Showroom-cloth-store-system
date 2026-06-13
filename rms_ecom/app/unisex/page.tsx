@@ -47,7 +47,7 @@ export default function UnisexCollectionPage() {
       <StructuredData data={generateBreadcrumbStructuredData(breadcrumbItems)} />
       <SiteHeader />
       <main className="flex-1">
-        <div className="container mx-auto px-4 py-6">
+        <div className="container mx-auto px-4 py-10 md:py-16">
           <Breadcrumb items={breadcrumbItems} />
 
           <div className="mt-6 mb-8">
@@ -58,8 +58,8 @@ export default function UnisexCollectionPage() {
           <ProductGrid
               category={`Unisex`}
               products={products.map((item) => ({
-                id: `${item.product_id}/${item.color_slug}`,
-                name: `${item.product_name} - ${item.color_name}`,
+                id: item.product_url.replace(/^\/product\//, ""),
+                name: item.display_name,
                 price: Number(item.product_price),
                 rating: 4.5,
                 image: item.cover_image_url || "/placeholder.jpg",
@@ -76,4 +76,3 @@ export default function UnisexCollectionPage() {
     </div>
   )
 }
-

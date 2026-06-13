@@ -12,11 +12,11 @@ Yes, you **DO need** `.htaccess` configuration for your media files to work prop
 ## Files Created
 
 ### 1. Main .htaccess (in project root)
-- **Location**: `/home/rawstitc/rv2/.htaccess`
+- **Location**: `/home/torongox/rv2/.htaccess`
 - **Purpose**: Routes media requests and passes other requests to Django
 
 ### 2. Media .htaccess (in media directory)
-- **Location**: `/home/rawstitc/public_html/media/.htaccess`
+- **Location**: `/home/torongox/public_html/media/.htaccess`
 - **Purpose**: Handles media file serving and security
 
 ## Setup Instructions
@@ -32,10 +32,10 @@ Copy the `media/.htaccess` file to your production server:
 
 ```bash
 # Copy the media .htaccess to the media directory
-cp media/.htaccess /home/rawstitc/public_html/media/.htaccess
+cp media/.htaccess /home/torongox/public_html/media/.htaccess
 
 # Set proper permissions
-chmod 644 /home/rawstitc/public_html/media/.htaccess
+chmod 644 /home/torongox/public_html/media/.htaccess
 ```
 
 ### Step 3: Verify Configuration
@@ -43,7 +43,7 @@ Test that media files are served correctly:
 
 ```bash
 # Test a media file URL
-curl -I https://rawstitch.info/media/products/test.jpg
+curl -I https://your-domain.com/media/products/test.jpg
 
 # Should return 200 OK with proper headers
 ```
@@ -77,16 +77,16 @@ curl -I https://rawstitch.info/media/products/test.jpg
 2. **Check File Permissions**:
    ```bash
    # Media directory should be 755
-   chmod 755 /home/rawstitc/public_html/media
+   chmod 755 /home/torongox/public_html/media
    
    # .htaccess files should be 644
-   chmod 644 /home/rawstitc/public_html/media/.htaccess
+   chmod 644 /home/torongox/public_html/media/.htaccess
    ```
 
 3. **Test Direct Access**:
    ```bash
    # Test if you can access media files directly
-   curl -I https://rawstitch.info/media/products/test.jpg
+   curl -I https://your-domain.com/media/products/test.jpg
    ```
 
 4. **Check Apache Error Logs**:
@@ -109,7 +109,6 @@ curl -I https://rawstitch.info/media/products/test.jpg
 - ✅ Faster page load times
 
 Your media files should now work perfectly! 🎉
-
 
 
 

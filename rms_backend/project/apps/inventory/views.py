@@ -1,4 +1,5 @@
 from rest_framework import viewsets, filters, status, permissions, pagination
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
@@ -7,7 +8,7 @@ from django.db.models import Q, F, Sum, Count, Avg, Case, When, IntegerField
 from django.utils import timezone
 from datetime import datetime, timedelta
 from django.db.models.functions import TruncDate, TruncMonth, TruncYear
-from .models import Category, OnlineCategory, Product, ProductVariation, StockMovement, InventoryAlert, MeterialComposition, WhoIsThisFor, Features, Gallery, Image
+from .models import Category, OnlineCategory, Product, ProductVariation, StockMovement, InventoryAlert, MeterialComposition, WhoIsThisFor, Features, Gallery, Image, WholesalePricingSettings
 from apps.supplier.models import Supplier
 from apps.supplier.serializers import SupplierSerializer
 from .serializers import (
@@ -27,10 +28,37 @@ from .serializers import (
     WhoIsThisForSerializer,
     FeaturesSerializer,
     EcommerceProductSerializer,
-    EcommerceProductDetailSerializer
+    EcommerceProductDetailSerializer,
+    WholesalePricingSettingsSerializer,
 )
 from rest_framework.exceptions import ValidationError
 from apps.sales.models import SaleItem
+from apps.branches.permissions import (
+    get_allowed_branch_ids,
+    get_requested_branch_id,
+    is_admin,
+)
+from apps.authentication.permissions import HasReadWritePermission
+
+
+def _branch_filter_q(request, field='branch_id'):
+    """Build a Q object that scopes a queryset by the request's branch context.
+
+    Returns Q() (matches everything) when the caller is admin and no branch is
+    requested. Returns Q(pk__in=[]) (matches nothing) when the caller asked for
+    a branch they cannot access.
+    """
+    requested = get_requested_branch_id(request)
+    if requested:
+        if not request.user.can_access_branch(requested):
+            return Q(pk__in=[])
+        # Include rows that explicitly belong to the branch + legacy null rows
+        # so we don't lose visibility into pre-multi-branch data.
+        return Q(**{field: requested}) | Q(**{f'{field}__isnull': True})
+    if is_admin(request.user):
+        return Q()
+    allowed = get_allowed_branch_ids(request.user)
+    return Q(**{f'{field}__in': allowed}) | Q(**{f'{field}__isnull': True})
 
 class StandardResultsSetPagination(pagination.PageNumberPagination):
     page_size = 20
@@ -42,7 +70,8 @@ class CategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     search_fields = ['name', 'description']
-    permission_classes = [permissions.IsAuthenticated]
+    # Anyone authenticated may read; write requires `manage_categories`.
+    permission_classes = [HasReadWritePermission(read=None, write="manage_categories")]
 
     def get_queryset(self):
         queryset = Category.objects.prefetch_related('products')
@@ -68,7 +97,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
         active_products = category.products.filter(is_active=True).count()
         low_stock_products = category.products.filter(stock_quantity__lte=F('minimum_stock')).count()
         total_value = category.products.aggregate(
-            total=Sum('selling_price' * 'stock_quantity')
+            total=Sum(F('retail_price') * F('stock_quantity'))
         )['total'] or 0
 
         return Response({
@@ -78,9 +107,26 @@ class CategoryViewSet(viewsets.ModelViewSet):
             'total_value': total_value
         })
 
+
+class WholesalePricingSettingsViewSet(viewsets.ViewSet):
+    permission_classes = [HasReadWritePermission(read=None, write="manage_settings")]
+
+    def list(self, request):
+        settings_obj = WholesalePricingSettings.load()
+        serializer = WholesalePricingSettingsSerializer(settings_obj)
+        return Response(serializer.data)
+
+    def create(self, request):
+        settings_obj = WholesalePricingSettings.load()
+        serializer = WholesalePricingSettingsSerializer(settings_obj, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
 class SupplierViewSet(viewsets.ModelViewSet):
     queryset = Supplier.objects.all()
     serializer_class = SupplierSerializer
+    permission_classes = [HasReadWritePermission(read=None, write="manage_suppliers")]
     filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'code', 'contact_person', 'email']
 
@@ -95,12 +141,14 @@ class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['category', 'online_category', 'supplier', 'is_active']
+    filterset_fields = ['category', 'online_categories', 'supplier', 'is_active']
     search_fields = ['name', 'sku', 'barcode', 'description']
-    ordering_fields = ['name', 'created_at', 'stock_quantity', 'selling_price']
+    ordering_fields = ['name', 'created_at', 'stock_quantity', 'retail_price', 'wholesale_price']
     ordering = ['-created_at']
     parser_classes = (MultiPartParser, FormParser, JSONParser)
-    permission_classes = [permissions.IsAuthenticated]
+    # Read open to authenticated users; catalog edits require manage_product_catalog.
+    # Branch-scoped sub-actions like add_stock check `add_stock` separately.
+    permission_classes = [HasReadWritePermission(read=None, write="manage_product_catalog")]
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
@@ -181,14 +229,14 @@ class ProductViewSet(viewsets.ModelViewSet):
             total=Sum(F('cost_price') * F('stock_quantity'))
         )['total'] or 0
         
-        # Calculate total value (selling_price * stock_quantity)
+        # Calculate total value (retail_price * stock_quantity)
         total_value = queryset.aggregate(
-            total=Sum(F('selling_price') * F('stock_quantity'))
+            total=Sum(F('retail_price') * F('stock_quantity'))
         )['total'] or 0
         
-        # Calculate potential profit ((selling_price - cost_price) * stock_quantity)
+        # Calculate potential profit ((retail_price - cost_price) * stock_quantity)
         potential_profit = queryset.aggregate(
-            total=Sum((F('selling_price') - F('cost_price')) * F('stock_quantity'))
+            total=Sum((F('retail_price') - F('cost_price')) * F('stock_quantity'))
         )['total'] or 0
         
         return Response({
@@ -213,10 +261,10 @@ class ProductViewSet(viewsets.ModelViewSet):
             
             for product in products:
                 if adjustment_type == 'percentage':
-                    new_price = product.selling_price * (1 + price_adjustment / 100)
+                    new_price = product.retail_price * (1 + price_adjustment / 100)
                 else:
-                    new_price = product.selling_price + price_adjustment
-                product.selling_price = new_price
+                    new_price = product.retail_price + price_adjustment
+                product.retail_price = new_price
                 product.save()
 
             return Response({'message': 'Prices updated successfully'})
@@ -253,14 +301,29 @@ class ProductViewSet(viewsets.ModelViewSet):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         color = serializer.validated_data['color']
+        design_id = serializer.validated_data['design_id']
         images = serializer.validated_data['images']
         image_types = serializer.validated_data.get('image_types', [])
-        color_hax = serializer.validated_data['color_hax']
+        color_hax = serializer.validated_data.get('color_hax')
         alt_text = serializer.validated_data.get('alt_text', '')
 
-        # Get or create gallery for this color
+        try:
+            design = Design.objects.get(id=design_id, product=product)
+        except Design.DoesNotExist:
+            return Response(
+                {'design_id': 'Design does not belong to this product.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not design.colors.filter(color__iexact=color).exists():
+            return Response(
+                {'color': 'Color does not belong to this design.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get or create gallery for this design and color
         gallery, created = Gallery.objects.get_or_create(
-            product=product, 
+            design=design, 
             color=color,
             defaults={
                 'alt_text': alt_text,
@@ -271,6 +334,9 @@ class ProductViewSet(viewsets.ModelViewSet):
         # Update color_hax if gallery already exists
         if not created and color_hax:
             gallery.color_hax = color_hax
+        if not created and alt_text:
+            gallery.alt_text = alt_text
+        if not created:
             gallery.save()
 
         # Use provided image_types if available, otherwise fall back to calculating based on existing count
@@ -307,9 +373,9 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response(ImageSerializer(created_images, many=True).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'])
-    def add_variant(self, request, pk=None):
+    def add_design(self, request, pk=None):
         product = self.get_object()
-        serializer = ProductVariationSerializer(data=request.data)
+        serializer = DesignSerializer(data=request.data)
         
         if serializer.is_valid():
             serializer.save(product=product)
@@ -317,10 +383,10 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['get'])
-    def variants(self, request, pk=None):
+    def designs(self, request, pk=None):
         product = self.get_object()
-        variants = product.variations.all()
-        serializer = ProductVariationSerializer(variants, many=True)
+        designs = product.designs.all()
+        serializer = DesignSerializer(designs, many=True)
         return Response(serializer.data)
 
     @action(detail=True, methods=['get'])
@@ -347,7 +413,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         reference_number = serializer.validated_data.get('reference_number', 'MANUAL')
 
         try:
-            variation = ProductVariation.objects.get(id=variation_id, product=product)
+            variation = ProductVariation.objects.get(id=variation_id, design__product=product)
         except ProductVariation.DoesNotExist:
             return Response({'detail': 'Variation not found for this product'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -355,10 +421,15 @@ class ProductViewSet(viewsets.ModelViewSet):
         variation.stock = variation.stock + quantity
         variation.save()
 
-        # Record stock movement
+        # Record stock movement, stamping the originating branch.
+        branch_id = (
+            get_requested_branch_id(request)
+            or request.user.managed_branch_id
+        )
         StockMovement.objects.create(
             product=product,
             variation=variation,
+            branch_id=branch_id,
             movement_type='IN',
             quantity=quantity,
             reference_number=reference_number,
@@ -366,7 +437,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         )
 
         # Recalculate product total stock
-        total_variant_stock = product.variations.aggregate(
+        total_variant_stock = ProductVariation.objects.filter(design__product=product).aggregate(
             total=Sum('stock')
         )['total'] or 0
         product.stock_quantity = total_variant_stock
@@ -523,8 +594,9 @@ class ProductViewSet(viewsets.ModelViewSet):
                 'sku': product.sku,
                 'current_stock': product.stock_quantity,
                 'cost_price': float(product.cost_price),
-                'selling_price': float(product.selling_price),
-                'profit_margin_percentage': ((float(product.selling_price) - float(product.cost_price)) / float(product.selling_price) * 100)
+                'wholesale_price': float(product.wholesale_price),
+                'retail_price': float(product.retail_price),
+                'profit_margin_percentage': ((float(product.retail_price) - float(product.cost_price)) / float(product.retail_price) * 100)
             },
             'stock_analytics': {
                 'total_stock_in': stock_in['total_quantity'] or 0,
@@ -613,7 +685,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                 'reference_number': movement.reference_number,
                 'notes': movement.notes,
                 'created_at': movement.created_at.isoformat(),
-                'variation_info': f"{movement.variation.size} - {movement.variation.color}" if movement.variation else "General"
+                'variation_info': f"{movement.variation.design.name} - {movement.variation.color}" if movement.variation else "General"
             })
         
         return Response({
@@ -655,7 +727,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                 'sale_id': sale_item.sale.id,
                 'invoice_number': sale_item.sale.invoice_number,
                 'quantity': sale_item.quantity,
-                'size': sale_item.size,
+                'design_name': sale_item.design_name,
                 'color': sale_item.color,
                 'unit_price': float(sale_item.unit_price),
                 'discount': float(sale_item.discount),
@@ -683,7 +755,13 @@ class ProductViewSet(viewsets.ModelViewSet):
         queryset = Product.objects.filter(is_active=True, assign_to_online=True).order_by('-created_at')
         
         if online_category:
-            queryset = queryset.filter(online_categories__id=online_category)
+            if online_category.isdigit():
+                queryset = queryset.filter(online_categories__id=online_category)
+            else:
+                queryset = queryset.filter(
+                    Q(online_categories__slug=online_category) | 
+                    Q(online_categories__parent__slug=online_category)
+                ).distinct()
         
         products = queryset[:limit]
         serializer = EcommerceProductSerializer(products, many=True, context={'request': request})
@@ -717,7 +795,13 @@ class ProductViewSet(viewsets.ModelViewSet):
         ).order_by('-total_sold')
         
         if online_category:
-            top_products = top_products.filter(online_categories__id=online_category)
+            if online_category.isdigit():
+                top_products = top_products.filter(online_categories__id=online_category)
+            else:
+                top_products = top_products.filter(
+                    Q(online_categories__slug=online_category) | 
+                    Q(online_categories__parent__slug=online_category)
+                ).distinct()
         
         products = top_products[:limit]
         serializer = EcommerceProductSerializer(products, many=True, context={'request': request})
@@ -744,7 +828,13 @@ class ProductViewSet(viewsets.ModelViewSet):
         ).order_by('-updated_at', '-stock_quantity')
         
         if online_category:
-            queryset = queryset.filter(online_categories__id=online_category)
+            if online_category.isdigit():
+                queryset = queryset.filter(online_categories__id=online_category)
+            else:
+                queryset = queryset.filter(
+                    Q(online_categories__slug=online_category) | 
+                    Q(online_categories__parent__slug=online_category)
+                ).distinct()
         
         products = queryset[:limit]
         serializer = EcommerceProductSerializer(products, many=True, context={'request': request})
@@ -780,7 +870,13 @@ class ProductViewSet(viewsets.ModelViewSet):
             )
             
             if online_category:
-                products = products.filter(online_categories__id=online_category)
+                if online_category.isdigit():
+                    products = products.filter(online_categories__id=online_category)
+                else:
+                    products = products.filter(
+                        Q(online_categories__slug=online_category) | 
+                        Q(online_categories__parent__slug=online_category)
+                    ).distinct()
             
             # Use specific limit if provided as query param for this slug
             # e.g. ?new-arrivals_limit=8
@@ -894,12 +990,12 @@ class ProductViewSet(viewsets.ModelViewSet):
         # Get product with all related data
         product_data = EcommerceProductDetailSerializer(product, context={'request': request}).data
         
-        # Get related products (same online_category, excluding current product)
+        # Get related products (same online_categories, excluding current product)
         related_products = Product.objects.filter(
-            online_category=product.online_category,
+            online_categories__in=product.online_categories.all(),
             is_active=True,
             assign_to_online=True
-        ).exclude(id=product.id)[:4]
+        ).exclude(id=product.id).distinct()[:4]
         
         related_data = EcommerceProductSerializer(related_products, many=True, context={'request': request}).data
         
@@ -962,6 +1058,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                 {'error': 'product_ids and at least one ecommerce status field are required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
         
         # Update all products
         updated_count = Product.objects.filter(id__in=product_ids).update(**ecommerce_fields)
@@ -975,13 +1072,42 @@ class ProductViewSet(viewsets.ModelViewSet):
             'products': serializer.data
         })
 
-    @action(detail=False, methods=['get'], permission_classes=[])
+
+
+
+
+        # Update all products
+        updated_count = Product.objects.filter(id__in=product_ids).update(**ecommerce_fields)
+        
+        # Return updated products
+        products = Product.objects.filter(id__in=product_ids)
+        serializer = ProductSerializer(products, many=True, context={'request': request})
+        
+        return Response({
+            'message': f'Updated {updated_count} products',
+            'products': serializer.data
+        })
+
+    @action(detail=False, methods=['get'], permission_classes=[AllowAny])
     def all_online(self, request):
         """Public: list all products assigned to online (optionally filter by online_category)"""
         online_category = request.query_params.get('online_category')
         queryset = Product.objects.filter(is_active=True, assign_to_online=True)
         if online_category:
-            queryset = queryset.filter(online_category_id=online_category)
+            if online_category.isdigit():
+                queryset = queryset.filter(online_categories__id=online_category)
+            else:
+                try:
+                    category = OnlineCategory.objects.get(slug=online_category)
+                    # Get all child category IDs (recursively if needed)
+                    child_ids = [category.id]
+                    # Get direct children
+                    children = OnlineCategory.objects.filter(parent=category)
+                    child_ids.extend([child.id for child in children])
+                    # Filter products by category or any of its children
+                    queryset = queryset.filter(online_categories__id__in=child_ids)
+                except OnlineCategory.DoesNotExist:
+                    queryset = queryset.none()
         queryset = queryset.order_by('-created_at')
         serializer = EcommerceProductSerializer(queryset, many=True, context={'request': request})
         return Response({
@@ -992,9 +1118,10 @@ class ProductViewSet(viewsets.ModelViewSet):
 class ProductVariationViewSet(viewsets.ModelViewSet):
     queryset = ProductVariation.objects.all()
     serializer_class = ProductVariationSerializer
+    permission_classes = [HasReadWritePermission(read=None, write="manage_product_catalog")]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['product', 'is_active']
-    search_fields = ['size', 'color']
+    search_fields = ['color']
 
     def perform_create(self, serializer):
         variation = serializer.save()
@@ -1062,8 +1189,16 @@ class StockMovementViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
-        movement = serializer.save(created_by=self.request.user)
-        
+        # Stamp the originating branch on the movement so analytics scope correctly.
+        branch_id = (
+            get_requested_branch_id(self.request)
+            or self.request.user.managed_branch_id
+        )
+        save_kwargs = {"created_by": self.request.user}
+        if branch_id:
+            save_kwargs["branch_id"] = branch_id
+        movement = serializer.save(**save_kwargs)
+
         # Update variant stock if specified
         if movement.variation:
             if movement.movement_type == 'IN':
@@ -1073,20 +1208,21 @@ class StockMovementViewSet(viewsets.ModelViewSet):
                     raise ValidationError(f"Not enough stock in variation. Available: {movement.variation.stock}")
                 movement.variation.stock -= movement.quantity
             movement.variation.save()
-        
-        # Update main product stock by recalculating from all variants
+
+        # Update main product stock by recalculating from all colors across designs
         product = movement.product
-        total_variant_stock = product.variations.aggregate(
+        total_variant_stock = ProductVariation.objects.filter(design__product=product).aggregate(
             total=Sum('stock')
         )['total'] or 0
         product.stock_quantity = total_variant_stock
         product.save()
 
-        # Check for alerts
+        # Check for alerts (branch-aware so each branch sees its own warnings)
         if product.stock_quantity <= product.minimum_stock:
             InventoryAlert.objects.create(
                 product=product,
                 variation=movement.variation,
+                branch_id=branch_id,
                 alert_type='LOW',
                 message=f'Low stock alert: {product.name} has {product.stock_quantity} units remaining'
             )
@@ -1094,21 +1230,23 @@ class StockMovementViewSet(viewsets.ModelViewSet):
             InventoryAlert.objects.create(
                 product=product,
                 variation=movement.variation,
+                branch_id=branch_id,
                 alert_type='OUT',
                 message=f'Out of stock alert: {product.name} has no units remaining'
             )
 
     def get_queryset(self):
-        queryset = StockMovement.objects.all()
+        queryset = StockMovement.objects.filter(_branch_filter_q(self.request))
         product_id = self.request.query_params.get('product', None)
         movement_type = self.request.query_params.get('type', None)
-        
+
         if product_id:
             queryset = queryset.filter(product_id=product_id)
         if movement_type:
             queryset = queryset.filter(movement_type=movement_type)
-            
+
         return queryset
+
 
 class InventoryAlertViewSet(viewsets.ModelViewSet):
     queryset = InventoryAlert.objects.all()
@@ -1116,15 +1254,15 @@ class InventoryAlertViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        queryset = InventoryAlert.objects.all()
+        queryset = InventoryAlert.objects.filter(_branch_filter_q(self.request))
         is_active = self.request.query_params.get('active', None)
         alert_type = self.request.query_params.get('type', None)
-        
+
         if is_active is not None:
             queryset = queryset.filter(is_active=is_active)
         if alert_type:
             queryset = queryset.filter(alert_type=alert_type)
-            
+
         return queryset
 
     @action(detail=True, methods=['post'])
@@ -1177,9 +1315,12 @@ class GalleryViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = Gallery.objects.all()
         product = self.request.query_params.get('product', None)
+        design = self.request.query_params.get('design', None)
         color = self.request.query_params.get('color', None)
         if product:
-            queryset = queryset.filter(product_id=product)
+            queryset = queryset.filter(design__product_id=product)
+        if design:
+            queryset = queryset.filter(design_id=design)
         if color:
             queryset = queryset.filter(color=color)
         return queryset
@@ -1233,8 +1374,9 @@ class DashboardViewSet(viewsets.ViewSet):
             total=Sum(F('cost_price') * F('stock_quantity'))
         )['total'] or 0
 
-        # Stock movement metrics
-        stock_movements = StockMovement.objects.filter(
+        # Stock movement metrics (branch scoped)
+        scoped_movements = StockMovement.objects.filter(_branch_filter_q(request))
+        stock_movements = scoped_movements.filter(
             created_at__range=(start_date, end_date)
         )
         stock_in = stock_movements.filter(movement_type='IN').aggregate(
@@ -1247,7 +1389,7 @@ class DashboardViewSet(viewsets.ViewSet):
         # Category distribution
         category_distribution = Category.objects.annotate(
             product_count=Count('products'),
-            total_value=Sum(F('products__selling_price') * F('products__stock_quantity'))
+            total_value=Sum(F('products__retail_price') * F('products__stock_quantity'))
         ).values('name', 'product_count', 'total_value')
 
         # Top selling products
@@ -1271,15 +1413,15 @@ class DashboardViewSet(viewsets.ViewSet):
             'out': out_of_stock_products
         }
 
-        # Recent stock movements
-        recent_movements = StockMovement.objects.select_related(
+        # Recent stock movements (branch scoped)
+        recent_movements = scoped_movements.select_related(
             'product', 'variation'
         ).order_by('-created_at')[:10]
 
         # Supplier performance
         supplier_metrics = Supplier.objects.annotate(
             total_products=Count('products'),
-            total_value=Sum(F('products__selling_price') * F('products__stock_quantity')),
+            total_value=Sum(F('products__retail_price') * F('products__stock_quantity')),
             low_stock_count=Count(
                 'products',
                 filter=Q(products__stock_quantity__lte=F('products__minimum_stock'))
@@ -1319,9 +1461,10 @@ class DashboardViewSet(viewsets.ViewSet):
             stock_quantity=0
         ).select_related('category', 'supplier')
 
-        # Get active alerts
+        # Get active alerts (branch scoped)
         active_alerts = InventoryAlert.objects.filter(
-            is_active=True
+            _branch_filter_q(request),
+            is_active=True,
         ).select_related('product', 'variation')
 
         return Response({
@@ -1339,7 +1482,21 @@ class DashboardViewSet(viewsets.ViewSet):
                 'products',
                 filter=Q(products__stock_quantity__lte=F('products__minimum_stock'))
             ),
-            total_value=Sum(F('products__selling_price') * F('products__stock_quantity'))
+            total_value=Sum(F('products__retail_price') * F('products__stock_quantity'))
+        ).values('name', 'total_products', 'active_products', 'low_stock_products', 'total_value')
+
+        return Response(categories)
+
+    @action(detail=False, methods=['get'])
+    def online_category_metrics(self, request):
+        categories = OnlineCategory.objects.annotate(
+            total_products=Count('products'),
+            active_products=Count('products', filter=Q(products__is_active=True)),
+            low_stock_products=Count(
+                'products',
+                filter=Q(products__stock_quantity__lte=F('products__minimum_stock'))
+            ),
+            total_value=Sum(F('products__retail_price') * F('products__stock_quantity'))
         ).values('name', 'total_products', 'active_products', 'low_stock_products', 'total_value')
 
         return Response(categories)
@@ -1349,9 +1506,10 @@ class DashboardViewSet(viewsets.ViewSet):
         period = request.query_params.get('period', 'month')
         start_date, end_date = self._get_date_range(period)
 
-        # Daily stock movements
+        # Daily stock movements (branch scoped)
         daily_movements = StockMovement.objects.filter(
-            created_at__range=(start_date, end_date)
+            _branch_filter_q(request),
+            created_at__range=(start_date, end_date),
         ).annotate(
             date=TruncDate('created_at')
         ).values('date').annotate(
@@ -1359,9 +1517,10 @@ class DashboardViewSet(viewsets.ViewSet):
             stock_out=Sum('quantity', filter=Q(movement_type='OUT'))
         ).order_by('date')
 
-        # Movement by category
+        # Movement by category (branch scoped)
         category_movements = StockMovement.objects.filter(
-            created_at__range=(start_date, end_date)
+            _branch_filter_q(request),
+            created_at__range=(start_date, end_date),
         ).values('product__category__name').annotate(
             stock_in=Sum('quantity', filter=Q(movement_type='IN')),
             stock_out=Sum('quantity', filter=Q(movement_type='OUT'))
@@ -1379,7 +1538,7 @@ class OnlineCategoryViewSet(viewsets.ModelViewSet):
     """
     queryset = OnlineCategory.objects.all()
     serializer_class = OnlineCategorySerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [HasReadWritePermission(read=None, write="manage_online_categories")]
     filterset_fields = ['name', 'parent', 'gender']
     search_fields = ['name', 'description']
     ordering_fields = ['name', 'order', 'created_at']

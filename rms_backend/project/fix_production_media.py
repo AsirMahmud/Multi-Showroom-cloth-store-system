@@ -16,7 +16,7 @@ def fix_production_media():
     print("=" * 50)
     
     # Production media path
-    media_root = '/home/rawstitc/public_html/media'
+    media_root = '/home/torongox/public_html/media'
     
     try:
         # Step 1: Create the main media directory
@@ -37,11 +37,11 @@ def fix_production_media():
         
         # Step 4: Set ownership (if possible)
         try:
-            print("👤 Setting ownership to rawstitc:rawstitc")
-            subprocess.run(['chown', '-R', 'rawstitc:rawstitc', media_root], check=True)
+            print("👤 Setting ownership to torongox:torongox")
+            subprocess.run(['chown', '-R', 'torongox:torongox', media_root], check=True)
         except (subprocess.CalledProcessError, FileNotFoundError):
             print("⚠️  Could not set ownership (may need sudo)")
-            print("   Run manually: sudo chown -R rawstitc:rawstitc /home/rawstitc/public_html/media")
+            print("   Run manually: sudo chown -R torongox:torongox /home/torongox/public_html/media")
         
         # Step 5: Verify the setup
         print("\n✅ Verification:")
@@ -65,7 +65,7 @@ def fix_production_media():
         print("Run these commands on your production server:")
         print(f"sudo mkdir -p {media_root}")
         print(f"sudo chmod 755 {media_root}")
-        print(f"sudo chown -R rawstitc:rawstitc {media_root}")
+        print(f"sudo chown -R torongox:torongox {media_root}")
         print(f"sudo mkdir -p {media_root}/products")
         print(f"sudo mkdir -p {media_root}/categories")
         print(f"sudo mkdir -p {media_root}/users")
@@ -76,13 +76,12 @@ def fix_production_media():
         print(f"❌ ERROR: {e}")
         print("\n🔧 ALTERNATIVE FIX:")
         print("Contact your hosting provider to:")
-        print("1. Create the directory: /home/rawstitc/public_html/media")
+        print("1. Create the directory: /home/torongox/public_html/media")
         print("2. Set permissions to 755")
-        print("3. Set ownership to rawstitc:rawstitc")
+        print("3. Set ownership to torongox:torongox")
 
 if __name__ == "__main__":
     fix_production_media()
-
 
 
 

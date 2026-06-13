@@ -15,25 +15,25 @@ Run these commands on your production server:
 
 ```bash
 # Navigate to your project directory
-cd /home/rawstitc/rv2
+cd /home/torongox/rv2
 
 # Create the media directory
-mkdir -p /home/rawstitc/public_html/media
+mkdir -p /home/torongox/public_html/media
 
 # Set proper permissions
-chmod 755 /home/rawstitc/public_html/media
+chmod 755 /home/torongox/public_html/media
 
 # Set ownership to your user
-chown -R rawstitc:rawstitc /home/rawstitc/public_html/media
+chown -R torongox:torongox /home/torongox/public_html/media
 
 # Create subdirectories for organization
-mkdir -p /home/rawstitc/public_html/media/products
-mkdir -p /home/rawstitc/public_html/media/categories
-mkdir -p /home/rawstitc/public_html/media/users
-mkdir -p /home/rawstitc/public_html/media/temp
+mkdir -p /home/torongox/public_html/media/products
+mkdir -p /home/torongox/public_html/media/categories
+mkdir -p /home/torongox/public_html/media/users
+mkdir -p /home/torongox/public_html/media/temp
 
 # Set permissions for subdirectories
-chmod 755 /home/rawstitc/public_html/media/*
+chmod 755 /home/torongox/public_html/media/*
 ```
 
 ### 3. Alternative: Use the Setup Script
@@ -41,7 +41,7 @@ chmod 755 /home/rawstitc/public_html/media/*
 You can also run the provided setup script:
 
 ```bash
-cd /home/rawstitc/rv2
+cd /home/torongox/rv2
 python setup_media.py
 ```
 
@@ -64,22 +64,22 @@ touch passenger_wsgi.py
 
 To verify the setup is working:
 
-1. Check if the directory exists: `ls -la /home/rawstitc/public_html/media`
-2. Check permissions: `ls -la /home/rawstitc/public_html/`
+1. Check if the directory exists: `ls -la /home/torongox/public_html/media`
+2. Check permissions: `ls -la /home/torongox/public_html/`
 3. Test file upload through your Django admin or API
 
 ## Troubleshooting
 
 If you still get permission errors:
 
-1. **Check directory ownership**: `ls -la /home/rawstitc/public_html/`
+1. **Check directory ownership**: `ls -la /home/torongox/public_html/`
 2. **Check user permissions**: `whoami` and `groups`
 3. **Contact your hosting provider** if you don't have sufficient permissions
 
 ## File Structure After Setup
 
 ```
-/home/rawstitc/public_html/media/
+/home/torongox/public_html/media/
 ├── products/          # Product images
 ├── categories/        # Category images  
 ├── users/            # User profile images
@@ -92,7 +92,6 @@ If you still get permission errors:
 - Consider implementing file type validation
 - Set up proper file size limits
 - Consider using cloud storage (AWS S3, etc.) for production
-
 
 
 

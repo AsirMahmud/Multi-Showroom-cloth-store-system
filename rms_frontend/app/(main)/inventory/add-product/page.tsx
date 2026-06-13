@@ -22,6 +22,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { PageHeader, DataPanel } from "@/components/ui/professional";
 import {
   Form,
   FormControl,
@@ -36,16 +37,32 @@ import {
   useCategories,
   useOnlineCategories,
   useCreateOnlineCategory,
-  useSuppliers,
+  useSuppliers
 } from "@/hooks/queries/useInventory";
 import type { CreateProductDTO } from "@/types/inventory";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { HydrationWrapper } from "@/components/hydration-wrapper";
-import { globalSizes, COLORS } from "./constants";
+
 import { HierarchicalCategorySelect } from "@/components/inventory/hierarchical-category-select";
 import { MultiOnlineCategorySelect } from "@/components/inventory/multi-online-category-select";
 import { Badge } from "@/components/ui/badge";
+
+const COLORS = {
+  "Black": "#000000",
+  "White": "#FFFFFF",
+  "Red": "#FF0000",
+  "Blue": "#0000FF",
+  "Green": "#00FF00",
+  "Yellow": "#FFFF00",
+  "Pink": "#FFC0CB",
+  "Purple": "#800080",
+  "Orange": "#FFA500",
+  "Grey": "#808080",
+  "Navy": "#000080",
+  "Maroon": "#800000",
+  "Gold": "#FFD700",
+  "Silver": "#C0C0C0",
+};
 
 // Define the form schema using Zod
 const productFormSchema = z.object({
@@ -56,23 +73,23 @@ const productFormSchema = z.object({
   online_categories: z.array(z.string()).optional(),
   supplier: z.string({ required_error: "Please select a supplier" }).optional(),
   cost_price: z.string().min(1, "Cost price is required"),
-  selling_price: z.string().min(1, "Selling price is required"),
+  wholesale_price: z.string().min(1, "Wholesale price is required"),
+  retail_price: z.string().min(1, "Retail price is required"),
+  wholesale_cutoff: z.number().min(1, "Wholesale cutoff must be at least 1").default(10),
   status: z.enum(["active", "inactive", "discontinued"]),
   minimum_stock: z.number().default(10),
-  size_type: z.string({ required_error: "Please select a size type" }),
   gender: z.string({ required_error: "Please select a gender" }),
-  size_category: z
-    .string({ required_error: "Please select a size category" })
-    .optional(),
-  variations: z
+  designs: z
     .array(
       z.object({
-        size: z.string().min(1, "Size is required"),
-        color: z.string().min(1, "Color is required"),
-        stock: z.number().min(0, "Stock must be 0 or greater"),
-        waist_size: z.number().optional(),
-        chest_size: z.number().optional(),
-        height: z.number().optional(),
+        name: z.string().min(1, "Design name is required"),
+        description: z.string().optional(),
+        colors: z.array(
+          z.object({
+            color: z.string().min(1, "Color is required"),
+            stock: z.number().min(0, "Stock must be 0 or greater"),
+          })
+        ),
       })
     )
     .optional(),
@@ -80,20 +97,18 @@ const productFormSchema = z.object({
 
 type ProductFormValues = z.infer<typeof productFormSchema>;
 
-// Define types for our variants
+// Define types for our designs and colors
 type ColorVariant = {
   id: string;
   color: string;
   colorHex: string;
   stock: number;
-  waist_size?: number;
-  chest_size?: number;
-  height?: number;
 };
 
-type SizeVariant = {
+type DesignVariant = {
   id: string;
-  size: string;
+  name: string;
+  description?: string;
   colors: ColorVariant[];
 };
 
@@ -106,9 +121,11 @@ type GalleryImage = {
 };
 
 type ColorGallery = {
+  designId: string;
+  colorId: string;
+  designName: string;
   color: string;
   colorHex: string;
-  color_hax?: string;
   images: GalleryImage[];
 };
 
@@ -154,19 +171,19 @@ export default function AddProductPage() {
       online_categories: [],
       supplier: undefined,
       cost_price: "",
-      selling_price: "",
+      wholesale_price: "",
+      retail_price: "",
+      wholesale_cutoff: 10,
       status: "active",
       minimum_stock: 10,
-      size_type: undefined,
       gender: undefined,
     },
   });
 
-  // State for variants
-  const [variants, setVariants] = useState<SizeVariant[]>([]);
-  const [sizeCategory, setSizeCategory] = useState<string>("");
+  // State for designs
+  const [designs, setDesigns] = useState<DesignVariant[]>([]);
 
-  // State for galleries (one per unique color)
+  // State for galleries (one per design-color combination)
   const [galleries, setGalleries] = useState<ColorGallery[]>([]);
 
   // State for additional product information
@@ -179,193 +196,31 @@ export default function AddProductPage() {
   const [newOnlineCategoryName, setNewOnlineCategoryName] = useState("");
   const [newOnlineCategoryDescription, setNewOnlineCategoryDescription] = useState("");
 
-  // Watch form values for dynamic updates
-  const watchedSizeType = form.watch("size_type");
-  const watchedGender = form.watch("gender");
-
-  // Get available sizes based on size type, gender, and size category
-  const availableSizes = useMemo(() => {
-    if (!watchedSizeType || !sizeCategory) return [];
-
-    const sizeTypeData =
-      globalSizes[watchedSizeType as keyof typeof globalSizes];
-    if (!sizeTypeData) return [];
-
-    // Handle different size type structures
-    if (watchedSizeType === "belts" || watchedSizeType === "jersey") {
-      return sizeTypeData[sizeCategory as keyof typeof sizeTypeData] || [];
-    } else if (
-      watchedSizeType === "pants" ||
-      watchedSizeType === "shoes" ||
-      watchedSizeType === "underwear" ||
-      watchedSizeType === "shirts" ||
-      watchedSizeType === "tshirts"
-    ) {
-      // Convert backend gender values to frontend gender values
-      const frontendGender =
-        watchedGender === "MALE"
-          ? "men"
-          : watchedGender === "FEMALE"
-            ? "women"
-            : "unisex";
-      const genderData =
-        sizeTypeData[frontendGender as keyof typeof sizeTypeData];
-      if (genderData) {
-        return genderData[sizeCategory as keyof typeof genderData] || [];
-      }
-    }
-
-    return [];
-  }, [watchedSizeType, watchedGender, sizeCategory]);
-
-  // Get available size categories based on size type and gender
-  const availableSizeCategories = useMemo(() => {
-    if (!watchedSizeType) return [];
-
-    const sizeTypeData =
-      globalSizes[watchedSizeType as keyof typeof globalSizes];
-    if (!sizeTypeData) return [];
-
-    if (watchedSizeType === "belts" || watchedSizeType === "jersey") {
-      return Object.keys(sizeTypeData);
-    } else if (
-      (watchedSizeType === "pants" ||
-        watchedSizeType === "shoes" ||
-        watchedSizeType === "underwear" ||
-        watchedSizeType === "shirts" ||
-        watchedSizeType === "tshirts") &&
-      watchedGender
-    ) {
-      // Convert backend gender values to frontend gender values
-      const frontendGender =
-        watchedGender === "MALE"
-          ? "men"
-          : watchedGender === "FEMALE"
-            ? "women"
-            : "unisex";
-      const genderData =
-        sizeTypeData[frontendGender as keyof typeof sizeTypeData];
-      return genderData ? Object.keys(genderData) : [];
-    }
-
-    return [];
-  }, [watchedSizeType, watchedGender]);
-
-  // Reset variants when size type or gender changes
-  const handleSizeTypeChange = (value: string) => {
-    form.setValue("size_type", value);
-    setVariants([]);
-    setSizeCategory("");
-  };
-
-  const handleGenderChange = (value: string) => {
-    form.setValue("gender", value);
-    setVariants([]);
-    setSizeCategory("");
-  };
-
-  const validateSizeCategory = (
-    sizeType: string,
-    gender: string,
-    category: string
-  ) => {
-    const sizeTypeData = globalSizes[sizeType as keyof typeof globalSizes];
-    if (!sizeTypeData) return false;
-
-    if (sizeType === "belts" || sizeType === "jersey") {
-      return category in sizeTypeData;
-    } else if (
-      ["pants", "shoes", "underwear", "shirts", "tshirts"].includes(sizeType)
-    ) {
-      const genderKey =
-        gender === "MALE" ? "men" : gender === "FEMALE" ? "women" : "unisex";
-      return (
-        category in (sizeTypeData[genderKey as keyof typeof sizeTypeData] || {})
-      );
-    }
-    return false;
-  };
-
-  const handleSizeCategoryChange = (value: string) => {
-    const sizeType = form.getValues("size_type");
-    const gender = form.getValues("gender");
-
-    if (!validateSizeCategory(sizeType, gender, value)) {
-      toast({
-        title: "Invalid Size Category",
-        description:
-          "Please select a valid size category for the chosen product type and gender",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setSizeCategory(value);
-    // Clear existing variants when size category changes
-    setVariants([]);
-  };
-
-  // Function to add a new size variant
-  const addSizeVariant = () => {
-    if (!sizeCategory) {
-      toast({
-        title: "Size Category Required",
-        description: "Please select a size category first",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const existingSizes = variants.map((v) => v.size);
-    const availableSizes = getAvailableSizesForVariant("");
-    const unusedSizes = availableSizes.filter(
-      (size) => !existingSizes.includes(size)
-    );
-
-    if (unusedSizes.length === 0) {
-      toast({
-        title: "No Available Sizes",
-        description: "All sizes for this category have been added",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const newVariant: SizeVariant = {
+  // Function to add a new design
+  const addDesign = () => {
+    const newDesign: DesignVariant = {
       id: crypto.randomUUID(),
-      size: unusedSizes[0],
+      name: "Default Design",
       colors: [],
     };
-
-    setVariants([...variants, newVariant]);
+    setDesigns([...designs, newDesign]);
   };
 
-  // Function to add a new color to a size variant
-  const addColorVariant = (sizeId: string) => {
-    const availableColors = getAvailableColorsForVariant(sizeId);
+  // Function to add a new color to a design
+  const addColorVariant = (designId: string) => {
+    const availableColors = getAvailableColorsForVariant(designId);
+    const firstAvailableColor = availableColors[0] || "New Color";
+    const colorHex = COLORS[firstAvailableColor as keyof typeof COLORS] || "#000000";
 
-    if (availableColors.length === 0) {
-      toast({
-        title: "No Available Colors",
-        description:
-          "All colors have been added for this size. Please remove a color first to add a new one.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const firstAvailableColor = availableColors[0];
-    const colorHex = COLORS[firstAvailableColor as keyof typeof COLORS];
-
-    setVariants(
-      variants.map((variant) => {
-        if (variant.id === sizeId) {
+    setDesigns(
+      designs.map((design) => {
+        if (design.id === designId) {
           return {
-            ...variant,
+            ...design,
             colors: [
-              ...variant.colors,
+              ...design.colors,
               {
-                id: Date.now().toString() + "-color",
+                id: crypto.randomUUID(),
                 color: firstAvailableColor,
                 colorHex: colorHex,
                 stock: 0,
@@ -373,298 +228,158 @@ export default function AddProductPage() {
             ],
           };
         }
-        return variant;
+        return design;
       })
     );
-
-    // Gallery creation is now handled by syncGalleriesWithVariants useEffect
   };
 
-  // Function to update a size variant
-  const updateSizeVariant = (id: string, size: string) => {
-    setVariants(
-      variants.map((variant) =>
-        variant.id === id ? { ...variant, size } : variant
-      )
-    );
+  const updateDesignName = (id: string, name: string) => {
+    setDesigns(designs.map(d => d.id === id ? { ...d, name } : d));
   };
 
-  // Function to update a color variant
-  const updateColorVariant = (
-    sizeId: string,
-    colorId: string,
-    field: keyof ColorVariant,
-    value: string | number
-  ) => {
-    // If updating color name, check for duplicates
-    if (field === "color" && typeof value === "string") {
-      const currentVariant = variants.find((v) => v.id === sizeId);
-      if (currentVariant) {
-        const existingColors = currentVariant.colors
-          .filter((color) => color.id !== colorId) // Exclude current color being updated
-          .map((color) => color.color.toLowerCase());
-
-        if (existingColors.includes(value.toLowerCase())) {
-          toast({
-            title: "Duplicate Color",
-            description: `Color "${value}" already exists for this size. Please choose a different color.`,
-            variant: "destructive",
-          });
-          return; // Don't update if duplicate
-        }
-      }
-    }
-
-    setVariants(
-      variants.map((variant) => {
-        if (variant.id === sizeId) {
-          return {
-            ...variant,
-            colors: variant.colors.map((color) => {
-              if (color.id === colorId) {
-                // If updating color name, also update the hex
-                if (field === "color" && typeof value === "string") {
-                  return {
-                    ...color,
-                    [field]: value,
-                    colorHex:
-                      COLORS[value as keyof typeof COLORS] || color.colorHex,
-                  };
-                }
-                return { ...color, [field]: value };
+  const updateColorVariant = (designId: string, colorId: string, field: keyof ColorVariant, value: string | number) => {
+    setDesigns(designs.map(d => {
+      if (d.id === designId) {
+        return {
+          ...d,
+          colors: d.colors.map(c => {
+            if (c.id === colorId) {
+              if (field === "color" && typeof value === "string") {
+                return { ...c, color: value, colorHex: COLORS[value as keyof typeof COLORS] || "#000000" };
               }
-              return color;
+              return { ...c, [field]: value };
+            }
+            return c;
+          })
+        };
+      }
+      return d;
+    }));
+  };
+
+  const removeDesign = (id: string) => setDesigns(designs.filter(d => d.id !== id));
+  const removeColorVariant = (designId: string, colorId: string) => {
+    setDesigns(designs.map(d => {
+      if (d.id === designId) {
+        return { ...d, colors: d.colors.filter(c => c.id !== colorId) };
+      }
+      return d;
+    }));
+  };
+
+  const getAvailableColorsForVariant = (designId: string) => {
+    const design = designs.find(d => d.id === designId);
+    if (!design) return Object.keys(COLORS);
+    const used = design.colors.map(c => c.color.toLowerCase());
+    return Object.keys(COLORS).filter(c => !used.includes(c.toLowerCase()));
+  };
+
+  // Image handling
+  const handleImageUpload = (designId: string, colorId: string, imageId: string, file: File) => {
+    const preview = URL.createObjectURL(file);
+    setGalleries(galleries.map(g => {
+      if (g.designId === designId && g.colorId === colorId) {
+        return {
+          ...g,
+          images: g.images.map(img => img.id === imageId ? { ...img, file, preview } : img)
+        };
+      }
+      return g;
+    }));
+  };
+
+
+
+  // Sync one gallery for every design-color combination.
+  const syncGalleriesWithVariants = useCallback(() => {
+    setGalleries(current => designs.flatMap(design =>
+      design.colors.map(color => {
+        const existing = current.find(
+          gallery => gallery.designId === design.id && gallery.colorId === color.id
+        );
+        return existing
+          ? {
+              ...existing,
+              designName: design.name,
+              color: color.color,
+              colorHex: color.colorHex,
+            }
+          : {
+              designId: design.id,
+              colorId: color.id,
+              designName: design.name,
+              color: color.color,
+              colorHex: color.colorHex,
+              images: [
+                { id: crypto.randomUUID(), file: null, preview: null, imageType: 'PRIMARY' as const },
+                { id: crypto.randomUUID(), file: null, preview: null, imageType: 'SECONDARY' as const },
+                { id: crypto.randomUUID(), file: null, preview: null, imageType: 'THIRD' as const },
+                { id: crypto.randomUUID(), file: null, preview: null, imageType: 'FOURTH' as const },
+              ],
+            };
+      })
+    ));
+  }, [designs]);
+
+  useEffect(() => {
+    syncGalleriesWithVariants();
+  }, [designs]);
+
+    const handleImageRemove = (designId: string, colorId: string, imageId: string) => {
+      setGalleries(galleries.map((gallery) => {
+        if (gallery.designId === designId && gallery.colorId === colorId) {
+          return {
+            ...gallery,
+            images: gallery.images.map((img) => {
+              if (img.id === imageId) {
+                // Revoke preview URL if exists
+                if (img.preview) {
+                  URL.revokeObjectURL(img.preview);
+                }
+                return { ...img, file: null, preview: null };
+              }
+              return img;
             }),
           };
         }
-        return variant;
-      })
-    );
-  };
+        return gallery;
+      }));
+    };
 
-  // Function to remove a size variant
-  const removeSizeVariant = (id: string) => {
-    setVariants(variants.filter((variant) => variant.id !== id));
-  };
-
-  // Function to remove a color variant
-  const removeColorVariant = (sizeId: string, colorId: string) => {
-    // Find the color being removed
-    const variant = variants.find((v) => v.id === sizeId);
-    const colorToRemove = variant?.colors.find((c) => c.id === colorId);
-
-    setVariants(
-      variants.map((variant) => {
-        if (variant.id === sizeId) {
-          return {
-            ...variant,
-            colors: variant.colors.filter((color) => color.id !== colorId),
-          };
-        }
-        return variant;
-      })
-    );
-
-    // Gallery cleanup is now handled by syncGalleriesWithVariants useEffect
-  };
-
-  // Function to get available sizes for a specific variant
-  const getAvailableSizesForVariant = (currentVariantId: string) => {
-    const usedSizes = variants
-      .filter((v) => v.id !== currentVariantId)
-      .map((v) => v.size);
-    return availableSizes.filter((size) => !usedSizes.includes(size));
-  };
-
-  // Function to get available colors for a specific size variant
-  const getAvailableColorsForVariant = (sizeId: string) => {
-    const currentVariant = variants.find((v) => v.id === sizeId);
-    if (!currentVariant) return Object.keys(COLORS);
-
-    const usedColors = currentVariant.colors.map((color) =>
-      color.color.toLowerCase()
-    );
-    return Object.keys(COLORS).filter(
-      (color) => !usedColors.includes(color.toLowerCase())
-    );
-  };
-
-  // Gallery image handling functions
-  const handleImageUpload = (color: string, imageId: string, file: File) => {
-    const preview = URL.createObjectURL(file);
-
-    setGalleries(galleries.map((gallery) => {
-      if (gallery.color.toLowerCase() === color.toLowerCase()) {
-        return {
-          ...gallery,
-          images: gallery.images.map((img) => {
-            if (img.id === imageId) {
-              // Revoke old preview URL if exists
-              if (img.preview) {
-                URL.revokeObjectURL(img.preview);
-              }
-              return { ...img, file, preview };
-            }
-            return img;
-          }),
-        };
-      }
-      return gallery;
-    }));
-  };
-
-  const handleImageRemove = (color: string, imageId: string) => {
-    setGalleries(galleries.map((gallery) => {
-      if (gallery.color.toLowerCase() === color.toLowerCase()) {
-        return {
-          ...gallery,
-          images: gallery.images.map((img) => {
-            if (img.id === imageId) {
-              // Revoke preview URL if exists
-              if (img.preview) {
-                URL.revokeObjectURL(img.preview);
-              }
-              return { ...img, file: null, preview: null };
-            }
-            return img;
-          }),
-        };
-      }
-      return gallery;
-    }));
-  };
-
-  // Material Composition functions
+    // Material Composition functions
   const addMaterialComposition = () => {
-    const newComposition: MaterialComposition = {
-      id: crypto.randomUUID(),
-      percentage: 0,
-      title: "",
-    };
-    setMaterialCompositions([...materialCompositions, newComposition]);
+    setMaterialCompositions([...materialCompositions, { id: crypto.randomUUID(), percentage: 0, title: "" }]);
   };
-
   const updateMaterialComposition = (id: string, field: keyof MaterialComposition, value: string | number) => {
-    setMaterialCompositions(materialCompositions.map((item) =>
-      item.id === id ? { ...item, [field]: value } : item
-    ));
+    setMaterialCompositions(materialCompositions.map(item => item.id === id ? { ...item, [field]: value } : item));
   };
-
   const removeMaterialComposition = (id: string) => {
-    setMaterialCompositions(materialCompositions.filter((item) => item.id !== id));
+    setMaterialCompositions(materialCompositions.filter(item => item.id !== id));
   };
 
-  // Who Is This For functions
   const addWhoIsThisFor = () => {
-    const newItem: WhoIsThisFor = {
-      id: crypto.randomUUID(),
-      title: "",
-      description: "",
-    };
-    setWhoIsThisFor([...whoIsThisFor, newItem]);
+    setWhoIsThisFor([...whoIsThisFor, { id: crypto.randomUUID(), title: "", description: "" }]);
   };
-
   const updateWhoIsThisFor = (id: string, field: keyof WhoIsThisFor, value: string) => {
-    setWhoIsThisFor(whoIsThisFor.map((item) =>
-      item.id === id ? { ...item, [field]: value } : item
-    ));
+    setWhoIsThisFor(whoIsThisFor.map(item => item.id === id ? { ...item, [field]: value } : item));
   };
-
   const removeWhoIsThisFor = (id: string) => {
-    setWhoIsThisFor(whoIsThisFor.filter((item) => item.id !== id));
+    setWhoIsThisFor(whoIsThisFor.filter(item => item.id !== id));
   };
 
-  // Features functions
   const addFeature = () => {
-    const newFeature: Feature = {
-      id: crypto.randomUUID(),
-      title: "",
-      description: "",
-    };
-    setFeatures([...features, newFeature]);
+    setFeatures([...features, { id: crypto.randomUUID(), title: "", description: "" }]);
   };
-
   const updateFeature = (id: string, field: keyof Feature, value: string) => {
-    setFeatures(features.map((item) =>
-      item.id === id ? { ...item, [field]: value } : item
-    ));
+    setFeatures(features.map(item => item.id === id ? { ...item, [field]: value } : item));
   };
-
   const removeFeature = (id: string) => {
-    setFeatures(features.filter((item) => item.id !== id));
+    setFeatures(features.filter(item => item.id !== id));
   };
 
-  // Function to sync galleries with all variant colors
-  const syncGalleriesWithVariants = useCallback(() => {
-    // Get all unique colors from all variants
-    const allColors = new Set<string>();
-    variants.forEach(variant => {
-      variant.colors.forEach(color => {
-        allColors.add(color.color.toLowerCase());
-      });
-    });
-
-    // Create galleries for colors that don't have galleries yet
-    const newGalleries: ColorGallery[] = [];
-    allColors.forEach(colorName => {
-      const colorExists = galleries.some(
-        (g) => g.color.toLowerCase() === colorName.toLowerCase()
-      );
-
-      if (!colorExists) {
-        // Find the color in variants to get the hex value
-        let colorHex = '#000000'; // Default fallback
-        for (const variant of variants) {
-          const foundColor = variant.colors.find(c => c.color.toLowerCase() === colorName.toLowerCase());
-          if (foundColor) {
-            colorHex = foundColor.colorHex;
-            break;
-          }
-        }
-
-        const newGallery: ColorGallery = {
-          color: colorName,
-          colorHex: colorHex,
-          color_hax: colorHex,
-          images: [
-            { id: crypto.randomUUID(), file: null, preview: null, imageType: 'PRIMARY' },
-            { id: crypto.randomUUID(), file: null, preview: null, imageType: 'SECONDARY' },
-            { id: crypto.randomUUID(), file: null, preview: null, imageType: 'THIRD' },
-            { id: crypto.randomUUID(), file: null, preview: null, imageType: 'FOURTH' },
-          ],
-        };
-        newGalleries.push(newGallery);
-      }
-    });
-
-    // Remove galleries for colors that no longer exist in variants
-    const updatedGalleries = galleries.filter(gallery =>
-      allColors.has(gallery.color.toLowerCase())
-    );
-
-    // Add new galleries
-    if (newGalleries.length > 0) {
-      setGalleries([...updatedGalleries, ...newGalleries]);
-    } else if (updatedGalleries.length !== galleries.length) {
-      setGalleries(updatedGalleries);
-    }
-  }, [variants, galleries]);
-
-  // Sync galleries with variants whenever variants change
-  useEffect(() => {
-    if (variants.length > 0) {
-      syncGalleriesWithVariants();
-    }
-  }, [variants, syncGalleriesWithVariants]);
-
-  // Online Category creation functions
   const handleCreateOnlineCategory = async () => {
     if (!newOnlineCategoryName.trim()) {
-      toast({
-        title: "Name Required",
-        description: "Please enter a category name",
-        variant: "destructive",
-      });
+      toast({ title: "Name Required", description: "Please enter a category name", variant: "destructive" });
       return;
     }
 
@@ -673,26 +388,14 @@ export default function AddProductPage() {
         name: newOnlineCategoryName.trim(),
         description: newOnlineCategoryDescription.trim() || undefined,
       });
-
-      // Set the newly created category as selected
-      form.setValue("online_category", newCategory.id.toString());
-
-      // Reset form
+      form.setValue("online_categories", [...(form.getValues("online_categories") || []), newCategory.id.toString()]);
       setNewOnlineCategoryName("");
       setNewOnlineCategoryDescription("");
       setIsCreatingOnlineCategory(false);
-
-      toast({
-        title: "Success",
-        description: "Online category created successfully",
-      });
+      toast({ title: "Success", description: "Online category created successfully" });
     } catch (error) {
       console.error("Error creating online category:", error);
-      toast({
-        title: "Error",
-        description: "Failed to create online category. Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Failed to create online category", variant: "destructive" });
     }
   };
 
@@ -702,65 +405,19 @@ export default function AddProductPage() {
     setNewOnlineCategoryDescription("");
   };
 
-  // Function to handle form submission
   const onSubmit = async (data: ProductFormValues) => {
     try {
-      if (!sizeCategory) {
-        toast({
-          title: "Size Category Required",
-          description: "Please select a size category",
-          variant: "destructive",
-        });
+      if (designs.length === 0) {
+        toast({ title: "Designs Required", description: "Please add at least one design", variant: "destructive" });
         return;
       }
 
-      if (variants.length === 0) {
-        toast({
-          title: "Variants Required",
-          description: "Please add at least one size variant",
-          variant: "destructive",
-        });
+      const invalidDesigns = designs.filter(d => d.colors.length === 0);
+      if (invalidDesigns.length > 0) {
+        toast({ title: "Colors Required", description: `Please add at least one color for design ${invalidDesigns[0].name}`, variant: "destructive" });
         return;
       }
 
-      // Validate that each variant has at least one color
-      const invalidVariants = variants.filter((v) => v.colors.length === 0);
-      if (invalidVariants.length > 0) {
-        toast({
-          title: "Color Required",
-          description: `Please add at least one color for size ${invalidVariants[0].size}`,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Check for duplicate size-color combinations
-      const sizeColorCombinations: string[] = [];
-      const duplicates: string[] = [];
-
-      variants.forEach((variant) => {
-        variant.colors.forEach((color) => {
-          const combination = `${variant.size}-${color.color}`.toLowerCase();
-          if (sizeColorCombinations.includes(combination)) {
-            duplicates.push(`${variant.size} - ${color.color}`);
-          } else {
-            sizeColorCombinations.push(combination);
-          }
-        });
-      });
-
-      if (duplicates.length > 0) {
-        toast({
-          title: "Duplicate Variants Found",
-          description: `The following combinations already exist: ${duplicates.join(
-            ", "
-          )}. Please remove duplicates before saving.`,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Prepare the product data
       const productData: CreateProductDTO = {
         name: data.name,
         description: data.description || "",
@@ -769,184 +426,92 @@ export default function AddProductPage() {
         online_categories: data.online_categories?.map(id => parseInt(id)),
         supplier: data.supplier ? parseInt(data.supplier) : undefined,
         cost_price: parseFloat(data.cost_price),
-        selling_price: parseFloat(data.selling_price),
+        wholesale_price: parseFloat(data.wholesale_price),
+        retail_price: parseFloat(data.retail_price),
+        wholesale_cutoff: data.wholesale_cutoff,
         minimum_stock: data.minimum_stock,
         is_active: data.status === "active",
-        size_type: data.size_type,
-        size_category: sizeCategory, // Add size category explicitly
         gender: data.gender,
-        variations: variants.flatMap((sizeVariant) =>
-          sizeVariant.colors.map((colorVariant) => ({
-            size: sizeVariant.size,
-            color: colorVariant.color,
-            color_hax: colorVariant.colorHex,
-            stock: colorVariant.stock,
-            waist_size: colorVariant.waist_size,
-            chest_size: colorVariant.chest_size,
-            height: colorVariant.height,
+        designs: designs.map(d => ({
+          name: d.name,
+          description: d.description,
+          colors: d.colors.map(c => ({
+            color: c.color,
+            color_hax: c.colorHex,
+            stock: c.stock
           }))
-        ),
-        material_composition: materialCompositions.map((item) => ({
-          percentige: item.percentage,
-          title: item.title || null,
         })),
-        who_is_this_for: whoIsThisFor.map((item) => ({
-          title: item.title || null,
-          description: item.description || null,
-        })),
-        features: features.map((item) => ({
-          title: item.title || null,
-          description: item.description || null,
-        })),
-        galleries: galleries.map((gallery) => ({
-          color: gallery.color,
-          color_hax: gallery.color_hax || gallery.colorHex,
-          alt_text: gallery.color, // Use color name as alt text
-        })),
+        material_composition: materialCompositions.map(item => ({ percentige: item.percentage, title: item.title || null })),
+        who_is_this_for: whoIsThisFor.map(item => ({ title: item.title || null, description: item.description || null })),
+        features: features.map(item => ({ title: item.title || null, description: item.description || null })),
       };
 
-      // Create the product
       const createdProduct = await createProduct.mutateAsync(productData);
 
-      // Upload images for galleries that have images
-      const galleriesWithImages = galleries.filter((g) =>
-        g.images.some((img) => img.file !== null)
-      );
-
-      if (galleriesWithImages.length > 0 && createdProduct?.id) {
-        // Upload images for each color
-        for (const gallery of galleriesWithImages) {
-          const imagesToUpload = gallery.images.filter((img) => img.file !== null);
-
+      if (createdProduct?.id) {
+        const createdDesigns = createdProduct.designs || [];
+        for (const gallery of galleries) {
+          const imagesToUpload = gallery.images.filter(img => img.file !== null);
           if (imagesToUpload.length > 0) {
+            const createdDesign = createdDesigns.find(
+              design => design.name.trim().toLowerCase() === gallery.designName.trim().toLowerCase()
+            );
+            if (!createdDesign) {
+              throw new Error(`Created design not found for gallery: ${gallery.designName}`);
+            }
             const formData = new FormData();
+            formData.append('design_id', String(createdDesign.id));
             formData.append('color', gallery.color);
-            formData.append('color_hax', gallery.color_hax || gallery.colorHex);
+            formData.append('color_hax', gallery.colorHex);
             formData.append('alt_text', gallery.color);
-
-            // Add all images for this color with their imageTypes
-            imagesToUpload.forEach((img) => {
+            imagesToUpload.forEach(img => {
               if (img.file) {
                 formData.append('images', img.file);
-                // Send the imageType for each image so backend knows which type to assign
                 formData.append('image_types', img.imageType);
               }
             });
 
             try {
-              // Import and use the upload function
               const { galleriesApi } = await import('@/lib/api/inventory');
               await galleriesApi.uploadColorImages(createdProduct.id, formData);
-            } catch (uploadError) {
-              console.error(`Error uploading images for ${gallery.color}:`, uploadError);
-              toast({
-                title: "Image Upload Warning",
-                description: `Product created but some images for ${gallery.color} failed to upload`,
-                variant: "default",
-              });
+            } catch (err) {
+              console.error(`Error uploading images for ${gallery.designName} / ${gallery.color}:`, err);
             }
           }
         }
       }
 
-      const hasImages = galleries.some((g) =>
-        g.images.some((img) => img.file !== null)
-      );
-
-      toast({
-        title: "Success",
-        description: hasImages
-          ? "Product and images created successfully"
-          : "Product created successfully",
-      });
-
-      // Clean up preview URLs
-      galleries.forEach((gallery) => {
-        gallery.images.forEach((img) => {
-          if (img.preview) {
-            URL.revokeObjectURL(img.preview);
-          }
-        });
-      });
-
-      // Redirect to products page
+      toast({ title: "Success", description: "Product created successfully" });
+      galleries.forEach(g => g.images.forEach(img => { if (img.preview) URL.revokeObjectURL(img.preview); }));
       router.push("/inventory/products");
     } catch (error) {
       console.error("Error creating product:", error);
-      toast({
-        title: "Error",
-        description: "Failed to create product. Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Failed to create product", variant: "destructive" });
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      <div className="max-w-7xl mx-auto p-6">
-        <div className="mb-8">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-              <ShoppingCart className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-                Add New Product
-              </h1>
-              <p className="text-gray-600 mt-1">
-                Add a new product to your inventory with variants and stock
-                information
-              </p>
-            </div>
-          </div>
-        </div>
+    <div className="space-y-8">
+        <PageHeader
+          title="Add New Product"
+          description="Create a new product entry in the global inventory system."
+          icon={<PlusCircle className="h-6 w-6" />}
+        />
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.back()}
-                className="bg-white/70 backdrop-blur-sm border-white/20 shadow-lg hover:bg-white/90"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={createProduct.isPending}
-                className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white shadow-lg"
-              >
-                {createProduct.isPending ? "Creating..." : "Save Product"}
-              </Button>
-            </div>
-
-            <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle className="text-xl font-semibold text-gray-900">
-                  Product Information
-                </CardTitle>
-                <CardDescription className="text-gray-600">
-                  Enter the basic details of your product
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Basic Information */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Product Information */}
+              <DataPanel title="Product Information" description="Enter basic details about your product.">
+                <div className="space-y-4">
                   <FormField
                     control={form.control}
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-700">
-                          Product Name
-                        </FormLabel>
+                        <FormLabel>Product Name</FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder="Classic Oxford Shirt"
-                            {...field}
-                            className="h-12 border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors"
-                          />
+                          <Input placeholder="E.g. Premium Silk Saree" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -954,308 +519,89 @@ export default function AddProductPage() {
                   />
                   <FormField
                     control={form.control}
-                    name="barcode"
+                    name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-700">
-                          Barcode (Optional)
-                        </FormLabel>
+                        <FormLabel>Description</FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder="123456789012"
-                            {...field}
-                            className="h-12 border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors"
-                          />
+                          <Textarea placeholder="Describe your product..." {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-700">
-                        Description
-                      </FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Enter product description"
-                          rows={3}
-                          {...field}
-                          className="border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField
-                    control={form.control}
-                    name="category"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-700">
-                          Category
-                        </FormLabel>
-                        <FormControl>
-                          {isLoadingCategories ? (
-                            <Skeleton className="h-12 w-full rounded-xl" />
-                          ) : (
-                            <Select
-                              value={field.value}
-                              onValueChange={field.onChange}
-                            >
-                              <SelectTrigger className="h-12 border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors">
-                                <SelectValue placeholder="Select category" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="category"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Category</FormLabel>
+                          <HierarchicalCategorySelect
+                            categories={categories}
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Select Category"
+                          />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="gender"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Gender</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select gender" />
                               </SelectTrigger>
-                              <SelectContent>
-                                {categories.map((cat) => (
-                                  <SelectItem
-                                    key={cat.id}
-                                    value={cat.id.toString()}
-                                  >
-                                    {cat.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="MALE">Male</SelectItem>
+                              <SelectItem value="FEMALE">Female</SelectItem>
+                              <SelectItem value="UNISEX">Unisex</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                   <FormField
                     control={form.control}
                     name="online_categories"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-700">
-                          Online Categories (Optional)
-                        </FormLabel>
+                        <FormLabel>Online Categories</FormLabel>
                         <FormControl>
-                          {isLoadingOnlineCategories ? (
-                            <Skeleton className="h-12 w-full rounded-xl" />
-                          ) : isCreatingOnlineCategory ? (
-                            <div className="space-y-3">
-                              <Input
-                                placeholder="Category name"
-                                value={newOnlineCategoryName}
-                                onChange={(e) => setNewOnlineCategoryName(e.target.value)}
-                                className="h-12 border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors"
-                              />
-                              <Textarea
-                                placeholder="Category description (optional)"
-                                value={newOnlineCategoryDescription}
-                                onChange={(e) => setNewOnlineCategoryDescription(e.target.value)}
-                                rows={2}
-                                className="border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors"
-                              />
-                              <div className="flex gap-2">
-                                <Button
-                                  type="button"
-                                  onClick={handleCreateOnlineCategory}
-                                  disabled={createOnlineCategory.isPending}
-                                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white"
-                                >
-                                  {createOnlineCategory.isPending ? "Creating..." : "Create Category"}
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  onClick={cancelCreateOnlineCategory}
-                                  className="flex-1"
-                                >
-                                  Cancel
-                                </Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="space-y-2">
-                              <MultiOnlineCategorySelect
-                                categories={onlineCategories}
-                                values={field.value}
-                                onValuesChange={field.onChange}
-                                placeholder="Select online categories"
-                              />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => setIsCreatingOnlineCategory(true)}
-                                className="w-full border-2 border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50"
-                              >
-                                <PlusCircle className="h-4 w-4 mr-2" />
-                                Create New Online Category
-                              </Button>
-                            </div>
-                          )}
+                          <MultiOnlineCategorySelect
+                            categories={onlineCategories}
+                            values={field.value}
+                            onValuesChange={field.onChange}
+                            placeholder="Select Online Categories"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
+              </DataPanel>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField
-                    control={form.control}
-                    name="supplier"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-700">
-                          Supplier
-                        </FormLabel>
-                        <FormControl>
-                          {isLoadingSuppliers ? (
-                            <Skeleton className="h-12 w-full rounded-xl" />
-                          ) : (
-                            <Select
-                              value={field.value}
-                              onValueChange={field.onChange}
-                            >
-                              <SelectTrigger className="h-12 border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors">
-                                <SelectValue placeholder="Select supplier" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {suppliers.map((sup) => (
-                                  <SelectItem
-                                    key={sup.id}
-                                    value={sup.id.toString()}
-                                  >
-                                    {sup.company_name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* Size Type and Gender */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField
-                    control={form.control}
-                    name="size_type"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-700">
-                          Size Type
-                        </FormLabel>
-                        <FormControl>
-                          <Select
-                            value={field.value}
-                            onValueChange={handleSizeTypeChange}
-                          >
-                            <SelectTrigger className="h-12 border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors">
-                              <SelectValue placeholder="Select size type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="pants">Pants</SelectItem>
-                              <SelectItem value="shoes">Shoes</SelectItem>
-                              <SelectItem value="belts">Belts</SelectItem>
-                              <SelectItem value="underwear">
-                                Underwear
-                              </SelectItem>
-                              <SelectItem value="jersey">Jersey</SelectItem>
-                              <SelectItem value="shirts">Shirts</SelectItem>
-                              <SelectItem value="tshirts">T-Shirts</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="gender"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-700">Gender</FormLabel>
-                        <FormControl>
-                          <Select
-                            value={field.value}
-                            onValueChange={handleGenderChange}
-                            disabled={
-                              watchedSizeType === "belts" ||
-                              watchedSizeType === "jersey"
-                            }
-                          >
-                            <SelectTrigger className="h-12 border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors">
-                              <SelectValue placeholder="Select gender" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="MALE">Men</SelectItem>
-                              <SelectItem value="FEMALE">Women</SelectItem>
-                              <SelectItem value="UNISEX">Unisex</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* Size Category Selection */}
-                {availableSizeCategories.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700">
-                        Size Category
-                      </label>
-                      <Select
-                        value={sizeCategory}
-                        onValueChange={handleSizeCategoryChange}
-                      >
-                        <SelectTrigger className="h-12 border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors">
-                          <SelectValue placeholder="Select size category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableSizeCategories.map((category) => (
-                            <SelectItem key={category} value={category}>
-                              {category.toUpperCase()}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Pricing Information */}
+              <DataPanel title="Pricing" description="Configure the 3-tier pricing model.">
+                <div className="space-y-4">
                   <FormField
                     control={form.control}
                     name="cost_price"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-700">
-                          Cost Price
-                        </FormLabel>
+                        <FormLabel>Cost Price</FormLabel>
                         <FormControl>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder="0.00"
-                            {...field}
-                            className="h-12 border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors"
-                            onWheel={(e) => {
-                              // Prevent scrolling from changing the input value
-                              if (document.activeElement === e.target) {
-                                e.preventDefault();
-                              }
-                            }}
-                          />
+                          <Input type="number" step="0.01" placeholder="0.00" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1263,26 +609,12 @@ export default function AddProductPage() {
                   />
                   <FormField
                     control={form.control}
-                    name="selling_price"
+                    name="wholesale_price"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-700">
-                          Selling Price
-                        </FormLabel>
+                        <FormLabel>Wholesale Price</FormLabel>
                         <FormControl>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder="0.00"
-                            {...field}
-                            className="h-12 border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors"
-                            onWheel={(e) => {
-                              // Prevent scrolling from changing the input value
-                              if (document.activeElement === e.target) {
-                                e.preventDefault();
-                              }
-                            }}
-                          />
+                          <Input type="number" step="0.01" placeholder="0.00" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1290,572 +622,216 @@ export default function AddProductPage() {
                   />
                   <FormField
                     control={form.control}
-                    name="status"
+                    name="retail_price"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-700">Status</FormLabel>
+                        <FormLabel>Retail Price</FormLabel>
                         <FormControl>
-                          <Select
+                          <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="wholesale_cutoff"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Wholesale Cutoff Qty</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="1"
+                            placeholder="10"
                             value={field.value}
-                            onValueChange={field.onChange}
-                          >
-                            <SelectTrigger className="h-12 border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors">
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="active">Active</SelectItem>
-                              <SelectItem value="inactive">Inactive</SelectItem>
-                              <SelectItem value="discontinued">
-                                Discontinued
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
+                            onChange={(e) => field.onChange(parseInt(e.target.value || "10", 10))}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
-              </CardContent>
-            </Card>
+              </DataPanel>
+            </div>
 
-            {/* Size and Color Options */}
-            <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-xl font-semibold text-gray-900">
-                      Size & Color Options
-                    </CardTitle>
-                    <CardDescription className="text-gray-600">
-                      Add size variants and their color options
-                    </CardDescription>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addSizeVariant}
-                    disabled={!sizeCategory || availableSizes.length === 0}
-                    className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white shadow-lg"
-                  >
-                    <PlusCircle className="h-4 w-4 mr-2" />
-                    Add Size
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {variants.map((variant) => (
-                    <div
-                      key={variant.id}
-                      className="border border-gray-200 rounded-xl overflow-hidden bg-white/50 backdrop-blur-sm"
-                    >
-                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <Select
-                            value={variant.size}
-                            onValueChange={(value) =>
-                              updateSizeVariant(variant.id, value)
-                            }
-                          >
-                            <SelectTrigger className="w-24 h-10 border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {getAvailableSizesForVariant(variant.id).map(
-                                (size) => (
-                                  <SelectItem key={size} value={size}>
-                                    {size}
-                                  </SelectItem>
-                                )
-                              )}
-                            </SelectContent>
-                          </Select>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => addColorVariant(variant.id)}
-                            className="bg-white/70 backdrop-blur-sm border-white/20 shadow-lg hover:bg-white/90"
-                          >
-                            <PlusCircle className="h-4 w-4 mr-2" />
-                            Add Color
-                          </Button>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeSizeVariant(variant.id)}
-                          className="hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
-                      <div className="p-4">
-                        <table className="w-full">
-                          <thead>
-                            <tr className="text-sm text-gray-600">
-                              <th className="text-left font-medium">Color</th>
-                              <th className="text-left font-medium">Stock</th>
-                              <th className="text-left font-medium">Waist Size</th>
-                              <th className="text-left font-medium">Chest Size</th>
-                              <th className="text-left font-medium">Height</th>
-                              <th className="w-10"></th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100">
-                            {variant.colors.map((color) => (
-                              <tr
-                                key={color.id}
-                                className="hover:bg-gray-50/50"
-                              >
-                                <td className="py-3">
-                                  <div className="flex items-center gap-2">
-                                    <div
-                                      className="w-6 h-6 rounded-full border border-gray-200 shadow-sm"
-                                      style={{
-                                        backgroundColor: color.colorHex,
-                                      }}
-                                    />
-                                    <div className="flex-1 space-y-2">
-                                      <Select
-                                        value={color.color}
-                                        onValueChange={(value) =>
-                                          updateColorVariant(
-                                            variant.id,
-                                            color.id,
-                                            "color",
-                                            value
-                                          )
-                                        }
-                                      >
-                                        <SelectTrigger className="w-32 h-10 border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors">
-                                          <SelectValue placeholder="Select color" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {getAvailableColorsForVariant(
-                                            variant.id
-                                          ).map((name) => (
-                                            <SelectItem key={name} value={name}>
-                                              <div className="flex items-center gap-2">
-                                                <div
-                                                  className="w-4 h-4 rounded-full border border-gray-200"
-                                                  style={{
-                                                    backgroundColor:
-                                                      COLORS[
-                                                      name as keyof typeof COLORS
-                                                      ],
-                                                  }}
-                                                />
-                                                <span>{name}</span>
-                                              </div>
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="py-3">
-                                  <Input
-                                    type="number"
-                                    value={color.stock}
-                                    onChange={(e) =>
-                                      updateColorVariant(
-                                        variant.id,
-                                        color.id,
-                                        "stock",
-                                        parseInt(e.target.value) || 0
-                                      )
-                                    }
-                                    className="w-24 h-10 border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors"
-                                    onWheel={(e) => {
-                                      // Prevent scrolling from changing the input value
-                                      if (document.activeElement === e.target) {
-                                        e.preventDefault();
-                                      }
-                                    }}
-                                  />
-                                </td>
-                                <td className="py-3">
-                                  <Input
-                                    type="number"
-                                    placeholder="Waist"
-                                    value={color.waist_size || ""}
-                                    onChange={(e) =>
-                                      updateColorVariant(
-                                        variant.id,
-                                        color.id,
-                                        "waist_size",
-                                        e.target.value ? parseInt(e.target.value) : 0
-                                      )
-                                    }
-                                    className="w-20 h-10 border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors"
-                                    onWheel={(e) => {
-                                      if (document.activeElement === e.target) {
-                                        e.preventDefault();
-                                      }
-                                    }}
-                                  />
-                                </td>
-                                <td className="py-3">
-                                  <Input
-                                    type="number"
-                                    placeholder="Chest"
-                                    value={color.chest_size || ""}
-                                    onChange={(e) =>
-                                      updateColorVariant(
-                                        variant.id,
-                                        color.id,
-                                        "chest_size",
-                                        e.target.value ? parseInt(e.target.value) : 0
-                                      )
-                                    }
-                                    className="w-20 h-10 border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors"
-                                    onWheel={(e) => {
-                                      if (document.activeElement === e.target) {
-                                        e.preventDefault();
-                                      }
-                                    }}
-                                  />
-                                </td>
-                                <td className="py-3">
-                                  <Input
-                                    type="number"
-                                    placeholder="Height"
-                                    value={color.height || ""}
-                                    onChange={(e) =>
-                                      updateColorVariant(
-                                        variant.id,
-                                        color.id,
-                                        "height",
-                                        e.target.value ? parseInt(e.target.value) : 0
-                                      )
-                                    }
-                                    className="w-20 h-10 border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors"
-                                    onWheel={(e) => {
-                                      if (document.activeElement === e.target) {
-                                        e.preventDefault();
-                                      }
-                                    }}
-                                  />
-                                </td>
-                                <td className="py-3 text-center">
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() =>
-                                      removeColorVariant(variant.id, color.id)
-                                    }
-                                    className="hover:bg-red-50"
-                                  >
-                                    <Trash2 className="h-4 w-4 text-red-500" />
-                                  </Button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Gallery Section */}
-            {galleries.length > 0 && (
-              <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
-                <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 border-b">
-                  <CardTitle className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                    <ImageIcon className="h-6 w-6" />
-                    Product Galleries
-                  </CardTitle>
-                  <CardDescription className="text-gray-600">
-                    Upload up to 4 images per color variant (PRIMARY, SECONDARY, THIRD, FOURTH)
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <div className="space-y-6">
-                    {galleries.map((gallery) => (
-                      <Card key={gallery.color} className="border-2 border-gray-200">
-                        <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100">
-                          <CardTitle className="text-lg font-semibold flex items-center gap-3">
-                            <div
-                              className="w-8 h-8 rounded-full border-2 border-white shadow-md"
-                              style={{ backgroundColor: gallery.color_hax || gallery.colorHex }}
-                            />
-                            <span className="capitalize">{gallery.color}</span>
-                            <span className="text-sm text-gray-500 font-normal">
-                              ({gallery.images.filter(img => img.file).length}/4 uploaded)
-                            </span>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-6">
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            {gallery.images.map((image) => (
-                              <div
-                                key={image.id}
-                                className="relative group"
-                              >
-                                <div className="aspect-square border-2 border-dashed border-gray-300 rounded-xl overflow-hidden bg-gray-50 hover:border-blue-500 transition-colors">
-                                  {image.preview ? (
-                                    <div className="relative w-full h-full">
-                                      <img
-                                        src={image.preview}
-                                        alt={`${gallery.color} - ${image.imageType}`}
-                                        className="w-full h-full object-cover"
-                                      />
-                                      <Button
-                                        type="button"
-                                        variant="destructive"
-                                        size="icon"
-                                        className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        onClick={() => handleImageRemove(gallery.color, image.id)}
-                                      >
-                                        <X className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-                                  ) : (
-                                    <label
-                                      htmlFor={`image-${image.id}`}
-                                      className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-gray-100 transition-colors"
-                                    >
-                                      <Upload className="h-10 w-10 text-gray-400 mb-2" />
-                                      <span className="text-sm font-medium text-gray-600">
-                                        {image.imageType}
-                                      </span>
-                                      <span className="text-xs text-gray-400 mt-1">
-                                        Click to upload
-                                      </span>
-                                      <input
-                                        id={`image-${image.id}`}
-                                        type="file"
-                                        accept="image/*"
-                                        className="hidden"
-                                        onChange={(e) => {
-                                          const file = e.target.files?.[0];
-                                          if (file) {
-                                            handleImageUpload(gallery.color, image.id, file);
-                                          }
-                                        }}
-                                      />
-                                    </label>
-                                  )}
-                                </div>
-                                <div className="mt-2 text-center">
-                                  <span className="text-xs font-medium text-gray-600 capitalize">
-                                    {image.imageType.toLowerCase()}
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Material Composition Section */}
-            <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
-              <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 border-b">
-                <CardTitle className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                  <ShoppingCart className="h-6 w-6" />
-                  Material Composition
-                </CardTitle>
-                <CardDescription className="text-gray-600">
-                  Add material composition details (percentage and material type)
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  {materialCompositions.map((item, index) => (
-                    <div key={item.id} className="flex gap-4 items-end">
-                      <div className="flex-1">
-                        <label className="text-sm font-medium text-gray-700 mb-2 block">
-                          Material {index + 1}
-                        </label>
-                        <Input
-                          placeholder="e.g., Cotton, Polyester"
-                          value={item.title || ""}
-                          onChange={(e) => updateMaterialComposition(item.id, "title", e.target.value)}
-                          className="h-10 border-2 border-gray-200 focus:border-blue-500 rounded-xl"
-                        />
-                      </div>
-                      <div className="w-32">
-                        <label className="text-sm font-medium text-gray-700 mb-2 block">
-                          Percentage
-                        </label>
-                        <Input
-                          type="number"
-                          min="0"
-                          max="100"
-                          placeholder="50"
-                          value={item.percentage || ""}
-                          onChange={(e) => updateMaterialComposition(item.id, "percentage", parseInt(e.target.value) || 0)}
-                          className="h-10 border-2 border-gray-200 focus:border-blue-500 rounded-xl"
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeMaterialComposition(item.id)}
-                        className="hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
+            {/* Designs & Variations Section */}
+            <DataPanel
+              title="Designs & Variations"
+              description="Manage designs and their respective color variations."
+              actions={
+                <Button type="button" variant="outline" size="sm" onClick={addDesign} className="border-brand-primary/10 hover:bg-brand-primary/5 text-brand-primary">
+                  <PlusCircle className="mr-2 h-4 w-4" /> Add Design
+                </Button>
+              }
+            >
+              <div className="space-y-6">
+                {designs.map((design) => (
+                  <div key={design.id} className="p-4 rounded-lg bg-slate-50 border border-brand-primary/5 space-y-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <FormItem className="flex-1">
+                        <FormLabel>Design Name</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Design Name (e.g. Floral Embroidery)"
+                            value={design.name}
+                            onChange={(e) => updateDesignName(design.id, e.target.value)}
+                          />
+                        </FormControl>
+                      </FormItem>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => removeDesign(design.id)} className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 mt-8">
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                  ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={addMaterialComposition}
-                    className="w-full border-2 border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50"
-                  >
-                    <PlusCircle className="h-4 w-4 mr-2" />
-                    Add Material Composition
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
 
-            {/* Who Is This For Section */}
-            <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
-              <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 border-b">
-                <CardTitle className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                  <ShoppingCart className="h-6 w-6" />
-                  Who Is This For
-                </CardTitle>
-                <CardDescription className="text-gray-600">
-                  Define target audience and use cases for this product
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  {whoIsThisFor.map((item, index) => (
-                    <div key={item.id} className="space-y-3">
-                      <div className="flex gap-4 items-center">
-                        <div className="flex-1">
-                          <label className="text-sm font-medium text-gray-700 mb-2 block">
-                            Title {index + 1}
-                          </label>
-                          <Input
-                            placeholder="e.g., Professional Women, Athletes"
-                            value={item.title || ""}
-                            onChange={(e) => updateWhoIsThisFor(item.id, "title", e.target.value)}
-                            className="h-10 border-2 border-gray-200 focus:border-blue-500 rounded-xl"
-                          />
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeWhoIsThisFor(item.id)}
-                          className="hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
+                    <div className="space-y-4 pl-4 border-l-2 border-brand-primary/10">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold text-sm">Colors & Stock</h4>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => addColorVariant(design.id)} className="hover:bg-brand-primary/5 text-brand-primary">
+                          <PlusCircle className="mr-2 h-4 w-4" /> Add Color
                         </Button>
                       </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-700 mb-2 block">
-                          Description
-                        </label>
-                        <Textarea
-                          placeholder="Describe the target audience or use case..."
-                          rows={2}
-                          value={item.description || ""}
-                          onChange={(e) => updateWhoIsThisFor(item.id, "description", e.target.value)}
-                          className="border-2 border-gray-200 focus:border-blue-500 rounded-xl"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={addWhoIsThisFor}
-                    className="w-full border-2 border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50"
-                  >
-                    <PlusCircle className="h-4 w-4 mr-2" />
-                    Add Target Audience
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
 
-            {/* Features Section */}
-            <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
-              <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 border-b">
-                <CardTitle className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                  <ShoppingCart className="h-6 w-6" />
-                  Product Features
-                </CardTitle>
-                <CardDescription className="text-gray-600">
-                  Highlight key features and benefits of this product
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  {features.map((item, index) => (
-                    <div key={item.id} className="space-y-3">
-                      <div className="flex gap-4 items-center">
-                        <div className="flex-1">
-                          <label className="text-sm font-medium text-gray-700 mb-2 block">
-                            Feature {index + 1}
-                          </label>
-                          <Input
-                            placeholder="e.g., Moisture Wicking, UV Protection"
-                            value={item.title || ""}
-                            onChange={(e) => updateFeature(item.id, "title", e.target.value)}
-                            className="h-10 border-2 border-gray-200 focus:border-blue-500 rounded-xl"
-                          />
+                      {design.colors.map((color) => (
+                        <div key={color.id} className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                          <FormItem>
+                            <FormLabel className="text-xs text-slate-500">Color</FormLabel>
+                            <Select
+                              value={color.color}
+                              onValueChange={(val) => updateColorVariant(design.id, color.id, "color", val)}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select color">
+                                  <span className="flex items-center gap-2">
+                                    <span
+                                      className="inline-block h-3 w-3 rounded-full border border-slate-300 flex-shrink-0"
+                                      style={{ backgroundColor: color.colorHex || '#000' }}
+                                    />
+                                    {color.color || 'Select color'}
+                                  </span>
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent>
+                                {getAvailableColorsForVariant(design.id).map((colorName) => (
+                                  <SelectItem key={colorName} value={colorName}>
+                                    <span className="flex items-center gap-2">
+                                      <span
+                                        className="inline-block h-3 w-3 rounded-full border border-slate-300 flex-shrink-0"
+                                        style={{ backgroundColor: COLORS[colorName as keyof typeof COLORS] || '#000' }}
+                                      />
+                                      {colorName}
+                                    </span>
+                                  </SelectItem>
+                                ))}
+                                {/* Include current color in options even if it's "used" */}
+                                {color.color && !getAvailableColorsForVariant(design.id).includes(color.color) && (
+                                  <SelectItem key={color.color} value={color.color}>
+                                    <span className="flex items-center gap-2">
+                                      <span
+                                        className="inline-block h-3 w-3 rounded-full border border-slate-300 flex-shrink-0"
+                                        style={{ backgroundColor: color.colorHex || '#000' }}
+                                      />
+                                      {color.color}
+                                    </span>
+                                  </SelectItem>
+                                )}
+                              </SelectContent>
+                            </Select>
+                          </FormItem>
+                          <FormItem>
+                            <FormLabel className="text-xs text-slate-500">Stock</FormLabel>
+                            <Input
+                              type="number"
+                              placeholder="0"
+                              value={color.stock}
+                              onChange={(e) => updateColorVariant(design.id, color.id, "stock", parseInt(e.target.value))}
+                            />
+                          </FormItem>
+                          <Button type="button" variant="ghost" size="sm" onClick={() => removeColorVariant(design.id, color.id)} className="text-rose-500 hover:text-rose-600 hover:bg-rose-50">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeFeature(item.id)}
-                          className="hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                </div>
+              </DataPanel>
+
+            {/* Gallery Section - Moved here for better flow */}
+            <DataPanel title="Design & Color Media" description="Upload a separate image gallery for every design and color combination.">
+              <div className="space-y-8">
+                {galleries.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-slate-400 border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/50">
+                    <ImageIcon className="h-10 w-10 mb-2 opacity-20" />
+                    <p className="text-sm">Add a color to your designs to enable image uploads.</p>
+                  </div>
+                ) : (
+                  galleries.map((gallery) => (
+                    <div key={`${gallery.designId}-${gallery.colorId}`} className="space-y-4 p-4 rounded-2xl bg-slate-50/50 border border-brand-primary/5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-6 h-6 rounded-full border-2 border-white shadow-sm" style={{ backgroundColor: gallery.colorHex }} />
+                          <h4 className="font-bold text-lg capitalize text-brand-primary">
+                            {gallery.designName} / {gallery.color}
+                          </h4>
+                        </div>
+                        <Badge variant="outline" className="bg-brand-primary/5 text-brand-primary border-brand-primary/10">
+                          {gallery.images.filter(img => img.file).length} / 4 Images
+                        </Badge>
                       </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-700 mb-2 block">
-                          Description
-                        </label>
-                        <Textarea
-                          placeholder="Describe the feature and its benefits..."
-                          rows={2}
-                          value={item.description || ""}
-                          onChange={(e) => updateFeature(item.id, "description", e.target.value)}
-                          className="border-2 border-gray-200 focus:border-blue-500 rounded-xl"
-                        />
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {gallery.images.map((img) => (
+                          <div key={img.id} className="relative aspect-square rounded-xl border-2 border-dashed border-brand-primary/10 overflow-hidden group hover:border-brand-primary/30 transition-all bg-white shadow-sm">
+                            {img.preview ? (
+                              <>
+                                <img src={img.preview} alt={gallery.color} className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleImageRemove(gallery.designId, gallery.colorId, img.id)}
+                                    className="p-2 bg-rose-500 rounded-full text-white shadow-lg hover:bg-rose-600 transform hover:scale-110 transition-all"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </button>
+                                </div>
+                                <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/60 backdrop-blur-md rounded text-[10px] text-white font-bold uppercase tracking-wider">
+                                  {img.imageType}
+                                </div>
+                              </>
+                            ) : (
+                              <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-brand-primary/5 transition-all">
+                                <Upload className="h-6 w-6 text-brand-primary/30 group-hover:text-brand-primary/50 group-hover:scale-110 transition-all" />
+                                <span className="text-[10px] text-brand-primary/40 mt-2 uppercase font-bold tracking-widest">{img.imageType}</span>
+                                <input
+                                  type="file"
+                                  className="hidden"
+                                  accept="image/*"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleImageUpload(gallery.designId, gallery.colorId, img.id, file);
+                                  }}
+                                />
+                              </label>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={addFeature}
-                    className="w-full border-2 border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50"
-                  >
-                    <PlusCircle className="h-4 w-4 mr-2" />
-                    Add Feature
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                  ))
+                )}
+              </div>
+            </DataPanel>
+
+            <div className="flex justify-end gap-4 pb-10">
+              <Button type="button" variant="outline" onClick={() => router.back()} className="border-brand-primary/10 text-brand-primary hover:bg-slate-50">Cancel</Button>
+              <Button type="submit" disabled={createProduct.isPending} className="bg-brand-primary hover:bg-emerald-900 text-brand-secondary shadow-lg shadow-brand-primary/20">
+                {createProduct.isPending ? "Creating..." : "Save Product"}
+              </Button>
+            </div>
           </form>
         </Form>
-      </div>
     </div>
   );
 }

@@ -39,7 +39,6 @@ export default function CategoryPage() {
   // Filter states
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [selectedColor, setSelectedColor] = useState<string | null>(null)
-  const [selectedSize, setSelectedSize] = useState<string | null>(null)
   const [selectedGender, setSelectedGender] = useState<string | null>(genderParam)
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000])
 
@@ -61,7 +60,6 @@ export default function CategoryPage() {
           search: searchTerm || undefined,
           sort: (sortBy === 'price-low' ? 'price_asc' : sortBy === 'price-high' ? 'price_desc' : sortBy === 'name' ? 'name' : undefined) as any,
           colors: selectedColor ? [selectedColor] : undefined,
-          sizes: selectedSize ? [selectedSize] : undefined,
           price_min: priceRange[0],
           price_max: priceRange[1],
           page,
@@ -77,12 +75,12 @@ export default function CategoryPage() {
     }
 
     fetchCategoryData()
-  }, [activeCategorySlug, activeGender, selectedColor, selectedSize, priceRange, page, pageSize, searchTerm, sortBy, startLoading, stopLoading])
+  }, [activeCategorySlug, activeGender, selectedColor, priceRange, page, pageSize, searchTerm, sortBy, startLoading, stopLoading])
 
   // Reset to first page on key changes
   useEffect(() => {
     setPage(1)
-  }, [searchTerm, sortBy, activeCategorySlug, activeGender, selectedColor, selectedSize, priceRange])
+  }, [searchTerm, sortBy, activeCategorySlug, activeGender, selectedColor, priceRange])
 
   // GTM View Item List
   useEffect(() => {
@@ -90,7 +88,7 @@ export default function CategoryPage() {
       sendGTMEvent('view_item_list', {
         currency: 'BDT',
         items: products.map((p, index) => ({
-          item_id: normalizeProductId(`${p.product_id}/${p.color_slug}`),
+          item_id: String(p.combination_id),
           item_name: p.product_name,
           price: parseFloat(p.product_price),
           item_list_name: categoryName,
@@ -119,7 +117,6 @@ export default function CategoryPage() {
     setSelectedCategory(null)
     setSelectedGender(null)
     setSelectedColor(null)
-    setSelectedSize(null)
     setPriceRange([0, 10000])
   }
 
@@ -141,30 +138,30 @@ export default function CategoryPage() {
     selectedCategory,
     selectedGender,
     selectedColor,
-    selectedSize,
     (priceRange[0] > 0 || priceRange[1] < 10000)
   ].filter(Boolean).length
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F9FBFC]">
+    <div className="flex min-h-screen flex-col bg-background">
       <StructuredData data={generateBreadcrumbStructuredData(breadcrumbItems)} />
       <SiteHeader />
       <main className="flex-1 pb-20">
-        <div className="container mx-auto px-4 py-6">
+        <div className="container py-8 md:py-12">
           <Breadcrumb items={breadcrumbItems} />
 
           {/* Page Header */}
-          <div className="mt-8 mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div className="mb-12 mt-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
             <div>
-              <h1 className="text-4xl font-extrabold tracking-tight mb-2 uppercase">SHOP {categoryName}</h1>
-              <p className="text-muted-foreground font-medium">
-                {totalCount} premium products found
+              <p className="editorial-kicker">Selected collection</p>
+              <h1 className="mt-2 font-serif text-4xl md:text-5xl">{categoryName}</h1>
+              <p className="mt-3 text-sm text-muted-foreground">
+                Showing {totalCount} products
               </p>
             </div>
           </div>
 
           {/* Search and Sort Toolbar */}
-          <div className="sticky top-16 z-40 bg-background/80 backdrop-blur-md -mx-4 px-4 py-4 md:static md:bg-transparent md:backdrop-blur-none mb-8 border-b md:border-none">
+          <div className="sticky top-[72px] z-40 mb-8 border-y border-border/70 bg-background/95 py-4 backdrop-blur md:top-[88px]">
             <div className="flex flex-col sm:flex-row gap-4 items-center">
               <div className="relative w-full sm:flex-1">
                 <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
@@ -173,13 +170,13 @@ export default function CategoryPage() {
                   placeholder="Search in this category..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-12 h-12 bg-white border-none shadow-sm rounded-xl focus-visible:ring-primary"
+                  className="h-12 border-0 border-b border-input bg-transparent pl-12 shadow-none"
                 />
               </div>
 
               <div className="flex items-center gap-3 w-full sm:w-auto">
                 <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="flex-1 sm:w-[200px] h-12 bg-background border border-border shadow-sm rounded-xl font-bold uppercase text-[10px] tracking-widest px-6">
+                  <SelectTrigger className="h-12 flex-1 rounded border-input bg-white px-5 text-[10px] font-semibold uppercase tracking-widest sm:w-[200px]">
                     <div className="flex items-center gap-2">
                       <span className="text-muted-foreground font-medium">SORT:</span>
                       <SelectValue />
@@ -211,13 +208,11 @@ export default function CategoryPage() {
                       onCategoryChange={handleCategoryChange}
                       onGenderChange={handleGenderChange}
                       onColorChange={setSelectedColor}
-                      onSizeChange={setSelectedSize}
                       onPriceChange={setPriceRange}
                       onResetFilters={handleResetFilters}
                       selectedCategory={selectedCategory}
                       selectedGender={selectedGender}
                       selectedColor={selectedColor}
-                      selectedSize={selectedSize}
                       priceRange={priceRange}
                       onClose={() => setIsFilterOpen(false)}
                     />
@@ -230,16 +225,14 @@ export default function CategoryPage() {
           <div className="flex flex-col lg:flex-row gap-10">
             {/* Desktop Sidebar */}
             <aside className="hidden lg:block w-72 flex-shrink-0">
-              <div className="sticky top-28 border rounded-2xl p-8 bg-white shadow-sm max-h-[calc(100vh-140px)] overflow-y-auto scrollbar-hide">
+              <div className="sticky top-28 max-h-[calc(100vh-140px)] overflow-y-auto border-r border-border/70 bg-transparent pr-8 scrollbar-hide">
                 <CategoryFilters
                   selectedCategory={selectedCategory}
                   selectedColor={selectedColor}
-                  selectedSize={selectedSize}
                   selectedGender={selectedGender}
                   priceRange={priceRange}
                   onCategoryChange={handleCategoryChange}
                   onColorChange={setSelectedColor}
-                  onSizeChange={setSelectedSize}
                   onGenderChange={handleGenderChange}
                   onPriceChange={setPriceRange}
                   onResetFilters={handleResetFilters}
@@ -253,13 +246,11 @@ export default function CategoryPage() {
                 selectedCategory={selectedCategory}
                 selectedGender={selectedGender}
                 selectedColor={selectedColor}
-                selectedSize={selectedSize}
                 priceRange={priceRange}
                 onRemoveFilter={(type) => {
                   if (type === 'category') setSelectedCategory(null)
                   if (type === 'gender') setSelectedGender(null)
                   if (type === 'color') setSelectedColor(null)
-                  if (type === 'size') setSelectedSize(null)
                   if (type === 'price') setPriceRange([0, 10000])
                 }}
                 onClearAll={handleResetFilters}
@@ -293,8 +284,8 @@ export default function CategoryPage() {
                 <ProductGrid
                   category={categoryName}
                   products={products.map(item => ({
-                    id: `${item.product_id}/${item.color_slug}`,
-                    name: `${item.product_name} - ${item.color_name}`,
+                    id: item.product_url.replace(/^\/product\//, ""),
+                    name: item.display_name,
                     price: Number(item.product_price),
                     rating: 4.5,
                     image: item.cover_image_url || "/placeholder.jpg",
