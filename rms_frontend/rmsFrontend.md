@@ -40,7 +40,7 @@ Browser UI for store operations: **dashboard**, **POS**, **sales**, **customers*
 
 ## Environment
 
-- **`NEXT_PUBLIC_BASEURL`** — API base URL, defaulting to `http://localhost:8000/api` in `lib/api/axios-config.ts` and `lib/api/auth.ts`.
+- **`NEXT_PUBLIC_API_URL`** — API base URL, including `/api`. It must be set before a production build. `NEXT_PUBLIC_BASEURL` remains supported as a legacy alias; development defaults to `http://localhost:8000/api`.
 - **Branch scoping header** — branch-scoped API calls now send `X-Branch-Id` from `localStorage.selectedBranchId` in `lib/api/axios-config.ts`. Admin aggregate endpoints may omit this header.
 
 ---

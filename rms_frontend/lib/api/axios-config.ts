@@ -1,7 +1,18 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
 
-export const API_URL = process.env.NEXT_PUBLIC_BASEURL || 'http://localhost:8000/api';
+const configuredApiUrl =
+    process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BASEURL;
+
+if (process.env.NODE_ENV === 'production' && !configuredApiUrl) {
+    throw new Error(
+        'Missing API URL. Set NEXT_PUBLIC_API_URL before building rms_frontend.'
+    );
+}
+
+export const API_URL = (
+    configuredApiUrl || 'http://localhost:8000/api'
+).replace(/\/+$/, '');
 
 // Create axios instance with default config
 const axiosInstance = axios.create({
