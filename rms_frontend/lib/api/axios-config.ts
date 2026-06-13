@@ -1,8 +1,43 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
-import { API_URL } from '@/lib/env';
 
-export { API_URL };
+const configuredBackendUrl =
+    process.env.NEXT_PUBLIC_BACKEND_URL?.trim().replace(/\/+$/, '');
+
+const configuredApiUrl =
+    process.env.NEXT_PUBLIC_API_URL?.trim() ||
+    process.env.NEXT_PUBLIC_BASE_URL?.trim() ||
+    process.env.NEXT_PUBLIC_BASEURL?.trim() ||
+    (configuredBackendUrl ? `${configuredBackendUrl}/api` : undefined);
+
+const isLocalUrl = (value: string): boolean => {
+    try {
+        const hostname = new URL(value).hostname;
+        return hostname === 'localhost' ||
+            hostname === '127.0.0.1' ||
+            hostname === '::1';
+    } catch {
+        return false;
+    }
+};
+
+if (process.env.NODE_ENV === 'production') {
+    if (!configuredApiUrl) {
+        throw new Error(
+            'Missing API URL. Set NEXT_PUBLIC_API_URL before building rms_frontend.'
+        );
+    }
+
+    if (isLocalUrl(configuredApiUrl)) {
+        throw new Error(
+            `Invalid production API URL "${configuredApiUrl}". Set NEXT_PUBLIC_API_URL to the public backend URL.`
+        );
+    }
+}
+
+export const API_URL = (
+    configuredApiUrl || 'http://localhost:8000/api'
+).replace(/\/+$/, '');
 
 // Create axios instance with default config
 const axiosInstance = axios.create({
