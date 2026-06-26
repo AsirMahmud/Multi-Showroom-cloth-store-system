@@ -112,7 +112,7 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
   return (
     <div className="flex flex-col lg:flex-row gap-3 lg:gap-4" ref={galleryRef}>
       {/* Thumbnail gallery - vertical on desktop, horizontal on mobile */}
-      <div className="flex lg:flex-col gap-3 order-2 lg:order-1 overflow-x-auto lg:overflow-visible px-4 lg:px-0 scrollbar-hide">
+      <div className="order-2 flex gap-3 overflow-x-auto pb-1 lg:order-1 lg:flex-col lg:overflow-visible lg:pb-0 scrollbar-hide">
         {reorderedImages.map((image, index) => (
           <button
             key={index}
@@ -135,7 +135,7 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
 
       {/* Main image display with slider controls */}
       <div
-        className="group relative order-1 flex-1 cursor-zoom-in overflow-hidden bg-muted lg:order-2"
+        className="group relative order-1 flex-1 cursor-zoom-in overflow-hidden bg-muted shadow-sm lg:order-2"
         onClick={() => setIsModalOpen(true)}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}

@@ -9,7 +9,6 @@ import { TaskProvider } from "@/context/task-context";
 import { AuthProvider } from "@/contexts/auth-context";
 import { BranchProvider } from "@/contexts/branch-context";
 import { BismillahProvider } from "@/contexts/bismillah-context";
-import { Toaster } from "@/components/ui/toaster";
 import { BismillahLogo } from "@/components/bismillah-logo";
 import { BranchSelectorModal } from "@/components/branch/branch-selector-modal";
 import { ViewingBranchRibbon } from "@/components/branch/viewing-branch-ribbon";
@@ -32,7 +31,6 @@ export default function MainLayout({
               <SidebarProvider>
                 <MainShell>{children}</MainShell>
               </SidebarProvider>
-              <Toaster />
               <BranchSelectorModal />
             </BismillahProvider>
           </ThemeProvider>

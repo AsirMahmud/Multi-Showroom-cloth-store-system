@@ -80,6 +80,7 @@ export interface Product {
     stock_quantity: number;
     minimum_stock: number;
     image?: string;
+    image_url?: string | null;
     is_active: boolean;
     gender?: string;
     assign_to_online?: boolean;
@@ -135,6 +136,7 @@ export interface GalleryImage {
     id: number;
     imageType: 'PRIMARY' | 'SECONDARY' | 'THIRD' | 'FOURTH';
     image: string; // URL path returned by backend
+    image_url?: string | null;
     alt_text?: string;
 }
 

@@ -182,14 +182,14 @@ export default function ProductByColorPage() {
             <StructuredData data={generateBreadcrumbStructuredData(breadcrumbItems)} />
             <SiteHeader />
             <main className="flex-1">
-                <div className="container pt-10 pb-4 md:pt-16 md:pb-8">
+                <div className="container pt-6 pb-3 md:pt-16 md:pb-8">
                     <Breadcrumb
                         items={breadcrumbItems}
                     />
                 </div>
 
-                <div className="container pt-4 pb-16 md:pt-8 md:pb-24">
-                    <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1.15fr_.85fr] lg:gap-16">
+                <div className="container pt-3 pb-12 md:pt-8 md:pb-24">
+                    <div className="grid grid-cols-1 gap-7 lg:grid-cols-[1.15fr_.85fr] lg:gap-16">
                         <ProductGallery images={galleryImages} productName={data.product.name} />
                         <div className="flex flex-col gap-4 lg:gap-5">
                             <ProductInfo
@@ -239,7 +239,7 @@ export default function ProductByColorPage() {
                 </div>
 
                 {/* Product details tabs */}
-                <div className="container px-4 pb-12 lg:pb-16">
+                <div className="pb-10 lg:pb-16">
                     <ProductTabs
                         description={productDescription}
                         materials={detailExtras?.material_composition || []}
@@ -250,7 +250,7 @@ export default function ProductByColorPage() {
 
                 {/* Random products - YOU MIGHT ALSO LIKE */}
                 {(suggested.length > 0 || isLoading) && (
-                    <div className="container px-4 pb-12">
+                    <div className="pb-10">
                         <ProductRecommendations
                             products={suggested.map(entry => ({
                                 id: entry.product_url.replace(/^\/product\//, ""),

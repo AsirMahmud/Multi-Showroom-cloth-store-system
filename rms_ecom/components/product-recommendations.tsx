@@ -18,11 +18,11 @@ interface ProductRecommendationsProps {
 
 export function ProductRecommendations({ products, isLoading = false }: ProductRecommendationsProps) {
   return (
-    <section className="container py-12 lg:py-20">
+    <section className="container py-10 lg:py-20">
       <p className="editorial-kicker">Curated for you</p>
-      <h2 className="mb-10 mt-2 font-serif text-3xl lg:mb-14 lg:text-4xl">Heritage counterparts</h2>
+      <h2 className="mb-7 mt-2 font-serif text-2xl leading-tight lg:mb-14 lg:text-4xl">Heritage counterparts</h2>
 
-      <div className="grid grid-cols-2 gap-4 lg:gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
         {isLoading
           ? Array.from({ length: 4 }).map((_, i) => <ProductCardSkeleton key={i} />)
           : products.map((product) => (

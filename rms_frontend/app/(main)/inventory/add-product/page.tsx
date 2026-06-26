@@ -40,7 +40,7 @@ import {
   useSuppliers
 } from "@/hooks/queries/useInventory";
 import type { CreateProductDTO } from "@/types/inventory";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { HierarchicalCategorySelect } from "@/components/inventory/hierarchical-category-select";
@@ -447,6 +447,7 @@ export default function AddProductPage() {
       };
 
       const createdProduct = await createProduct.mutateAsync(productData);
+      const uploadFailures: string[] = [];
 
       if (createdProduct?.id) {
         const createdDesigns = createdProduct.designs || [];
@@ -476,9 +477,19 @@ export default function AddProductPage() {
               await galleriesApi.uploadColorImages(createdProduct.id, formData);
             } catch (err) {
               console.error(`Error uploading images for ${gallery.designName} / ${gallery.color}:`, err);
+              uploadFailures.push(`${gallery.designName} / ${gallery.color}`);
             }
           }
         }
+      }
+
+      if (uploadFailures.length > 0) {
+        toast({
+          title: "Product created with image upload errors",
+          description: `Product #${createdProduct.id} was saved, but images failed for: ${uploadFailures.join(", ")}. You can retry from Edit Product.`,
+          variant: "destructive",
+        });
+        return;
       }
 
       toast({ title: "Success", description: "Product created successfully" });
@@ -542,6 +553,7 @@ export default function AddProductPage() {
                             value={field.value}
                             onChange={field.onChange}
                             placeholder="Select Category"
+                            testId="product-category-select"
                           />
                           <FormMessage />
                         </FormItem>
@@ -555,7 +567,7 @@ export default function AddProductPage() {
                           <FormLabel>Gender</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
-                              <SelectTrigger>
+                              <SelectTrigger data-testid="gender-select">
                                 <SelectValue placeholder="Select gender" />
                               </SelectTrigger>
                             </FormControl>
@@ -661,7 +673,7 @@ export default function AddProductPage() {
               title="Designs & Variations"
               description="Manage designs and their respective color variations."
               actions={
-                <Button type="button" variant="outline" size="sm" onClick={addDesign} className="border-brand-primary/10 hover:bg-brand-primary/5 text-brand-primary">
+                <Button data-testid="add-design" type="button" variant="outline" size="sm" onClick={addDesign} className="border-brand-primary/10 hover:bg-brand-primary/5 text-brand-primary">
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Design
                 </Button>
               }
@@ -674,6 +686,7 @@ export default function AddProductPage() {
                         <FormLabel>Design Name</FormLabel>
                         <FormControl>
                           <Input
+                            data-testid="design-name"
                             placeholder="Design Name (e.g. Floral Embroidery)"
                             value={design.name}
                             onChange={(e) => updateDesignName(design.id, e.target.value)}
@@ -688,7 +701,7 @@ export default function AddProductPage() {
                     <div className="space-y-4 pl-4 border-l-2 border-brand-primary/10">
                       <div className="flex items-center justify-between">
                         <h4 className="font-semibold text-sm">Colors & Stock</h4>
-                        <Button type="button" variant="ghost" size="sm" onClick={() => addColorVariant(design.id)} className="hover:bg-brand-primary/5 text-brand-primary">
+                        <Button data-testid="add-color" type="button" variant="ghost" size="sm" onClick={() => addColorVariant(design.id)} className="hover:bg-brand-primary/5 text-brand-primary">
                           <PlusCircle className="mr-2 h-4 w-4" /> Add Color
                         </Button>
                       </div>
@@ -742,6 +755,7 @@ export default function AddProductPage() {
                           <FormItem>
                             <FormLabel className="text-xs text-slate-500">Stock</FormLabel>
                             <Input
+                              data-testid="color-stock"
                               type="number"
                               placeholder="0"
                               value={color.stock}
@@ -805,6 +819,7 @@ export default function AddProductPage() {
                                 <Upload className="h-6 w-6 text-brand-primary/30 group-hover:text-brand-primary/50 group-hover:scale-110 transition-all" />
                                 <span className="text-[10px] text-brand-primary/40 mt-2 uppercase font-bold tracking-widest">{img.imageType}</span>
                                 <input
+                                  data-testid={`gallery-file-${gallery.designName}-${gallery.color}-${img.imageType}`}
                                   type="file"
                                   className="hidden"
                                   accept="image/*"
@@ -826,7 +841,7 @@ export default function AddProductPage() {
 
             <div className="flex justify-end gap-4 pb-10">
               <Button type="button" variant="outline" onClick={() => router.back()} className="border-brand-primary/10 text-brand-primary hover:bg-slate-50">Cancel</Button>
-              <Button type="submit" disabled={createProduct.isPending} className="bg-brand-primary hover:bg-emerald-900 text-brand-secondary shadow-lg shadow-brand-primary/20">
+              <Button data-testid="save-product" type="submit" disabled={createProduct.isPending} className="bg-brand-primary hover:bg-emerald-900 text-brand-secondary shadow-lg shadow-brand-primary/20">
                 {createProduct.isPending ? "Creating..." : "Save Product"}
               </Button>
             </div>

@@ -18,6 +18,7 @@ interface HierarchicalCategorySelectProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  testId?: string;
 }
 
 export function HierarchicalCategorySelect({
@@ -27,6 +28,7 @@ export function HierarchicalCategorySelect({
   placeholder = "Select category",
   disabled = false,
   className,
+  testId,
 }: HierarchicalCategorySelectProps) {
   const [open, setOpen] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<number>>(new Set());
@@ -75,6 +77,7 @@ export function HierarchicalCategorySelect({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          data-testid={testId}
           variant="outline"
           role="combobox"
           aria-expanded={open}

@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import { GridSkeleton } from "@/components/ui/professional";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useInfiniteProducts } from "@/hooks/queries/useInventory";
-import { formatCurrency, cn } from "@/lib/utils";
+import { formatCurrency, cn, getImageUrl } from "@/lib/utils";
 import { usePOSStore } from "@/store/pos-store";
 import { Product } from "@/types/inventory";
 
@@ -180,6 +180,7 @@ export default function ProductGrid({
               (sum, design) => sum + design.colors.length,
               0
             );
+            const productImage = getPosProductImage(product);
 
             return (
               <Card
@@ -188,7 +189,7 @@ export default function ProductGrid({
               >
                 <div className="relative h-24 overflow-hidden bg-slate-100">
                   <img
-                    src={product.image || "/placeholder.svg?height=180&width=240"}
+                    src={productImage}
                     alt={product.name}
                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                   />
@@ -274,12 +275,12 @@ export default function ProductGrid({
       </div>
 
       <Dialog open={Boolean(activeProduct)} onOpenChange={(open) => !open && setActiveProduct(null)}>
-        <DialogContent className="max-h-[92vh] overflow-hidden border-none bg-white/95 p-0 shadow-2xl backdrop-blur-xl sm:max-w-6xl">
+        <DialogContent className="max-h-[94vh] w-[min(1180px,calc(100vw-24px))] overflow-hidden border-none bg-white p-0 shadow-2xl sm:max-w-none">
           {activeProduct ? (
-            <div className="flex h-[92vh] flex-col">
+            <div className="flex h-[94vh] flex-col">
               {/* Premium Header */}
               <div className="relative border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-8 py-6">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 shadow-lg shadow-slate-200">
@@ -302,11 +303,11 @@ export default function ProductGrid({
                 </div>
               </div>
 
-              <div className="grid flex-1 overflow-hidden md:grid-cols-[1fr_380px]">
+              <div className="grid min-h-0 flex-1 overflow-hidden md:grid-cols-[minmax(0,1fr)_minmax(340px,360px)]">
                 {/* Left Side: Variant Selection List */}
-                <div className="flex flex-col overflow-hidden bg-white">
-                  <div className="border-b border-slate-50 px-8 py-3">
-                    <div className="grid grid-cols-[1fr_80px_100px_120px] items-center gap-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <div className="flex min-h-0 flex-col overflow-hidden bg-white">
+                  <div className="border-b border-slate-50 px-6 py-3">
+                    <div className="grid grid-cols-[minmax(0,1fr)_72px_96px_112px] items-center gap-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
                       <span>Variant Details</span>
                       <span className="text-center">Stock</span>
                       <span className="text-right">Price</span>
@@ -315,7 +316,7 @@ export default function ProductGrid({
                   </div>
                   
                   <ScrollArea className="flex-1">
-                    <div className="space-y-6 p-8">
+                    <div className="space-y-5 p-6">
                       {(activeProduct.designs || []).map((design) => (
                         <div key={design.id} className="space-y-3">
                           <div className="flex items-center gap-3">
@@ -342,13 +343,13 @@ export default function ProductGrid({
                                 <div
                                   key={key}
                                   className={cn(
-                                    "grid grid-cols-[1fr_80px_100px_120px] items-center gap-4 rounded-2xl border p-3 transition-all duration-200",
+                                    "grid grid-cols-[minmax(0,1fr)_72px_96px_112px] items-center gap-3 rounded-2xl border p-3 transition-all duration-200",
                                     quantity > 0 
                                       ? "border-emerald-200 bg-emerald-50/30 ring-1 ring-emerald-100/50" 
                                       : "border-slate-100 bg-white hover:border-slate-200 hover:bg-slate-50/50"
                                   )}
                                 >
-                                  <div className="flex items-center gap-3 min-w-0">
+                                  <div className="flex min-w-0 items-center gap-3">
                                     <div 
                                       className="h-8 w-8 shrink-0 rounded-full border-2 border-white shadow-sm ring-1 ring-slate-200" 
                                       style={{ backgroundColor: color.color_hax || "#cbd5e1" }}
@@ -418,41 +419,41 @@ export default function ProductGrid({
                 </div>
 
                 {/* Right Side: Summary & Actions */}
-                <div className="flex flex-col border-l border-slate-100 bg-slate-50/50 p-8 overflow-hidden">
-                  <div className="flex-1 space-y-8 overflow-hidden">
+                <div className="flex min-h-0 flex-col overflow-hidden border-l border-slate-100 bg-slate-50/70 p-5">
+                  <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-hidden">
                     {/* Product Preview Card */}
-                    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50">
-                      <div className="aspect-[4/3] overflow-hidden bg-slate-100">
+                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                      <div className="aspect-[16/9] max-h-40 overflow-hidden bg-slate-100">
                         <img
-                          src={activeProduct.image || "/placeholder.svg"}
+                          src={getPosProductImage(activeProduct)}
                           alt={activeProduct.name}
                           className="h-full w-full object-cover"
                         />
                       </div>
-                      <div className="p-5 space-y-4">
-                        <div className="flex items-center justify-between">
-                          <Badge variant="outline" className="rounded-full text-[10px] font-black uppercase tracking-widest text-slate-400">
+                      <div className="space-y-4 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <Badge variant="outline" className="min-w-0 rounded-full px-2 text-[9px] font-black uppercase tracking-widest text-slate-400">
                             Current Price Info
                           </Badge>
-                          <div className="text-[10px] font-black text-emerald-600 uppercase">Active Selection</div>
+                          <div className="shrink-0 text-[9px] font-black uppercase text-emerald-600">Active</div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-3">
                           <div>
                             <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">Retail Price</div>
-                            <div className="text-lg font-black text-slate-900">{formatCurrency(Number(activeProduct.retail_price))}</div>
+                            <div className="truncate text-base font-black text-slate-900">{formatCurrency(Number(activeProduct.retail_price))}</div>
                           </div>
                           <div>
                             <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">Wholesale</div>
-                            <div className="text-lg font-black text-slate-900">{formatCurrency(Number(activeProduct.wholesale_price))}</div>
+                            <div className="truncate text-base font-black text-slate-900">{formatCurrency(Number(activeProduct.wholesale_price))}</div>
                           </div>
                         </div>
                       </div>
                     </div>
 
                     {/* Selection Summary */}
-                    <div className="space-y-4 flex-1 flex flex-col overflow-hidden">
-                      <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 px-1">Selected Variants</h4>
-                      <ScrollArea className="flex-1 -mx-1 px-1">
+                    <div className="flex min-h-0 flex-1 flex-col space-y-3 overflow-hidden">
+                      <h4 className="px-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Selected Variants</h4>
+                      <ScrollArea className="-mx-1 min-h-0 flex-1 px-1">
                         <div className="space-y-2">
                           {selectedVariants.length === 0 ? (
                             <div className="rounded-2xl border-2 border-dashed border-slate-200 p-8 text-center">
@@ -463,15 +464,15 @@ export default function ProductGrid({
                             </div>
                           ) : (
                             selectedVariants.map((variant) => (
-                              <div key={`${variant.design}-${variant.color}`} className="flex items-center justify-between rounded-2xl bg-white border border-slate-100 p-3 shadow-sm">
-                                <div className="flex items-center gap-3 min-w-0">
+                              <div key={`${variant.design}-${variant.color}`} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
+                                <div className="flex min-w-0 items-center gap-3">
                                   <div className="h-3 w-3 shrink-0 rounded-full ring-2 ring-white ring-offset-1" style={{ backgroundColor: variant.colorHex || "#cbd5e1" }} />
                                   <div className="min-w-0">
                                     <div className="truncate text-xs font-bold text-slate-900">{variant.design} - {variant.color}</div>
-                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Qty: {variant.quantity} units</div>
+                                    <div className="text-[10px] font-bold uppercase tracking-normal text-slate-400">Qty: {variant.quantity} units</div>
                                   </div>
                                 </div>
-                                <div className="text-xs font-black text-slate-900">
+                                <div className="shrink-0 whitespace-nowrap text-right text-xs font-black text-slate-900">
                                   {formatCurrency((variant.quantity >= (activeProduct.resolved_wholesale_cutoff || 10) ? Number(activeProduct.wholesale_price) : Number(activeProduct.retail_price)) * variant.quantity)}
                                 </div>
                               </div>
@@ -483,10 +484,10 @@ export default function ProductGrid({
                   </div>
 
                   {/* Actions */}
-                  <div className="mt-8 space-y-3">
-                    <div className="flex items-center justify-between px-2 mb-4">
-                      <span className="text-sm font-black uppercase tracking-widest text-slate-400">Estimated Total</span>
-                      <span className="text-2xl font-black text-slate-900">
+                  <div className="mt-5 space-y-3 border-t border-slate-200 pt-4">
+                    <div className="flex items-center justify-between gap-4 px-1">
+                      <span className="text-xs font-black uppercase tracking-widest text-slate-400">Estimated Total</span>
+                      <span className="shrink-0 text-xl font-black text-slate-900">
                         {formatCurrency(selectedVariants.reduce((sum, v) => {
                           const unitPrice = v.quantity >= (activeProduct.resolved_wholesale_cutoff || 10) ? Number(activeProduct.wholesale_price) : Number(activeProduct.retail_price);
                           return sum + (unitPrice * v.quantity);
@@ -496,7 +497,7 @@ export default function ProductGrid({
                     <Button
                       onClick={handleCommitSelection}
                       disabled={selectedVariants.length === 0}
-                      className="h-14 w-full rounded-2xl bg-slate-900 text-sm font-black uppercase tracking-[0.2em] text-white shadow-xl shadow-slate-200 transition-all hover:bg-slate-800 hover:shadow-2xl disabled:opacity-50"
+                      className="h-12 w-full rounded-2xl bg-slate-900 text-xs font-black uppercase tracking-[0.2em] text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 disabled:opacity-50"
                     >
                       Add to Cart
                       <ArrowRight className="ml-2 h-4 w-4" />
@@ -522,7 +523,19 @@ export default function ProductGrid({
 function getVariantKey(design: string, color: string) {
   return `${design}__${color}`;
 }
+function getPosProductImage(product: Product) {
+  const galleryImage = product.galleries
+    ?.flatMap((gallery) => gallery.images || [])
+    .find((image) => image.imageType === "PRIMARY");
 
+  return getImageUrl(
+    galleryImage?.image_url ||
+      galleryImage?.image ||
+      product.first_variation_image ||
+      product.image_url ||
+      product.image
+  );
+}
 function useDebounce<T>(value: T, delay: number): [T] {
   const [debouncedValue, setDebouncedValue] = useState(value);
 

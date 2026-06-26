@@ -32,7 +32,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-=i3-$(--y)2nbeogrplsh-c1z%bnj8ufv87+6azgiocp=rb)fn')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True').strip().lower() in {
+    '1', 'true', 'yes', 'on',
+}
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
@@ -196,7 +198,7 @@ USE_TZ = True
 MEDIA_URL = '/media/'
 
 # Production vs Development media root
-if os.getenv('DEBUG', 'True') == 'False':
+if not DEBUG:
     # Production settings
     MEDIA_ROOT = os.getenv('PROD_MEDIA_ROOT', os.path.join(BASE_DIR, 'media'))
 else:

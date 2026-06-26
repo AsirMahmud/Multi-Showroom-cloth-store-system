@@ -1,14 +1,20 @@
+import shutil
+import tempfile
 from decimal import Decimal
 
+from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
+from rest_framework.test import APIRequestFactory, force_authenticate
 
-from .models import Design, Gallery, Product, ProductVariation
+from .models import Design, Gallery, Image, Product, ProductVariation
 from .serializers import (
     ColorImagesUploadSerializer,
     EcommerceProductDetailSerializer,
     ProductCreateSerializer,
     ProductSerializer,
 )
+from .views import ImageViewSet, ProductViewSet
 
 
 class EcommerceProductDetailSerializerTests(TestCase):
@@ -114,3 +120,185 @@ class DesignColorGalleryTests(TestCase):
 
         self.assertFalse(serializer.is_valid())
         self.assertIn("design_id", serializer.errors)
+
+    def test_upload_color_image_endpoint_creates_gallery_image(self):
+        media_root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, media_root, True)
+
+        user = get_user_model().objects.create_user(
+            username="inventory-upload-test",
+            password="test-password",
+            role="admin",
+        )
+        image = SimpleUploadedFile(
+            "black.gif",
+            (
+                b"GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00"
+                b"\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,"
+                b"\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02"
+                b"D\x01\x00;"
+            ),
+            content_type="image/gif",
+        )
+        request = APIRequestFactory().post(
+            f"/api/inventory/products/{self.product.id}/upload_color_images/",
+            {
+                "design_id": self.floral.id,
+                "color": "Black",
+                "color_hax": "#000000",
+                "alt_text": "Black floral three piece",
+                "images": [image],
+                "image_types": ["PRIMARY"],
+            },
+            format="multipart",
+        )
+        force_authenticate(request, user=user)
+
+        with self.settings(MEDIA_ROOT=media_root):
+            response = ProductViewSet.as_view(
+                {"post": "upload_color_images"}
+            )(request, pk=self.product.id)
+
+        self.assertEqual(response.status_code, 201, response.data)
+        uploaded = Image.objects.get(
+            gallery__design=self.floral,
+            gallery__color="Black",
+            imageType="PRIMARY",
+        )
+        self.assertEqual(uploaded.alt_text, "Black floral three piece")
+
+    def test_product_create_endpoint_creates_designs_and_colors(self):
+        user = get_user_model().objects.create_user(
+            username="inventory-create-test",
+            password="test-password",
+            role="admin",
+        )
+        request = APIRequestFactory().post(
+            "/api/inventory/products/",
+            {
+                "name": "Pakistani Three Piece",
+                "description": "Three-piece lawn suit",
+                "cost_price": "1000.00",
+                "wholesale_price": "1300.00",
+                "retail_price": "1600.00",
+                "wholesale_cutoff": 10,
+                "minimum_stock": 5,
+                "is_active": True,
+                "gender": "FEMALE",
+                "designs": [
+                    {
+                        "name": "Floral",
+                        "colors": [
+                            {
+                                "color": "Black",
+                                "color_hax": "#000000",
+                                "stock": 7,
+                            }
+                        ],
+                    }
+                ],
+            },
+            format="json",
+        )
+        force_authenticate(request, user=user)
+
+        response = ProductViewSet.as_view({"post": "create"})(request)
+
+        self.assertEqual(response.status_code, 201, response.data)
+        product = Product.objects.get(id=response.data["id"])
+        self.assertEqual(product.stock_quantity, 7)
+        self.assertTrue(
+            product.designs.filter(
+                name="Floral",
+                colors__color="Black",
+                colors__stock=7,
+            ).exists()
+        )
+
+    def test_legacy_image_endpoint_creates_image_with_gallery(self):
+        media_root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, media_root, True)
+        user = get_user_model().objects.create_user(
+            username="legacy-image-test",
+            password="test-password",
+            role="admin",
+        )
+        request = APIRequestFactory().post(
+            "/api/inventory/images/",
+            {
+                "gallery": self.floral_gallery.id,
+                "imageType": "PRIMARY",
+                "image": self._uploaded_image("legacy.gif"),
+                "alt_text": "Legacy gallery upload",
+            },
+            format="multipart",
+        )
+        force_authenticate(request, user=user)
+
+        with self.settings(MEDIA_ROOT=media_root):
+            response = ImageViewSet.as_view({"post": "create"})(request)
+
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertTrue(
+            Image.objects.filter(
+                gallery=self.floral_gallery,
+                imageType="PRIMARY",
+                alt_text="Legacy gallery upload",
+            ).exists()
+        )
+
+    def test_legacy_image_endpoint_requires_gallery(self):
+        user = get_user_model().objects.create_user(
+            username="missing-gallery-test",
+            password="test-password",
+            role="admin",
+        )
+        request = APIRequestFactory().post(
+            "/api/inventory/images/",
+            {
+                "imageType": "PRIMARY",
+                "image": self._uploaded_image("missing.gif"),
+            },
+            format="multipart",
+        )
+        force_authenticate(request, user=user)
+
+        response = ImageViewSet.as_view({"post": "create"})(request)
+
+        self.assertEqual(response.status_code, 400, response.data)
+        self.assertIn("gallery", response.data)
+
+    def test_legacy_image_endpoint_rejects_unknown_gallery(self):
+        user = get_user_model().objects.create_user(
+            username="invalid-gallery-test",
+            password="test-password",
+            role="admin",
+        )
+        request = APIRequestFactory().post(
+            "/api/inventory/images/",
+            {
+                "gallery": 999999,
+                "imageType": "PRIMARY",
+                "image": self._uploaded_image("invalid.gif"),
+            },
+            format="multipart",
+        )
+        force_authenticate(request, user=user)
+
+        response = ImageViewSet.as_view({"post": "create"})(request)
+
+        self.assertEqual(response.status_code, 400, response.data)
+        self.assertIn("gallery", response.data)
+
+    @staticmethod
+    def _uploaded_image(name):
+        return SimpleUploadedFile(
+            name,
+            (
+                b"GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00"
+                b"\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,"
+                b"\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02"
+                b"D\x01\x00;"
+            ),
+            content_type="image/gif",
+        )

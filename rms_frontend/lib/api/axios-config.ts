@@ -28,7 +28,10 @@ if (process.env.NODE_ENV === 'production') {
         );
     }
 
-    if (isLocalUrl(configuredApiUrl)) {
+    if (
+        isLocalUrl(configuredApiUrl) &&
+        process.env.NEXT_PUBLIC_ALLOW_LOCAL_API !== 'true'
+    ) {
         throw new Error(
             `Invalid production API URL "${configuredApiUrl}". Set NEXT_PUBLIC_API_URL to the public backend URL.`
         );

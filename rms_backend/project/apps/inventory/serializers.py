@@ -152,10 +152,11 @@ class CategorySerializer(serializers.ModelSerializer):
 
 class ImageSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
+    gallery = serializers.PrimaryKeyRelatedField(queryset=Gallery.objects.all())
     
     class Meta:
         model = Image
-        fields = ['id', 'imageType', 'image', 'image_url', 'alt_text']
+        fields = ['id', 'gallery', 'imageType', 'image', 'image_url', 'alt_text']
     
     def get_image_url(self, obj):
         if obj.image:

@@ -21,7 +21,8 @@ const isLocalUrl = (value: string): boolean => {
 if (
   process.env.NODE_ENV === "production" &&
   configuredBackendUrl &&
-  isLocalUrl(configuredBackendUrl)
+  isLocalUrl(configuredBackendUrl) &&
+  process.env.NEXT_PUBLIC_ALLOW_LOCAL_API !== "true"
 ) {
   throw new Error(
     `Invalid production media URL "${configuredBackendUrl}". Set it to the public backend URL.`

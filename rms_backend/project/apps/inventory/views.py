@@ -8,7 +8,7 @@ from django.db.models import Q, F, Sum, Count, Avg, Case, When, IntegerField
 from django.utils import timezone
 from datetime import datetime, timedelta
 from django.db.models.functions import TruncDate, TruncMonth, TruncYear
-from .models import Category, OnlineCategory, Product, ProductVariation, StockMovement, InventoryAlert, MeterialComposition, WhoIsThisFor, Features, Gallery, Image, WholesalePricingSettings
+from .models import Category, OnlineCategory, Product, Design, ProductVariation, StockMovement, InventoryAlert, MeterialComposition, WhoIsThisFor, Features, Gallery, Image, WholesalePricingSettings
 from apps.supplier.models import Supplier
 from apps.supplier.serializers import SupplierSerializer
 from .serializers import (
@@ -1337,7 +1337,7 @@ class ImageViewSet(viewsets.ModelViewSet):
         if gallery:
             queryset = queryset.filter(gallery_id=gallery)
         if product:
-            queryset = queryset.filter(gallery__product_id=product)
+            queryset = queryset.filter(gallery__design__product_id=product)
         return queryset
 
 class DashboardViewSet(viewsets.ViewSet):

@@ -18,14 +18,14 @@ export function ProductTabs({ description, materials, whoIsThisFor, features }: 
 
   return (
     <div className="border-t border-b border-border">
-      <div className="container px-4">
-        <div className="flex gap-8 border-b border-border">
+      <div className="container">
+        <div className="flex gap-6 border-b border-border">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                "relative py-6 text-lg font-medium transition-colors",
+                "relative py-5 text-base font-medium transition-colors md:py-6 md:text-lg",
                 activeTab === tab.id ? "text-foreground" : "text-muted-foreground hover:text-foreground",
               )}
             >
@@ -35,7 +35,7 @@ export function ProductTabs({ description, materials, whoIsThisFor, features }: 
           ))}
         </div>
 
-        <div className="py-12">{activeTab === "details" && (
+        <div className="py-8 md:py-12">{activeTab === "details" && (
           <ProductDetailsSection 
             description={description}
             materials={materials}

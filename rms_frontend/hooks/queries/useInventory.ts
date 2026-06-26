@@ -279,12 +279,10 @@ export const useProduct = (id: number) => {
 
 export const useCreateProduct = () => {
     const queryClient = useQueryClient();
-    const { toast } = useToast();
     return useMutation({
         mutationFn: productsApi.create,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: inventoryKeys.products.lists() });
-            toast({ title: 'Success', description: 'Product created' });
         },
     });
 };
