@@ -22,13 +22,21 @@ def optimize_image(image_field, max_width=1920, max_height=1920):
     if not PILLOW_AVAILABLE:
         return
 
-    # Only process if it's a new upload (UploadedFile)
-    # Existing files are FieldFile and shouldn't be re-processed
-    if not image_field or not hasattr(image_field, 'file') or not isinstance(image_field.file, UploadedFile):
+    if not image_field:
+        return
+
+    # ImageFieldFile.file opens committed files from storage. Checking it for an
+    # existing database value therefore raises FileNotFoundError when legacy
+    # media is missing. Only uncommitted fields can contain a new upload.
+    if getattr(image_field, '_committed', True):
+        return
+
+    uploaded_file = getattr(image_field, '_file', None)
+    if not isinstance(uploaded_file, UploadedFile):
         return
 
     # Open the image using Pillow
-    img = Image.open(image_field)
+    img = Image.open(uploaded_file)
     
     # Check if image needs resizing
     if img.height > max_height or img.width > max_width:

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Percent, ShoppingCart, Trash2, X } from "lucide-react";
+import { Percent, ShoppingCart, Trash2, X, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +23,7 @@ import PaymentSection from "./PaymentSection";
 import { calculateCartTotals } from "@/utils/pos-calculations";
 
 type CartRow = ReturnType<typeof usePOSStore.getState>["cart"][number];
+const CART_IMAGE_FALLBACK = "/placeholder.jpg";
 
 export default function CartAndCheckout() {
   const {
@@ -138,12 +139,18 @@ export default function CartAndCheckout() {
                         <div className="flex items-start gap-3">
                           <div className="h-14 w-14 overflow-hidden rounded-xl border border-white/10 bg-slate-200">
                             <img
-                              src={group.image || "/api/placeholder/56/56"}
+                              src={group.image || CART_IMAGE_FALLBACK}
                               alt={group.name}
                               className="h-full w-full object-cover"
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
-                                target.src = "/api/placeholder/56/56";
+                                if (target.src.endsWith(CART_IMAGE_FALLBACK)) {
+                                  target.onerror = null;
+                                  return;
+                                }
+
+                                target.onerror = null;
+                                target.src = CART_IMAGE_FALLBACK;
                               }}
                             />
                           </div>
@@ -436,28 +443,30 @@ export default function CartAndCheckout() {
             </ScrollArea>
           </div>
 
-          <div className="min-w-0 basis-[42%] overflow-y-auto rounded-2xl border bg-white">
-            <div className="p-3">
-              <div className="mb-1 flex items-center justify-between">
-                <Label htmlFor="customer" className="text-xs">
-                  Customer
-                </Label>
+          <div className="min-w-0 basis-[42%] overflow-y-auto rounded-2xl border border-slate-200/80 bg-slate-50/40 p-3.5 space-y-3">
+            {/* Customer Details Card */}
+            <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <User className="h-3.5 w-3.5" />
+                  Customer Details
+                </div>
                 <Button
                   variant="link"
                   size="sm"
                   onClick={() => setShowCustomerSearch(true)}
-                  className="h-6 text-xs"
+                  className="h-6 text-xs text-indigo-600 hover:text-indigo-700 p-0 font-bold"
                 >
                   {selectedCustomer ? "Change" : "Select Customer"}
                 </Button>
               </div>
 
               {selectedCustomer ? (
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-medium">
+                <div className="mt-2.5 min-w-0">
+                  <p className="truncate text-xs font-bold text-slate-800">
                     {selectedCustomer.first_name} {selectedCustomer.last_name}
                   </p>
-                  <p className="truncate text-[10px] text-muted-foreground">
+                  <p className="truncate text-[10px] text-slate-500 font-medium mt-0.5">
                     {selectedCustomer.email || selectedCustomer.phone}
                   </p>
                 </div>
@@ -466,14 +475,15 @@ export default function CartAndCheckout() {
                   variant="outline"
                   size="sm"
                   onClick={() => setShowNewCustomerForm(true)}
-                  className="h-7 text-xs"
+                  className="mt-2.5 w-full h-8 text-xs font-semibold rounded-lg border-slate-200 hover:bg-slate-50 text-slate-700"
                 >
                   Add New Customer
                 </Button>
               )}
             </div>
 
-            <div className="border-t p-2">
+            {/* Payment Details & Summary Card */}
+            <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm">
               <PaymentSection
                 paymentMethod={paymentMethod}
                 setPaymentMethod={setPaymentMethod}
@@ -564,3 +574,4 @@ function groupCartItems(cart: CartRow[]) {
     };
   });
 }
+

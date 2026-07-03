@@ -33,7 +33,6 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useSidebar } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/auth-context";
 import { homePageSettingsApi, HomePageSettings } from "@/lib/api/ecommerce";
 import { useEffect } from "react";
@@ -192,8 +191,7 @@ export function SideNav() {
   const { logout, user } = useAuth();
   const { selectedBranchId, availableBranches, openBranchSelector } = useBranch();
   const [branding, setBranding] = useState<HomePageSettings | null>(null);
-  const { state } = useSidebar();
-  const isCollapsed = state === "collapsed";
+  const isCollapsed = false;
 
   const currentBranch = availableBranches.find(b => b.id === selectedBranchId);
 

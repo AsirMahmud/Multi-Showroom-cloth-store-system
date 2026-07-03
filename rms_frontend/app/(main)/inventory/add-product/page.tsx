@@ -46,6 +46,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { HierarchicalCategorySelect } from "@/components/inventory/hierarchical-category-select";
 import { MultiOnlineCategorySelect } from "@/components/inventory/multi-online-category-select";
 import { Badge } from "@/components/ui/badge";
+import { getApiErrorMessage, getFirstFormError } from "@/lib/form-error";
 
 const COLORS = {
   "Black": "#000000",
@@ -72,12 +73,12 @@ const productFormSchema = z.object({
   category: z.string({ required_error: "Please select a category" }),
   online_categories: z.array(z.string()).optional(),
   supplier: z.string({ required_error: "Please select a supplier" }).optional(),
-  cost_price: z.string().min(1, "Cost price is required"),
-  wholesale_price: z.string().min(1, "Wholesale price is required"),
-  retail_price: z.string().min(1, "Retail price is required"),
+  cost_price: z.string().trim().min(1, "Cost price is required").refine((value) => Number(value) > 0, "Cost price must be greater than 0"),
+  wholesale_price: z.string().trim().min(1, "Wholesale price is required").refine((value) => Number(value) > 0, "Wholesale price must be greater than 0"),
+  retail_price: z.string().trim().min(1, "Retail price is required").refine((value) => Number(value) > 0, "Retail price must be greater than 0"),
   wholesale_cutoff: z.number().min(1, "Wholesale cutoff must be at least 1").default(10),
   status: z.enum(["active", "inactive", "discontinued"]),
-  minimum_stock: z.number().default(10),
+  minimum_stock: z.number().min(0, "Minimum stock cannot be negative").default(10),
   gender: z.string({ required_error: "Please select a gender" }),
   designs: z
     .array(
@@ -407,6 +408,26 @@ export default function AddProductPage() {
 
   const onSubmit = async (data: ProductFormValues) => {
     try {
+      const unnamedDesign = designs.find((design) => !design.name.trim());
+      if (unnamedDesign) {
+        toast({ title: "Design Name Required", description: "Every design must have a name.", variant: "destructive" });
+        return;
+      }
+      const duplicateDesign = designs.find((design, index) =>
+        designs.findIndex((item) => item.name.trim().toLowerCase() === design.name.trim().toLowerCase()) !== index
+      );
+      if (duplicateDesign) {
+        toast({ title: "Duplicate Design", description: `Design name "${duplicateDesign.name}" is already used.`, variant: "destructive" });
+        return;
+      }
+      const invalidColor = designs.flatMap((design) =>
+        design.colors.map((color) => ({ design, color }))
+      ).find(({ color }) => !color.color.trim() || !Number.isFinite(color.stock) || color.stock < 0);
+      if (invalidColor) {
+        toast({ title: "Invalid Color Variant", description: `Check color name and stock for ${invalidColor.design.name}.`, variant: "destructive" });
+        return;
+      }
+
       if (designs.length === 0) {
         toast({ title: "Designs Required", description: "Please add at least one design", variant: "destructive" });
         return;
@@ -497,8 +518,16 @@ export default function AddProductPage() {
       router.push("/inventory/products");
     } catch (error) {
       console.error("Error creating product:", error);
-      toast({ title: "Error", description: "Failed to create product", variant: "destructive" });
+      toast({ title: "Unable to Save Product", description: getApiErrorMessage(error, "Failed to create product"), variant: "destructive" });
     }
+  };
+
+const onInvalid = (errors: unknown) => {
+    toast({
+      title: "Missing or Invalid Fields",
+      description: getFirstFormError(errors),
+      variant: "destructive",
+    });
   };
 
   return (
@@ -510,7 +539,7 @@ export default function AddProductPage() {
         />
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Product Information */}
               <DataPanel title="Product Information" description="Enter basic details about your product.">

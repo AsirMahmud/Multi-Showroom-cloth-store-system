@@ -314,8 +314,8 @@ export const reportsApi = {
         return response.data;
     },
 
-    getCategoryReport: async (): Promise<CategoryReport> => {
-        const response = await axios.get('/reports/categories/');
+    getCategoryReport: async (dateRange: ReportDateRange): Promise<CategoryReport> => {
+        const response = await axios.get('/reports/categories/', { params: dateRange });
         return response.data;
     },
 

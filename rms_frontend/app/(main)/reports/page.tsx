@@ -46,6 +46,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useBranch } from "@/contexts/branch-context";
 
 const container = {
   hidden: { opacity: 0 },
@@ -63,6 +64,10 @@ const item = {
 };
 
 export default function ReportsPage() {
+  const { selectedBranchId, availableBranches } = useBranch();
+  const activeBranchName = selectedBranchId === null
+    ? "All Branches"
+    : availableBranches.find((branch) => branch.id === selectedBranchId)?.name || `Branch #${selectedBranchId}`;
   const [selectedFilter, setSelectedFilter] = useState("all-time");
   const [customDateRange, setCustomDateRange] = useState<DateRange>({
     from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
@@ -176,14 +181,19 @@ export default function ReportsPage() {
         description="Unified analytics engine for revenue auditing, procurement delta, and operational scaling."
         icon={<BarChart3 className="h-6 w-6" />}
         actions={
-          <Button
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="h-10 rounded-xl border-emerald-200 bg-emerald-50 px-4 text-xs font-black uppercase tracking-wider text-emerald-700">
+              {activeBranchName}
+            </Badge>
+            <Button
             variant="outline"
             className="h-10 px-4 bg-white border-brand-primary/5 shadow-sm rounded-xl font-bold text-xs uppercase tracking-widest text-brand-primary hover:bg-slate-50"
             onClick={() => setIsFilterExpanded(!isFilterExpanded)}
           >
             <Filter className="h-3.5 w-3.5 mr-2 text-slate-400" />
             {isFilterExpanded ? "Close Filters" : "Analytics Filters"}
-          </Button>
+            </Button>
+          </div>
         }
       />
 

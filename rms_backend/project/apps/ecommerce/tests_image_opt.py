@@ -42,6 +42,23 @@ class ImageOptimizationTest(TestCase):
             self.assertLessEqual(img.width, 1080)
             self.assertLessEqual(img.height, 1080)
             self.assertEqual(img.format, "WEBP")
+
+    def test_product_save_ignores_missing_existing_image(self):
+        """Saving unrelated fields must not open a missing legacy media file."""
+        product = Product.objects.create(
+            name="Product With Missing Image",
+            category=self.category,
+            cost_price=Decimal("10.00"),
+            retail_price=Decimal("20.00"),
+            image="products/missing-image.png",
+        )
+
+        product.name = "Updated Product With Missing Image"
+        product.save()
+
+        product.refresh_from_db()
+        self.assertEqual(product.name, "Updated Product With Missing Image")
+        self.assertEqual(product.image.name, "products/missing-image.png")
             
     def test_hero_slide_optimization(self):
         """Test that hero slide images are optimized"""

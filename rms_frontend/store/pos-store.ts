@@ -92,6 +92,8 @@ interface POSState {
         discount?: { type: "percentage" | "fixed"; value: number } | null;
         tax: number;
         total: number;
+        amountPaid: number;
+        amountDue: number;
         paymentMethod: PaymentMethod;
         cashAmount: number | null;
         changeDue: number | null;
@@ -132,6 +134,38 @@ const clampQuantity = (quantity: number, availableStock: number) => {
         return 1;
     }
     return Math.max(1, Math.min(Math.floor(quantity), availableStock));
+};
+
+const getCheckoutErrorMessage = (error: unknown): string => {
+    if (typeof error !== 'object' || error === null) return 'Failed to process payment';
+
+    const responseData = (error as { response?: { data?: unknown } }).response?.data;
+    const findMessage = (value: unknown): string | null => {
+        if (typeof value === 'string' && value.trim()) return value;
+        if (Array.isArray(value)) {
+            for (const item of value) {
+                const message = findMessage(item);
+                if (message) return message;
+            }
+        }
+        if (typeof value === 'object' && value !== null) {
+            const record = value as Record<string, unknown>;
+            for (const key of ['detail', 'message', 'error', 'non_field_errors']) {
+                const message = findMessage(record[key]);
+                if (message) return message;
+            }
+            for (const [field, fieldError] of Object.entries(record)) {
+                const message = findMessage(fieldError);
+                if (message) {
+                    const label = field.replaceAll('_', ' ');
+                    return `${label.charAt(0).toUpperCase()}${label.slice(1)}: ${message}`;
+                }
+            }
+        }
+        return null;
+    };
+
+    return findMessage(responseData) || ((error as Error).message || 'Failed to process payment');
 };
 
 export const usePOSStore = create<POSState>((set, get) => ({
@@ -199,7 +233,28 @@ export const usePOSStore = create<POSState>((set, get) => ({
     setCart: (cart) => set({ cart }),
 
     cartDiscount: null,
-    setCartDiscount: (discount) => set({ cartDiscount: discount }),
+    setCartDiscount: (discount) => {
+        if (!discount) {
+            set({ cartDiscount: null });
+            return;
+        }
+        const cartTotal = calculateCartTotals(get().cart, null).total;
+        const isInvalid = !Number.isFinite(discount.value)
+            || discount.value < 0
+            || (discount.type === "percentage" && discount.value > 100)
+            || (discount.type === "fixed" && discount.value > cartTotal);
+        if (isInvalid) {
+            toast({
+                title: "Invalid Cart Discount",
+                description: discount.type === "percentage"
+                    ? "Percentage discount must be between 0 and 100."
+                    : `Fixed discount cannot exceed the cart total (${cartTotal.toFixed(2)}).`,
+                variant: "destructive",
+            });
+            return;
+        }
+        set({ cartDiscount: discount });
+    },
 
     handleAddToCart: (product, design, color, quantity = 1) => {
         const variation = getVariation(product, design, color);
@@ -210,6 +265,14 @@ export const usePOSStore = create<POSState>((set, get) => ({
             toast({
                 title: "Out of Stock",
                 description: `${product.name} (${design}, ${color}) is unavailable.`,
+                variant: "destructive",
+            });
+            return;
+        }
+        if (quantity > availableStock) {
+            toast({
+                title: "Stock Limit Reached",
+                description: `Only ${availableStock} unit(s) of ${product.name} are available.`,
                 variant: "destructive",
             });
             return;
@@ -226,7 +289,16 @@ export const usePOSStore = create<POSState>((set, get) => ({
         );
 
         if (existingItem) {
-            const mergedQuantity = clampQuantity(existingItem.quantity + safeQuantity, existingItem.availableStock);
+            const requestedQuantity = existingItem.quantity + safeQuantity;
+            const mergedQuantity = clampQuantity(requestedQuantity, existingItem.availableStock);
+            if (requestedQuantity > existingItem.availableStock) {
+                toast({
+                    title: "Stock Limit Reached",
+                    description: `Only ${existingItem.availableStock} unit(s) of ${product.name} are available.`,
+                    variant: "destructive",
+                });
+                return;
+            }
             const mergedPricing = resolveCartPricing(existingItem.retailPrice, existingItem.wholesalePrice, existingItem.wholesaleCutoff, mergedQuantity);
             set({
                 cart: cart.map((item) =>
@@ -275,6 +347,15 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
     handleUpdateQuantity: (itemId, change) => {
         const { cart } = get();
+        const selectedItem = cart.find((item) => item.id === itemId);
+        if (selectedItem && selectedItem.quantity + change > selectedItem.availableStock) {
+            toast({
+                title: "Stock Limit Reached",
+                description: `Only ${selectedItem.availableStock} unit(s) of ${selectedItem.name} are available.`,
+                variant: "destructive",
+            });
+            return;
+        }
         const updatedCart = cart.map((item) => {
             if (item.id !== itemId) {
                 return item;
@@ -293,6 +374,15 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
     handleSetQuantity: (itemId, quantity) => {
         const { cart } = get();
+        const selectedItem = cart.find((item) => item.id === itemId);
+        if (selectedItem && quantity > selectedItem.availableStock) {
+            toast({
+                title: "Stock Limit Reached",
+                description: `Only ${selectedItem.availableStock} unit(s) of ${selectedItem.name} are available.`,
+                variant: "destructive",
+            });
+            return;
+        }
         const updatedCart = cart.map((item) => {
             if (item.id !== itemId) {
                 return item;
@@ -331,6 +421,23 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
     handleItemDiscount: (itemId, discountType, discountValue) => {
         const { cart } = get();
+        const selectedItem = cart.find((item) => item.id === itemId);
+        const lineTotal = selectedItem ? selectedItem.price * selectedItem.quantity : 0;
+        if (
+            !Number.isFinite(discountValue)
+            || discountValue < 0
+            || (discountType === "percentage" && discountValue > 100)
+            || (discountType === "fixed" && discountValue > lineTotal)
+        ) {
+            toast({
+                title: "Invalid Discount",
+                description: discountType === "percentage"
+                    ? "Percentage discount must be between 0 and 100."
+                    : `Fixed discount cannot exceed the item total (${lineTotal.toFixed(2)}).`,
+                variant: "destructive",
+            });
+            return;
+        }
         set({
             cart: cart.map((item) =>
                 item.id === itemId
@@ -402,6 +509,32 @@ export const usePOSStore = create<POSState>((set, get) => ({
                 total,
             } = calculateCartTotals(cart, cartDiscount);
 
+            if (!markAsDue && paymentMethod === "cash") {
+                const cashPaid = Number.parseFloat(cashAmount);
+                if (!Number.isFinite(cashPaid) || cashPaid < total) {
+                    toastFn({
+                        title: "Insufficient Cash",
+                        description: `Cash received must be at least ${total.toFixed(2)}.`,
+                        variant: "destructive",
+                    });
+                    return;
+                }
+            }
+            if (!markAsDue && paymentMethod === "split") {
+                const splitTotal = splitPayments.reduce(
+                    (sum, payment) => sum + (Number.parseFloat(payment.amount) || 0),
+                    0
+                );
+                if (Math.abs(splitTotal - total) > 0.01) {
+                    toastFn({
+                        title: "Invalid Split Payment",
+                        description: `Split payments must equal ${total.toFixed(2)}.`,
+                        variant: "destructive",
+                    });
+                    return;
+                }
+            }
+
             let paymentData: any[] = [];
             if (markAsDue) {
                 paymentData = [];
@@ -458,6 +591,17 @@ export const usePOSStore = create<POSState>((set, get) => ({
                 throw new Error('Sale ID not returned from API');
             }
 
+            const parsedAmountPaid = Number(
+                sale.amount_paid ?? (markAsDue ? 0 : total)
+            );
+            const amountPaid = Number.isFinite(parsedAmountPaid) ? parsedAmountPaid : 0;
+            const parsedAmountDue = Number(
+                sale.amount_due ?? Math.max(0, total - amountPaid)
+            );
+            const amountDue = Number.isFinite(parsedAmountDue)
+                ? Math.max(0, parsedAmountDue)
+                : Math.max(0, total - amountPaid);
+
             const receipt = {
                 id: `INV-${Math.floor(100000 + Math.random() * 900000)}`,
                 date: new Date().toISOString(),
@@ -469,17 +613,29 @@ export const usePOSStore = create<POSState>((set, get) => ({
                 discount: cartDiscount,
                 tax,
                 total,
+                amountPaid,
+                amountDue,
                 paymentMethod: markAsDue ? "credit" : paymentMethod,
                 cashAmount: paymentMethod === "cash" && !markAsDue ? Number.parseFloat(cashAmount) : null,
                 changeDue: paymentMethod === "cash" && !markAsDue ? Number.parseFloat(cashAmount) - total : null,
                 customer: selectedCustomer,
                 splitPayments: paymentMethod === "split" && !markAsDue ? splitPayments : null,
                 storeCredit: 0,
-                isPaid: !markAsDue,
-                isDue: markAsDue,
+                isPaid: amountDue <= 0,
+                isDue: amountDue > 0,
             };
 
-            set({ receiptData: receipt, showReceiptModal: true, cart: [], cartDiscount: null });
+            set({
+                receiptData: receipt,
+                showReceiptModal: true,
+                cart: [],
+                cartDiscount: null,
+                selectedCustomer: null,
+                paymentMethod: "cash",
+                cashAmount: "",
+                showSplitPayment: false,
+                splitPayments: [{ method: "cash" as PaymentMethod, amount: "" }],
+            });
 
             toastFn({
                 title: markAsDue ? "Sale Created as Due" : "Success",
@@ -489,13 +645,13 @@ export const usePOSStore = create<POSState>((set, get) => ({
             return sale;
         } catch (error) {
             console.error('Error processing payment:', error);
-            const errorMessage = error instanceof Error ? error.message : "Failed to process payment";
+            const errorMessage = getCheckoutErrorMessage(error);
             toastFn({
                 title: "Error",
                 description: errorMessage,
                 variant: "destructive",
             });
-            throw error;
+            return;
         }
     },
 }));

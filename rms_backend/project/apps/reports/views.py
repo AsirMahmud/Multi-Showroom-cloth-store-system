@@ -17,7 +17,7 @@ from .serializers import (
 )
 from apps.sales.models import Sale, SaleItem, Return
 from apps.expenses.models import Expense, ExpenseCategory
-from apps.inventory.models import Product, Category, StockMovement
+from apps.inventory.models import Product, Category, StockMovement, BranchProduct
 from apps.customer.models import Customer
 from apps.preorder.models import Preorder, PreorderProduct
 from apps.online_preorder.models import OnlinePreorder
@@ -30,6 +30,25 @@ class ReportViewSet(viewsets.ModelViewSet):
     queryset = Report.objects.all()
     serializer_class = ReportSerializer
     permission_classes = [IsAuthenticated]
+
+    def _get_branch_id(self, request):
+        raw_branch_id = (
+            request.query_params.get('branch_id')
+            or request.query_params.get('branch')
+            or request.headers.get('X-Branch-Id')
+        )
+        if not raw_branch_id or str(raw_branch_id).lower() == 'all':
+            return None
+        try:
+            return int(raw_branch_id)
+        except (TypeError, ValueError):
+            return None
+
+    def _scope_to_branch(self, queryset, request, lookup='branch_id'):
+        branch_id = self._get_branch_id(request)
+        if branch_id is None:
+            return queryset
+        return queryset.filter(**{lookup: branch_id})
 
     def _get_date_range(self, request):
         date_from_str = request.query_params.get('date_from')
@@ -103,6 +122,7 @@ class ReportViewSet(viewsets.ModelViewSet):
 
         # Sales data
         sales = Sale.objects.filter(date__range=[date_from, date_to], status='completed')
+        sales = self._scope_to_branch(sales, request)
         gross_sales = sales.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
         returns_summary = self._summarize_returns(self._approved_returns(sales, date_from, date_to))
         returns_total = returns_summary['refund_total']
@@ -114,6 +134,7 @@ class ReportViewSet(viewsets.ModelViewSet):
         
         # Expense data
         expenses = Expense.objects.filter(date__range=[date_from, date_to], status='APPROVED')
+        expenses = self._scope_to_branch(expenses, request)
         total_expenses = expenses.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
 
         # Profit & Loss data
@@ -124,6 +145,7 @@ class ReportViewSet(viewsets.ModelViewSet):
 
         # Preorder analysis
         preorders = Preorder.objects.filter(created_at__range=[date_from, date_to])
+        preorders = self._scope_to_branch(preorders, request)
         preorder_status_breakdown = {}
         for status_choice in Preorder.STATUS_CHOICES:
             preorder_status_breakdown[status_choice[0]] = preorders.filter(status=status_choice[0]).count()
@@ -137,7 +159,8 @@ class ReportViewSet(viewsets.ModelViewSet):
         gross_sales_by_date = sales.values('date__date').annotate(
             date=F('date__date'),
             total=Sum('total')
-        ).order_by('date')
+        )
+        gross_sales_by_date = gross_sales_by_date.order_by('date')
         sales_by_date = []
         for entry in gross_sales_by_date:
             current_date = entry['date']
@@ -187,6 +210,7 @@ class ReportViewSet(viewsets.ModelViewSet):
             date__range=[date_from, date_to],
             status='completed'
         )
+        sales = self._scope_to_branch(sales, request)
 
         gross_sales = sales.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
         returns_summary = self._summarize_returns(self._approved_returns(sales, date_from, date_to))
@@ -285,6 +309,7 @@ class ReportViewSet(viewsets.ModelViewSet):
             date__range=[date_from, date_to],
             status='APPROVED'
         )
+        expenses = self._scope_to_branch(expenses, request)
 
         total_expenses = expenses.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
 
@@ -322,38 +347,75 @@ class ReportViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def inventory(self, request):
-        products = Product.objects.all()
-        total_products = products.count()
-        total_stock_value = products.aggregate(
-            total=Sum(F('stock_quantity') * F('cost_price'))
-        )['total'] or Decimal('0.00')
-        potential_revenue = products.aggregate(
-            total=Sum(F('stock_quantity') * F('retail_price'))
-        )['total'] or Decimal('0.00')
-
-        # Low stock items
-        low_stock_items = products.filter(
-            stock_quantity__lte=F('minimum_stock')
-        ).values(
-            'name', 'stock_quantity', 'minimum_stock', 'cost_price'
-        ).annotate(
-            stock=F('stock_quantity'),
-            reorder_level=F('minimum_stock'),
-            price=F('cost_price')
-        ).order_by('stock_quantity')
-
-        # Stock by category
-        stock_by_category = products.values(
-            'category__name'
-        ).annotate(
-            category_name=F('category__name'),
-            total_products=Count('id'),
-            total_stock=Sum('stock_quantity'),
-            total_value=Sum(F('stock_quantity') * F('cost_price'))
-        ).order_by('-total_value')
+        branch_id = self._get_branch_id(request)
+        if branch_id is not None:
+            branch_products = BranchProduct.objects.filter(
+                branch_id=branch_id
+            ).select_related('product', 'product__category').annotate(
+                effective_cost=Coalesce(
+                    'cost_price_override',
+                    'product__cost_price',
+                    output_field=DecimalField(),
+                ),
+                effective_retail=Coalesce(
+                    'retail_price_override',
+                    'product__retail_price',
+                    output_field=DecimalField(),
+                ),
+            )
+            total_products = branch_products.count()
+            total_stock_value = branch_products.aggregate(
+                total=Sum(F('stock_quantity') * F('effective_cost'))
+            )['total'] or Decimal('0.00')
+            potential_revenue = branch_products.aggregate(
+                total=Sum(F('stock_quantity') * F('effective_retail'))
+            )['total'] or Decimal('0.00')
+            low_stock_items = branch_products.filter(
+                stock_quantity__lte=F('minimum_stock')
+            ).annotate(
+                name=F('product__name'),
+                stock=F('stock_quantity'),
+                reorder_level=F('minimum_stock'),
+                price=F('effective_cost'),
+            ).values('name', 'stock', 'reorder_level', 'price').order_by('stock_quantity')
+            stock_by_category = branch_products.values(
+                'product__category__name'
+            ).annotate(
+                category_name=F('product__category__name'),
+                total_products=Count('product_id'),
+                total_stock=Sum('stock_quantity'),
+                total_value=Sum(F('stock_quantity') * F('effective_cost')),
+            ).order_by('-total_value')
+        else:
+            products = Product.objects.all()
+            total_products = products.count()
+            total_stock_value = products.aggregate(
+                total=Sum(F('stock_quantity') * F('cost_price'))
+            )['total'] or Decimal('0.00')
+            potential_revenue = products.aggregate(
+                total=Sum(F('stock_quantity') * F('retail_price'))
+            )['total'] or Decimal('0.00')
+            low_stock_items = products.filter(
+                stock_quantity__lte=F('minimum_stock')
+            ).values(
+                'name', 'stock_quantity', 'minimum_stock', 'cost_price'
+            ).annotate(
+                stock=F('stock_quantity'),
+                reorder_level=F('minimum_stock'),
+                price=F('cost_price')
+            ).order_by('stock_quantity')
+            stock_by_category = products.values(
+                'category__name'
+            ).annotate(
+                category_name=F('category__name'),
+                total_products=Count('id'),
+                total_stock=Sum('stock_quantity'),
+                total_value=Sum(F('stock_quantity') * F('cost_price'))
+            ).order_by('-total_value')
 
         # Stock movements
-        stock_movements = StockMovement.objects.values(
+        stock_movements_source = self._scope_to_branch(StockMovement.objects.all(), request)
+        stock_movements = stock_movements_source.values(
             'created_at__date', 'movement_type'
         ).annotate(
             date=F('created_at__date'),
@@ -380,6 +442,9 @@ class ReportViewSet(viewsets.ModelViewSet):
             return error
 
         customers = Customer.objects.all()
+        branch_id = self._get_branch_id(request)
+        if branch_id is not None:
+            customers = customers.filter(sale__branch_id=branch_id).distinct()
         total_customers = customers.count()
         new_customers = customers.filter(
             created_at__range=[date_from, date_to]
@@ -390,6 +455,7 @@ class ReportViewSet(viewsets.ModelViewSet):
             date__range=[date_from, date_to],
             status='completed'
         )
+        sales = self._scope_to_branch(sales, request)
         total_sales = sales.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
         active_customers_count = sales.values('customer').distinct().count()
         average_customer_value = total_sales / active_customers_count if active_customers_count > 0 else Decimal('0.00')
@@ -406,7 +472,7 @@ class ReportViewSet(viewsets.ModelViewSet):
         ).order_by('-total_sales')[:10]
 
         # Customer acquisition
-        customer_acquisition = Customer.objects.filter(
+        customer_acquisition = customers.filter(
             created_at__range=[date_from, date_to]
         ).annotate(date=TruncDate('created_at')).values('date').annotate(
             new_customers=Count('id')
@@ -430,14 +496,21 @@ class ReportViewSet(viewsets.ModelViewSet):
         if error:
             return error
 
+        branch_id = self._get_branch_id(request)
+        products = Product.objects.all()
         categories = Category.objects.all()
+        if branch_id is not None:
+            products = products.filter(branch_products__branch_id=branch_id).distinct()
+            categories = categories.filter(products__branch_products__branch_id=branch_id).distinct()
         total_categories = categories.count()
-        total_products = Product.objects.count()
+        total_products = products.count()
 
         # Sales by category
-        sales_by_category = SaleItem.objects.filter(
+        category_sales_items = SaleItem.objects.filter(
             sale__date__range=[date_from, date_to]
-        ).values('product__category__name').annotate(
+        )
+        category_sales_items = self._scope_to_branch(category_sales_items, request, 'sale__branch_id')
+        sales_by_category = category_sales_items.values('product__category__name').annotate(
             category_name=F('product__category__name'),
             total_sales=Sum('total'),
             items_sold=Sum('quantity'),
@@ -445,7 +518,7 @@ class ReportViewSet(viewsets.ModelViewSet):
         ).order_by('-total_sales')
 
         # Stock by category
-        stock_by_category = Product.objects.values(
+        stock_by_category = products.values(
             'category__name'
         ).annotate(
             category_name=F('category__name'),
@@ -455,14 +528,17 @@ class ReportViewSet(viewsets.ModelViewSet):
         ).order_by('-total_value')
 
         # Top categories by sales
-        top_categories = Category.objects.annotate(
+        category_sale_filter = Q(products__saleitem__sale__date__range=[date_from, date_to])
+        if branch_id is not None:
+            category_sale_filter &= Q(products__saleitem__sale__branch_id=branch_id)
+        top_categories = categories.annotate(
             total_sales=Coalesce(Sum(
                 'products__saleitem__total',
-                filter=Q(products__saleitem__sale__date__range=[date_from, date_to])
+                filter=category_sale_filter
             ), Decimal('0.00')),
             items_sold=Coalesce(Sum(
                 'products__saleitem__quantity',
-                filter=Q(products__saleitem__sale__date__range=[date_from, date_to])
+                filter=category_sale_filter
             ), 0),
             product_count=Count('products', distinct=True)
         ).annotate(
@@ -496,6 +572,7 @@ class ReportViewSet(viewsets.ModelViewSet):
             date__range=[date_from, date_to],
             status='completed'
         )
+        sales = self._scope_to_branch(sales, request)
         total_revenue = sales.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
         total_tax = sales.aggregate(total=Sum('tax'))['total'] or Decimal('0.00')
         net_revenue = total_revenue - total_tax
@@ -506,6 +583,7 @@ class ReportViewSet(viewsets.ModelViewSet):
             date__range=[date_from, date_to],
             status='APPROVED'
         )
+        expenses = self._scope_to_branch(expenses, request)
         total_expenses = expenses.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
 
         net_profit = gross_profit - total_expenses
@@ -513,6 +591,7 @@ class ReportViewSet(viewsets.ModelViewSet):
 
         # Preorder analysis
         preorders = Preorder.objects.filter(created_at__range=[date_from, date_to])
+        preorders = self._scope_to_branch(preorders, request)
         preorder_status_breakdown = {}
         for status_choice in Preorder.STATUS_CHOICES:
             preorder_status_breakdown[status_choice[0]] = preorders.filter(status=status_choice[0]).count()
@@ -560,10 +639,12 @@ class ReportViewSet(viewsets.ModelViewSet):
         # ---
 
         # Profit by category
-        profit_by_category = SaleItem.objects.filter(
+        profit_items = SaleItem.objects.filter(
             sale__date__range=[date_from, date_to],
             sale__status='completed'
-        ).values('product__category__name').annotate(
+        )
+        profit_items = self._scope_to_branch(profit_items, request, 'sale__branch_id')
+        profit_by_category = profit_items.values('product__category__name').annotate(
             category_name=F('product__category__name'),
             revenue=Sum('total'),
             cost=Sum(F('product__cost_price') * F('quantity')),
@@ -600,8 +681,10 @@ class ReportViewSet(viewsets.ModelViewSet):
             return error
 
         sales_items = SaleItem.objects.filter(sale__date__range=[date_from, date_to], sale__status='completed')
+        sales_items = self._scope_to_branch(sales_items, request, 'sale__branch_id')
         
         products = Product.objects.all()
+        products = self._scope_to_branch(products, request, 'branch_products__branch_id').distinct()
         total_products = products.count()
         total_sales = sales_items.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
         total_profit = sales_items.aggregate(total=Sum('profit'))['total'] or Decimal('0.00')
@@ -734,6 +817,9 @@ class ReportViewSet(viewsets.ModelViewSet):
 
         # Get online preorders in date range
         online_preorders = OnlinePreorder.objects.filter(created_at__range=[date_from, date_to])
+        branch_id = self._get_branch_id(request)
+        if branch_id is not None:
+            online_preorders = online_preorders.filter(conversion__sale__branch_id=branch_id)
         
         # Total stats
         total_orders = online_preorders.count()
@@ -749,6 +835,7 @@ class ReportViewSet(viewsets.ModelViewSet):
             status='completed',
             sale_type='online_preorder'
         )
+        online_sales = self._scope_to_branch(online_sales, request)
         
         # Top products from online preorder sales
         top_products_qs = SaleItem.objects.filter(
@@ -926,7 +1013,8 @@ class ReportViewSet(viewsets.ModelViewSet):
         
         # 1. Sale Total vs Items Sum Check
         sales_with_mismatch = []
-        sales = Sale.objects.filter(status='completed').prefetch_related('items')
+        sales = Sale.objects.filter(status='completed')
+        sales = self._scope_to_branch(sales, request).prefetch_related('items')
         
         for sale in sales:
             item_sum = sale.items.aggregate(total_sum=Sum('total'))['total_sum'] or Decimal('0.00')
@@ -962,7 +1050,8 @@ class ReportViewSet(viewsets.ModelViewSet):
 
         # 3. Product Stock vs Variation Stock Check
         stock_mismatches = []
-        products = Product.objects.all().prefetch_related('designs__colors')
+        products = Product.objects.all()
+        products = self._scope_to_branch(products, request, 'branch_products__branch_id').distinct().prefetch_related('designs__colors')
         for product in products:
             variant_stock_sum = ProductVariation.objects.filter(design__product=product).aggregate(total=Sum('stock'))['total'] or 0
             if product.stock_quantity != variant_stock_sum:

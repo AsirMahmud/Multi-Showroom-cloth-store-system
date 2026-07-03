@@ -52,7 +52,6 @@ import { usePOSStore } from "@/store/pos-store";
 import { Product, ProductVariation } from "@/types/inventory";
 import ReceiptModal from "./ReceiptModal";
 import { productsApi } from "@/lib/api/inventory";
-import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 
 // Sample product data
@@ -131,12 +130,6 @@ export function ModernPOS() {
     receiptData,
     setReceiptData,
   } = usePOSStore();
-  const { setOpen } = useSidebar();
-
-  // Automatically collapse sidebar on POS page mount
-  useEffect(() => {
-    setOpen(false);
-  }, [setOpen]);
 
   // Note: We no longer fetch all products for scanning - we fetch from backend on each scan
 
@@ -309,6 +302,8 @@ export function ModernPOS() {
       discountedSubtotal,
       tax,
       total,
+      amountPaid: isPaid ? total : 0,
+      amountDue: isPaid ? 0 : total,
       paymentMethod,
       cashAmount:
         paymentMethod === "cash" ? Number.parseFloat(cashAmount) : null,

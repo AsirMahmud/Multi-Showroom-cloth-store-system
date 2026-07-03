@@ -96,6 +96,8 @@ import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import { saveAs } from "file-saver";
 import { addPayment } from "@/lib/api/sales";
+import { branchesApi } from "@/lib/api/branches";
+import { resolveReceiptSettings } from "@/lib/receipt-settings";
 
 // The backend returns customer details in a nested object
 interface SaleWithCustomerDetails extends Omit<Sale, "customer"> {
@@ -248,6 +250,101 @@ export default function SalesHistory() {
       body: typedSales.map(s => [s.invoice_number, s.branch_name || "Unassigned", s.customer ? `${s.customer.first_name} ${s.customer.last_name}` : "Guest", format(new Date(s.date || ""), "PPP"), s.status, formatCurrency(s.total)])
     });
     doc.save(`sales_report_${Date.now()}.pdf`);
+  };
+
+  const handleDownloadReceipt = async (sale: SaleWithCustomerDetails) => {
+    try {
+      const branch = sale.branch ? await branchesApi.getBranch(sale.branch) : null;
+      const settings = resolveReceiptSettings(branch);
+      const branchName = sale.branch_name || branch?.name || "Unassigned branch";
+      const money = (value: number | undefined) =>
+        `BDT ${Number(value || 0).toLocaleString("en-BD", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}`;
+      const customerName = sale.customer
+        ? `${sale.customer.first_name} ${sale.customer.last_name}`.trim()
+        : "Guest customer";
+      const doc = new jsPDF({ unit: "mm", format: "a4" });
+
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 0, 210, 42, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(18);
+      doc.text(settings.headerTitle || branchName, 14, 15);
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Branch: ${branchName}`, 14, 23);
+      if (settings.headerSubtitle) doc.text(settings.headerSubtitle, 14, 29);
+      if (settings.address) doc.text(settings.address.replace(/\n/g, ", "), 14, 35, { maxWidth: 130 });
+      if (settings.phone) doc.text(`Tel: ${settings.phone}`, 196, 35, { align: "right" });
+
+      doc.setTextColor(15, 23, 42);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.text(`Receipt #${sale.invoice_number || sale.id}`, 14, 54);
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Date: ${format(new Date(sale.date || sale.created_at || ""), "PPpp")}`, 14, 61);
+      doc.text(`Customer: ${customerName}`, 110, 54);
+      if (sale.customer?.phone) doc.text(`Phone: ${sale.customer.phone}`, 110, 61);
+
+      // jspdf-autotable augments jsPDF at runtime.
+      // @ts-ignore
+      doc.autoTable({
+        startY: 70,
+        head: [["Item", "Variation", "Qty", "Unit price", "Discount", "Total"]],
+        body: (sale.items || []).map((item) => [
+          item.product?.name || `Product #${item.product_id}`,
+          `${item.design_name || item.design || "Standard"} / ${item.color || "Default"}`,
+          String(item.quantity),
+          money(item.applied_unit_price ?? item.unit_price),
+          item.discount ? `-${money(item.discount)}` : "-",
+          money(item.total ?? item.unit_price * item.quantity),
+        ]),
+        theme: "striped",
+        headStyles: { fillColor: [15, 23, 42] },
+        styles: { fontSize: 8, cellPadding: 2.5 },
+      });
+
+      // @ts-ignore
+      let y = (doc.lastAutoTable?.finalY || 82) + 10;
+      const summaryLine = (label: string, value: string, bold = false) => {
+        doc.setFont("helvetica", bold ? "bold" : "normal");
+        doc.text(label, 135, y);
+        doc.text(value, 196, y, { align: "right" });
+        y += 6;
+      };
+      summaryLine("Subtotal", money(sale.subtotal));
+      if (sale.discount) summaryLine("Discount", `-${money(sale.discount)}`);
+      if (sale.tax) summaryLine("Tax", money(sale.tax));
+      summaryLine("Total", money(sale.total), true);
+      summaryLine("Amount paid", money(sale.amount_paid));
+      if ((sale.amount_due || 0) > 0) summaryLine("REMAINING DUE", money(sale.amount_due), true);
+
+      y += 4;
+      doc.setFont("helvetica", "bold");
+      doc.text(`Payment: ${sale.payment_method}`, 14, y);
+      doc.text((sale.amount_due || 0) > 0 ? "PAYMENT DUE" : "PAID", 196, y, { align: "right" });
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(71, 85, 105);
+      doc.text(settings.footerMessage, 105, 278, { align: "center", maxWidth: 180 });
+      doc.setFontSize(8);
+      doc.text(settings.returnPolicy, 105, 285, { align: "center", maxWidth: 180 });
+
+      const safeInvoice = String(sale.invoice_number || sale.id || "receipt").replace(/[^a-zA-Z0-9_-]/g, "_");
+      doc.save(`receipt_${safeInvoice}.pdf`);
+    } catch (error) {
+      console.error("Unable to generate receipt", error);
+      toast({
+        title: "Receipt download failed",
+        description: "Unable to load branch receipt settings. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDeleteSaleClick = (sale: SaleWithCustomerDetails) => setSaleToDelete(sale);
@@ -465,6 +562,7 @@ export default function SalesHistory() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="rounded-xl border-brand-primary/5 shadow-xl">
                             <DropdownMenuItem onClick={() => handleViewSale(sale)} className="font-bold text-xs uppercase tracking-widest text-slate-600"><Eye className="h-3.5 w-3.5 mr-2" /> View</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDownloadReceipt(sale)} className="font-bold text-xs uppercase tracking-widest text-blue-600"><Download className="h-3.5 w-3.5 mr-2" /> Download Receipt</DropdownMenuItem>
                             {(sale.amount_due || 0) > 0 && (
                               <DropdownMenuItem onClick={() => setSelectedDuePayment(sale)} className="font-bold text-xs uppercase tracking-widest text-emerald-600"><DollarSign className="h-3.5 w-3.5 mr-2" /> Pay Due</DropdownMenuItem>
                             )}
@@ -578,6 +676,24 @@ export default function SalesHistory() {
                 <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
                   <span className="text-sm font-black text-slate-700">Total Settlement</span>
                   <span className="text-xl font-black text-brand-primary">{formatCurrency(selectedOrder.total)}</span>
+                </div>
+                <div className="pt-2">
+                  <Button
+                    variant="outline"
+                    className="w-full h-12 rounded-xl border-slate-200 font-bold text-xs uppercase tracking-widest"
+                    onClick={() => handleDownloadReceipt(selectedOrder)}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Download Receipt PDF
+                  </Button>
+                </div>
+                <div className="pt-2">
+                  <Button asChild variant="ghost" className="w-full h-10 rounded-xl text-xs font-bold uppercase tracking-widest text-slate-500">
+                    <Link href="/settings">
+                      <FileText className="mr-2 h-4 w-4" />
+                      Edit Branch Receipt Settings
+                    </Link>
+                  </Button>
                 </div>
                 {selectedOrder.id && selectedOrder.status === "completed" && (
                   <div className="pt-2">

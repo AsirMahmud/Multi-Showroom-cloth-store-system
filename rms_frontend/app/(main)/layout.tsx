@@ -13,7 +13,7 @@ import { BismillahLogo } from "@/components/bismillah-logo";
 import { BranchSelectorModal } from "@/components/branch/branch-selector-modal";
 import { ViewingBranchRibbon } from "@/components/branch/viewing-branch-ribbon";
 
-import { SidebarProvider, SidebarInset, useSidebar } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -41,8 +41,7 @@ export default function MainLayout({
 }
 
 function MainShell({ children }: { children: React.ReactNode }) {
-  const { state } = useSidebar();
-  const sidebarOffset = state === "collapsed" ? "md:ml-[72px]" : "md:ml-[280px]";
+  const sidebarOffset = "md:ml-[280px]";
 
   return (
     <div className="flex min-h-screen w-full selection:bg-brand-secondary selection:text-brand-primary">

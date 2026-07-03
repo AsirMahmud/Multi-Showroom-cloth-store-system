@@ -5,9 +5,10 @@ from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIRequestFactory, force_authenticate
 
+from apps.branches.models import Branch
 from apps.customer.models import Customer
 from apps.expenses.models import Expense, ExpenseCategory
-from apps.inventory.models import Category, Product, StockMovement
+from apps.inventory.models import BranchProduct, Category, Product, StockMovement
 from apps.preorder.models import Preorder
 from apps.reports.views import ReportViewSet
 from apps.sales.models import Sale, SaleItem
@@ -100,11 +101,51 @@ class ReportAccuracyTests(TestCase):
             "date_to": today.strftime("%Y-%m-%d"),
         }
 
-    def _get_response(self, action_name):
+    def _get_response(self, action_name, branch_id=None):
         view = ReportViewSet.as_view({"get": action_name})
-        request = self.factory.get(f"/reports/{action_name}/", self.query_params)
+        headers = {"HTTP_X_BRANCH_ID": str(branch_id)} if branch_id else {}
+        request = self.factory.get(
+            f"/reports/{action_name}/",
+            self.query_params,
+            **headers,
+        )
         force_authenticate(request, user=self.user)
         return view(request)
+
+    def test_sales_report_respects_selected_branch_header(self):
+        other_branch = Branch.objects.create(name="Other Branch")
+        response = self._get_response("sales", other_branch.id)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Decimal(str(response.data["total_sales"])), Decimal("0.00"))
+        self.assertEqual(response.data["total_orders"], 0)
+
+    def test_overview_report_respects_selected_branch_header(self):
+        other_branch = Branch.objects.create(name="Other Branch")
+        response = self._get_response("overview", other_branch.id)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Decimal(str(response.data["total_sales"])), Decimal("0.00"))
+        self.assertEqual(Decimal(str(response.data["total_expenses"])), Decimal("0.00"))
+
+    def test_inventory_report_uses_branch_stock_and_overrides(self):
+        branch = Branch.objects.create(name="Inventory Branch")
+        BranchProduct.objects.update_or_create(
+            branch=branch,
+            product=self.product,
+            defaults={
+                "stock_quantity": 2,
+                "minimum_stock": 3,
+                "cost_price_override": Decimal("50.00"),
+                "retail_price_override": Decimal("90.00"),
+            },
+        )
+
+        response = self._get_response("inventory", branch.id)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["total_products"], 1)
+        self.assertEqual(Decimal(str(response.data["total_stock_value"])), Decimal("100.00"))
+        self.assertEqual(Decimal(str(response.data["potential_revenue"])), Decimal("180.00"))
+        self.assertEqual(response.data["low_stock_items"][0]["stock"], 2)
 
     def test_overview_uses_gross_profit_minus_expenses(self):
         response = self._get_response("overview")

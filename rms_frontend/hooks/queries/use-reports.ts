@@ -44,11 +44,13 @@ export const useCustomerReport = (dateRange: DateRange | undefined) => {
     });
 };
 
-export const useCategoryReport = () => {
+export const useCategoryReport = (dateRange: DateRange | undefined) => {
+    const formattedDateRange = formatDateRange(dateRange);
     const { selectedBranchId } = useBranch();
     return useQuery({
-        queryKey: ['category-report', selectedBranchId],
-        queryFn: reportsApi.getCategoryReport,
+        queryKey: ['category-report', formattedDateRange, selectedBranchId],
+        queryFn: () => reportsApi.getCategoryReport(formattedDateRange!),
+        enabled: !!formattedDateRange,
     });
 };
 

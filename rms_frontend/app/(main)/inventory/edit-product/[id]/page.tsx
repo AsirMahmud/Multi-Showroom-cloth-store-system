@@ -52,6 +52,7 @@ import { HierarchicalCategorySelect } from "@/components/inventory/hierarchical-
 import { MultiOnlineCategorySelect } from "@/components/inventory/multi-online-category-select";
 import { COLORS, globalSizes } from "../../add-product/constants";
 import { getImageUrl } from "@/lib/utils";
+import { getApiErrorMessage, getFirstFormError } from "@/lib/form-error";
 
 // Import the same global sizes and colors from add-product
 
@@ -68,12 +69,12 @@ const productFormSchema = z.object({
   category: z.string({ required_error: "Please select a category" }),
   online_categories: z.array(z.string()).optional(),
   supplier: z.string({ required_error: "Please select a supplier" }).optional(),
-  cost_price: z.string().min(1, "Cost price is required"),
-  wholesale_price: z.string().min(1, "Wholesale price is required"),
-  retail_price: z.string().min(1, "Retail price is required"),
+  cost_price: z.string().trim().min(1, "Cost price is required").refine((value) => Number(value) > 0, "Cost price must be greater than 0"),
+  wholesale_price: z.string().trim().min(1, "Wholesale price is required").refine((value) => Number(value) > 0, "Wholesale price must be greater than 0"),
+  retail_price: z.string().trim().min(1, "Retail price is required").refine((value) => Number(value) > 0, "Retail price must be greater than 0"),
   wholesale_cutoff: z.number().min(1, "Wholesale cutoff must be at least 1").default(10),
   status: z.enum(["active", "inactive", "discontinued"]),
-  minimum_stock: z.number().default(10),
+  minimum_stock: z.number().min(0, "Minimum stock cannot be negative").default(10),
   gender: z.string({ required_error: "Please select a gender" }),
   designs: z
     .array(
@@ -651,6 +652,19 @@ export default function EditProductPage() {
   // Submit handler
   const onSubmit = async (data: ProductFormValues) => {
     try {
+      const unnamedDesign = designs.find((design) => !design.name.trim());
+      if (unnamedDesign) {
+        toast({ title: "Design Name Required", description: "Every design must have a name.", variant: "destructive" });
+        return;
+      }
+      const invalidColor = designs.flatMap((design) =>
+        design.colors.map((color) => ({ design, color }))
+      ).find(({ color }) => !color.color.trim() || !Number.isFinite(color.stock) || color.stock < 0);
+      if (invalidColor) {
+        toast({ title: "Invalid Color Variant", description: `Check color name and stock for ${invalidColor.design.name}.`, variant: "destructive" });
+        return;
+      }
+
       // Validate that at least one design exists
       if (designs.length === 0) {
         toast({
@@ -823,11 +837,19 @@ export default function EditProductPage() {
       router.push("/inventory/products");
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to update product. Please try again.",
+        title: "Unable to Save Product",
+        description: getApiErrorMessage(error, "Failed to update product. Please try again."),
         variant: "destructive",
       });
     }
+  };
+
+  const onInvalid = (errors: unknown) => {
+    toast({
+      title: "Missing or Invalid Fields",
+      description: getFirstFormError(errors),
+      variant: "destructive",
+    });
   };
 
   if (isLoadingProduct || isLoadingCategories || isLoadingSuppliers) {
@@ -865,7 +887,7 @@ export default function EditProductPage() {
 
       {/* Form */}
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
           {/* Basic Information Card */}
           <Card>
             <CardHeader>
