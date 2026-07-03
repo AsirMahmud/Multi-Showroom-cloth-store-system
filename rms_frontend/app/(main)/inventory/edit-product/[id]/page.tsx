@@ -52,7 +52,7 @@ import { HierarchicalCategorySelect } from "@/components/inventory/hierarchical-
 import { MultiOnlineCategorySelect } from "@/components/inventory/multi-online-category-select";
 import { COLORS, globalSizes } from "../../add-product/constants";
 import { getImageUrl } from "@/lib/utils";
-import { getApiErrorMessage, getFirstFormError } from "@/lib/form-error";
+import { getApiErrorMessage, getFirstFormError } from "@/utils/form-error";
 
 // Import the same global sizes and colors from add-product
 

@@ -46,7 +46,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { HierarchicalCategorySelect } from "@/components/inventory/hierarchical-category-select";
 import { MultiOnlineCategorySelect } from "@/components/inventory/multi-online-category-select";
 import { Badge } from "@/components/ui/badge";
-import { getApiErrorMessage, getFirstFormError } from "@/lib/form-error";
+import { getApiErrorMessage, getFirstFormError } from "@/utils/form-error";
 
 const COLORS = {
   "Black": "#000000",
