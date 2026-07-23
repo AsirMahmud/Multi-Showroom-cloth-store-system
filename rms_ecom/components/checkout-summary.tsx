@@ -186,8 +186,6 @@ export function CheckoutSummary({ className, showTitle = true }: CheckoutSummary
   let deliveryCharge = 0
   if (deliveryMethod === 'inside') {
     deliveryCharge = Number(cartPricing?.delivery?.inside_dhaka_charge) || 0
-  } else if (deliveryMethod === 'gazipur') {
-    deliveryCharge = Number(cartPricing?.delivery?.inside_gazipur_charge) || 0
   } else {
     deliveryCharge = Number(cartPricing?.delivery?.outside_dhaka_charge) || 0
   }
@@ -326,7 +324,7 @@ export function CheckoutSummary({ className, showTitle = true }: CheckoutSummary
                 name="delivery-method"
                 value="inside"
                 checked={deliveryMethod === 'inside'}
-                onChange={(e) => setDeliveryMethod(e.target.value as 'inside' | 'gazipur' | 'outside')}
+                onChange={(e) => setDeliveryMethod(e.target.value as 'inside' | 'outside')}
                 className="h-4 w-4"
               />
               <span className="text-sm font-medium">Inside Dhaka</span>
@@ -342,27 +340,9 @@ export function CheckoutSummary({ className, showTitle = true }: CheckoutSummary
               <input
                 type="radio"
                 name="delivery-method"
-                value="gazipur"
-                checked={deliveryMethod === 'gazipur'}
-                onChange={(e) => setDeliveryMethod(e.target.value as 'inside' | 'gazipur' | 'outside')}
-                className="h-4 w-4"
-              />
-              <span className="text-sm font-medium">Inside Gazipur</span>
-            </div>
-            {localLoading ? (
-              <span className="text-sm font-semibold text-muted-foreground">—</span>
-            ) : (
-              <span className="text-sm font-semibold">৳{formatPrice(cartPricing?.delivery?.inside_gazipur_charge)}</span>
-            )}
-          </label>
-          <label className="flex items-center justify-between border rounded-lg p-3 cursor-pointer hover:bg-accent/50 transition-colors">
-            <div className="flex items-center gap-2">
-              <input
-                type="radio"
-                name="delivery-method"
                 value="outside"
                 checked={deliveryMethod === 'outside'}
-                onChange={(e) => setDeliveryMethod(e.target.value as 'inside' | 'gazipur' | 'outside')}
+                onChange={(e) => setDeliveryMethod(e.target.value as 'inside' | 'outside')}
                 className="h-4 w-4"
               />
               <span className="text-sm font-medium">Outside Dhaka</span>

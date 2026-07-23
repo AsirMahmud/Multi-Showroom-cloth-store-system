@@ -82,16 +82,53 @@ export function CategoryCollageSection({
 }: CategoryCollageSectionProps = {}) {
   const [settings, setSettings] = useState<Settings>({})
   const [loading, setLoading] = useState(true)
+  const [filteredCards, setFilteredCards] = useState<CardConfig[]>([])
 
   const isDynamic = typeof layoutVariant !== 'undefined'
-
-  const cards = fallbackContent.cards
   const isEnabled = true
 
-  if (!isEnabled || cards.length === 0) {
+  useEffect(() => {
+    async function checkCategories() {
+      const activeCards: CardConfig[] = []
+      
+      // Check each card to see if its category has products
+      await Promise.all(
+        fallbackContent.cards.map(async (card) => {
+          if (!card.link) return
+          // Extract category slug from the link (e.g. "/category/summer-lawn" -> "summer-lawn")
+          const slugMatch = card.link.match(/\/category\/([^\/]+)/)
+          const slug = slugMatch ? slugMatch[1] : null
+          
+          if (slug) {
+            try {
+              const res = await ecommerceApi.getProductsByColorPaginated({
+                online_category: slug,
+                page_size: 1
+              })
+              if (res && res.count > 0) {
+                activeCards.push(card)
+              }
+            } catch (err) {
+              console.error(`Failed to check category ${slug}`, err)
+            }
+          }
+        })
+      )
+      
+      // Preserve original order
+      const orderedActiveCards = fallbackContent.cards.filter(c => activeCards.includes(c))
+      setFilteredCards(orderedActiveCards)
+      setLoading(false)
+    }
+    
+    checkCategories()
+  }, [])
+
+  if (!isEnabled || loading || filteredCards.length === 0) {
     return null
   }
 
+  const cards = filteredCards
   const badgeText = fallbackContent.badge
   const headingText = fallbackContent.heading
   const descriptionText = fallbackContent.description

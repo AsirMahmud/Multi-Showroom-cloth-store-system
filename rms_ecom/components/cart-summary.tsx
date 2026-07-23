@@ -121,12 +121,10 @@ export function CartSummary() {
   }, [cartPricing])
 
   let deliveryCharge = 0
-  if (shippingMethod === 'inside') {
-    deliveryCharge = Number(cartPricing?.delivery?.inside_dhaka_charge) || 0
-  } else if (shippingMethod === 'gazipur') {
-    deliveryCharge = Number(cartPricing?.delivery?.inside_gazipur_charge) || 0
-  } else {
+  if (shippingMethod === 'outside') {
     deliveryCharge = Number(cartPricing?.delivery?.outside_dhaka_charge) || 0
+  } else if (shippingMethod === 'inside') {
+    deliveryCharge = Number(cartPricing?.delivery?.inside_dhaka_charge) || 0
   }
 
   // subtotal is already discounted from backend
@@ -170,7 +168,7 @@ export function CartSummary() {
       {/* Delivery Options */}
       <div className="mb-6">
         <Label className="text-base font-semibold mb-3 block">Delivery Method</Label>
-        <RadioGroup value={shippingMethod} onValueChange={(value) => setShippingMethod(value as 'inside' | 'gazipur' | 'outside')} className="space-y-3">
+        <RadioGroup value={shippingMethod} onValueChange={(value) => setShippingMethod(value as 'inside' | 'outside')} className="space-y-3">
           <div className="flex items-center justify-between border rounded-lg p-4 cursor-pointer hover:bg-accent/50 transition-colors">
             <div className="flex items-center gap-3">
               <RadioGroupItem value="inside" id="inside" />
@@ -182,20 +180,6 @@ export function CartSummary() {
               <span className="font-semibold text-muted-foreground">—</span>
             ) : (
               <span className="font-semibold">৳{formatPrice(cartPricing?.delivery?.inside_dhaka_charge)}</span>
-            )}
-          </div>
-
-          <div className="flex items-center justify-between border rounded-lg p-4 cursor-pointer hover:bg-accent/50 transition-colors">
-            <div className="flex items-center gap-3">
-              <RadioGroupItem value="gazipur" id="gazipur" />
-              <Label htmlFor="gazipur" className="cursor-pointer font-medium">
-                Inside Gazipur
-              </Label>
-            </div>
-            {localLoading ? (
-              <span className="font-semibold text-muted-foreground">—</span>
-            ) : (
-              <span className="font-semibold">৳{formatPrice(cartPricing?.delivery?.inside_gazipur_charge)}</span>
             )}
           </div>
 
