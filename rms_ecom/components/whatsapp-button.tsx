@@ -4,21 +4,23 @@ import { useEffect, useState } from "react"
 import { ecommerceApi } from "@/lib/api"
 
 export function WhatsAppButton() {
-    const [messengerUrl, setMessengerUrl] = useState("https://www.facebook.com/share/1GwQR9G9su/?mibextid=wwXIfr")
+    const [messengerUrl, setMessengerUrl] = useState("https://m.me/ferdous.textile")
 
     useEffect(() => {
         ecommerceApi.getHomePageSettings().then((settings) => {
-            const fbUrl = (settings?.footer_facebook_url || "https://www.facebook.com/share/1GwQR9G9su/?mibextid=wwXIfr").trim()
+            const fbUrl = (settings?.footer_facebook_url || "").trim()
             if (fbUrl.includes("m.me/")) {
+                // Already a Messenger link, use directly
                 setMessengerUrl(fbUrl)
-            } else {
+            } else if (fbUrl) {
+                // Try to extract page username from Facebook URL
                 const match = fbUrl.match(/(?:facebook\.com\/)([^/?#]+)/i)
-                if (match && match[1] && !match[1].startsWith('share') && !match[1].startsWith('profile.php')) {
+                if (match && match[1] && !match[1].startsWith('share') && !match[1].startsWith('profile.php') && !match[1].startsWith('sharer')) {
                     setMessengerUrl(`https://m.me/${match[1]}`)
-                } else {
-                    setMessengerUrl(fbUrl)
                 }
+                // If extraction fails, keep the default m.me/ferdous.textile
             }
+            // If no fbUrl from settings, keep the default m.me/ferdous.textile
         }).catch(() => null)
     }, [])
 
