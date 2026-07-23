@@ -170,6 +170,18 @@ class HomePageSettings(models.Model):
     logo_image = models.ImageField(upload_to='site_logo/', null=True, blank=True)
     logo_text = models.CharField(max_length=100, null=True, blank=True)
 
+    # Ordering Rules & Purchase Limits Settings
+    min_product_buying_count = models.PositiveIntegerField(
+        default=1,
+        help_text="Minimum total quantity of products a customer must buy per order",
+    )
+    min_order_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text="Minimum order total amount required to place an order",
+    )
+
     # Footer Settings
     footer_tagline = models.CharField(
         max_length=255,
@@ -180,12 +192,14 @@ class HomePageSettings(models.Model):
     footer_address = models.TextField(
         null=True,
         blank=True,
+        default="সুরুজ মনোয়ারা শপিং কমপ্লেক্সের দোতালায়, বান্টি বাজার, আড়াইহাজার, নারায়ণগঞ্জ",
         help_text="Store address shown in the footer. Supports multiple lines.",
     )
     footer_phone = models.CharField(
         max_length=50,
         null=True,
         blank=True,
+        default="01896285447",
         help_text="Primary contact phone number for the footer.",
     )
     footer_email = models.EmailField(

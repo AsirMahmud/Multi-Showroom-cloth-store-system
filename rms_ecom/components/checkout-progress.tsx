@@ -10,13 +10,13 @@ export function CheckoutProgress({ currentStep }: CheckoutProgressProps) {
   ]
 
   return (
-    <div className="flex items-center justify-center gap-4 md:gap-8 max-w-2xl mx-auto">
+    <div className="flex items-center justify-center gap-2 sm:gap-4 md:gap-8 max-w-full mx-auto px-2 overflow-hidden">
       {steps.map((step, index) => (
-        <div key={step.number} className="flex items-center gap-4 md:gap-8">
-          <div className="flex items-center gap-3">
+        <div key={step.number} className="flex items-center gap-2 sm:gap-4 md:gap-8">
+          <div className="flex items-center gap-2 sm:gap-3">
             {/* Step Circle */}
             <div
-              className={`flex items-center justify-center w-10 h-10 rounded-full font-semibold text-sm transition-colors ${
+              className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full font-semibold text-xs sm:text-sm transition-colors shrink-0 ${
                 step.number === currentStep
                   ? "bg-foreground text-background"
                   : step.number < currentStep
@@ -29,7 +29,7 @@ export function CheckoutProgress({ currentStep }: CheckoutProgressProps) {
 
             {/* Step Label */}
             <span
-              className={`text-sm md:text-base font-medium hidden sm:inline ${
+              className={`text-xs sm:text-sm md:text-base font-medium hidden sm:inline ${
                 step.number === currentStep ? "text-foreground" : "text-muted-foreground"
               }`}
             >
@@ -39,7 +39,7 @@ export function CheckoutProgress({ currentStep }: CheckoutProgressProps) {
 
           {/* Connector Line */}
           {index < steps.length - 1 && (
-            <div className={`h-0.5 w-12 md:w-20 ${step.number < currentStep ? "bg-foreground" : "bg-border"}`} />
+            <div className={`h-0.5 w-6 sm:w-12 md:w-20 shrink ${step.number < currentStep ? "bg-foreground" : "bg-border"}`} />
           )}
         </div>
       ))}

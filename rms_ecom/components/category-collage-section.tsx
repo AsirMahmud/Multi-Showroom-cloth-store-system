@@ -33,36 +33,43 @@ interface CategoryCollageSectionProps {
 }
 
 const fallbackContent = {
-  badge: "Curated for You",
-  heading: "Pakistani Three Piece Edit",
-  description: "Signature silhouettes, refined embroidery, and festive color stories selected for everyday elegance and occasion wear.",
+  badge: "Ferdous Textile Signature",
+  heading: "Three Piece Collections",
+  description: "Explore our exclusive range of unstitched Bangladeshi & Pakistani 3-piece suit collections carefully designed for every occasion.",
   cards: [
     {
-      title: "Women",
-      subtitle: "Shop three piece",
-      link: "/women",
-      imageUrl: "/pakistani-three-piece-collage.png",
+      title: "Pakistani Three Piece",
+      subtitle: "Luxury Embroidered Edit",
+      link: "/category/pakistani-three-piece",
+      imageUrl: "/images/three-piece/cat_pakistani.png",
       layout: "large" as const,
     },
     {
-      title: "Festive Wear",
-      subtitle: "New arrivals",
-      link: "/products",
-      imageUrl: "/hero-slide-2.jpg",
+      title: "Summer Lawn",
+      subtitle: "Breathable Daily Wear",
+      link: "/category/summer-lawn",
+      imageUrl: "/images/three-piece/cat_summer_lawn.png",
       layout: "wide" as const,
     },
     {
-      title: "Printed Lawn",
-      subtitle: "Daily elegance",
-      link: "/products",
-      imageUrl: "/party-evening-wear.jpg",
+      title: "Jam Jam Cotton",
+      subtitle: "Vibrant Printed Suit",
+      link: "/category/jam-jam-cotton",
+      imageUrl: "/images/three-piece/cat_jam_jam.png",
       layout: "small" as const,
     },
     {
-      title: "Embroidered Edit",
-      subtitle: "Occasion ready",
-      link: "/products",
-      imageUrl: "/fashion-models-wearing-modern-streetwear.jpg",
+      title: "Luxury Formal",
+      subtitle: "Occasion Ready",
+      link: "/category/luxury-formal",
+      imageUrl: "/images/three-piece/cat_luxury_formal.png",
+      layout: "small" as const,
+    },
+    {
+      title: "Festive Chiffon",
+      subtitle: "Elegance Redefined",
+      link: "/category/festive-chiffon",
+      imageUrl: "/images/three-piece/cat_festive_chiffon.png",
       layout: "small" as const,
     },
   ],
@@ -78,79 +85,16 @@ export function CategoryCollageSection({
 
   const isDynamic = typeof layoutVariant !== 'undefined'
 
-  useEffect(() => {
-    if (isDynamic) {
-      setLoading(false)
-      return
-    }
+  const cards = fallbackContent.cards
+  const isEnabled = true
 
-    const loadSettings = async () => {
-      try {
-        const data = await ecommerceApi.getHomePageSettings()
-        setSettings(data)
-      } catch {
-        setSettings({})
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadSettings()
-  }, [isDynamic])
-
-  // Process cards based on source
-  const cards = useMemo<CardConfig[]>(() => {
-    if (isDynamic && collageItems) {
-      return collageItems.map((item, idx) => ({
-        title: item.title_override || "Explore",
-        subtitle: "Shop now",
-        link: item.link_override || "/products",
-        imageUrl: item.image_url || "/placeholder.jpg"
-      }))
-    }
-
-    return [
-      {
-        title: settings.collage_card_1_title || fallbackContent.cards[0].title,
-        subtitle: settings.collage_card_1_subtitle || fallbackContent.cards[0].subtitle,
-        link: settings.collage_card_1_link || fallbackContent.cards[0].link,
-        imageUrl: settings.collage_card_1_image_url || fallbackContent.cards[0].imageUrl,
-        layout: "large",
-      },
-      {
-        title: settings.collage_card_2_title || fallbackContent.cards[1].title,
-        subtitle: settings.collage_card_2_subtitle || fallbackContent.cards[1].subtitle,
-        link: settings.collage_card_2_link || fallbackContent.cards[1].link,
-        imageUrl: settings.collage_card_2_image_url || fallbackContent.cards[1].imageUrl,
-        layout: "wide",
-      },
-      {
-        title: settings.collage_card_3_title || fallbackContent.cards[2].title,
-        subtitle: settings.collage_card_3_subtitle || fallbackContent.cards[2].subtitle,
-        link: settings.collage_card_3_link || fallbackContent.cards[2].link,
-        imageUrl: settings.collage_card_3_image_url || fallbackContent.cards[2].imageUrl,
-        layout: "small",
-      },
-      {
-        title: settings.collage_card_4_title || fallbackContent.cards[3].title,
-        subtitle: settings.collage_card_4_subtitle || fallbackContent.cards[3].subtitle,
-        link: settings.collage_card_4_link || fallbackContent.cards[3].link,
-        imageUrl: settings.collage_card_4_image_url || fallbackContent.cards[3].imageUrl,
-        layout: "small",
-      },
-    ]
-  }, [settings, isDynamic, collageItems])
-
-  const visibleCards = cards.filter((card) => card.title || card.imageUrl || card.link)
-  const isEnabled = isDynamic ? true : (settings.collage_enabled ?? true)
-
-  if ((!loading && !isEnabled) || visibleCards.length === 0) {
+  if (!isEnabled || cards.length === 0) {
     return null
   }
 
-  const badgeText = isDynamic ? (config.collage_badge_text || "Curated collections") : (settings.collage_badge_text || fallbackContent.badge)
-  const headingText = isDynamic ? (config.collage_heading || "") : (settings.collage_heading || fallbackContent.heading)
-  const descriptionText = isDynamic ? (config.collage_description || "") : (settings.collage_description || fallbackContent.description)
+  const badgeText = fallbackContent.badge
+  const headingText = fallbackContent.heading
+  const descriptionText = fallbackContent.description
 
   return (
     <section className="container px-4 py-12 md:py-16">
@@ -224,16 +168,19 @@ export function CategoryCollageSection({
           </div>
         )}
 
-        {/* 6. Default Four Card Grid (Legacy default & fallbacks) */}
+        {/* 6. Default Category Collage Grid */}
         {(!isDynamic || layoutVariant === "four-card-grid") && (
           <div className="grid gap-4 md:grid-cols-[1.05fr_.95fr]">
-            <CollageCard card={cards[0]} className="min-h-[320px] md:min-h-[620px]" />
+            <CollageCard card={cards[0]} className="min-h-[320px] md:min-h-[640px]" />
 
             <div className="grid gap-4">
-              <CollageCard card={cards[1]} className="min-h-[220px] md:min-h-[300px]" />
               <div className="grid gap-4 sm:grid-cols-2">
-                <CollageCard card={cards[2]} className="min-h-[200px] md:min-h-[300px]" />
-                <CollageCard card={cards[3]} className="min-h-[200px] md:min-h-[300px]" />
+                <CollageCard card={cards[1]} className="min-h-[220px] md:min-h-[310px]" />
+                <CollageCard card={cards[2]} className="min-h-[220px] md:min-h-[310px]" />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <CollageCard card={cards[3]} className="min-h-[200px] md:min-h-[310px]" />
+                {cards[4] && <CollageCard card={cards[4]} className="min-h-[200px] md:min-h-[310px]" />}
               </div>
             </div>
           </div>

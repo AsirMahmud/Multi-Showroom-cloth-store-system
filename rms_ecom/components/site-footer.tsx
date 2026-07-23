@@ -16,42 +16,35 @@ export function SiteFooter() {
   }, [])
 
   return (
-    <footer className="border-t border-border bg-white">
-      <div className="container py-16 md:py-24">
-        <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-[1.2fr_.8fr_.8fr_1fr]">
-          <div>
-            <Link href="/" className="inline-block">
+    <footer className="border-t border-border bg-white w-full overflow-hidden">
+      <div className="container py-12 md:py-24 max-w-full">
+        <div className="grid gap-8 sm:gap-12 grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.2fr_.8fr_.8fr_1fr] w-full min-w-0">
+          <div className="min-w-0">
+            <Link href="/" className="inline-block max-w-full">
               {settings.logo_image_url ? (
-                <span className="relative block h-10 w-36">
+                <span className="relative block h-10 w-36 max-w-full">
                   <Image src={settings.logo_image_url} alt={settings.logo_text || "Ferdous Textile"} fill className="object-contain object-left" />
                 </span>
               ) : (
-                <span className="font-serif text-2xl text-primary">{settings.logo_text || "FERDOUS TEXTILE"}</span>
+                <span className="font-serif text-2xl text-primary break-words">{settings.logo_text || "FERDOUS TEXTILE"}</span>
               )}
             </Link>
-            <p className="mt-5 max-w-xs text-sm leading-6 text-muted-foreground">
+            <p className="mt-5 max-w-xs text-sm leading-6 text-muted-foreground break-words">
               {settings.footer_tagline || "Considered clothing, responsibly made for everyday life."}
             </p>
-            <div className="mt-6 space-y-2 text-sm">
-              {settings.footer_address ? <p className="flex gap-2"><MapPin className="mt-0.5 size-4 shrink-0" />{settings.footer_address}</p> : null}
-              {settings.footer_phone ? <a className="flex gap-2" href={`tel:${settings.footer_phone}`}><Phone className="size-4" />{settings.footer_phone}</a> : null}
-              {settings.footer_email ? <a className="flex gap-2" href={`mailto:${settings.footer_email}`}><Mail className="size-4" />{settings.footer_email}</a> : null}
+            <div className="mt-6 space-y-2 text-sm max-w-full">
+              <p className="flex gap-2 min-w-0 break-words"><MapPin className="mt-0.5 size-4 shrink-0" /><span className="min-w-0 flex-1 break-words">{settings.footer_address || "সুরুজ মনোয়ারা শপিং কমপ্লেক্সের দোতালায়, বান্টি বাজার, আড়াইহাজার, নারায়ণগঞ্জ"}</span></p>
+              <a className="flex gap-2 min-w-0 break-all" href={`tel:${settings.footer_phone || "01896285447"}`}><Phone className="size-4 shrink-0 mt-0.5" /><span className="min-w-0 flex-1 break-all">{settings.footer_phone || "01896285447"}</span></a>
+              {settings.footer_email ? <a className="flex gap-2 min-w-0 break-all" href={`mailto:${settings.footer_email}`}><Mail className="size-4 shrink-0 mt-0.5" /><span className="min-w-0 flex-1 break-all">{settings.footer_email}</span></a> : null}
             </div>
           </div>
 
           <FooterColumn title="Discover" links={[["All Products", "/products"], ["Women", "/women"], ["Men", "/men"], ["Unisex", "/unisex"]]} />
           <FooterColumn title="Customer Care" links={[["Shopping Bag", "/cart"], ["Checkout", "/checkout"], ["Delivery Information", "/checkout"], ["Product Guide", "/products"]]} />
 
-          <div>
-            <p className="editorial-kicker text-foreground">Newsletter</p>
-            <p className="mt-4 text-sm leading-6 text-muted-foreground">Join our journey of thoughtful design and new collections.</p>
-            <div className="mt-7 flex border-b border-border pb-2">
-              <input type="email" aria-label="Email address" placeholder="Email address" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
-              <button type="button" aria-label="Newsletter signup is coming soon" title="Newsletter signup is coming soon">
-                <ArrowRight className="size-5 text-primary" />
-              </button>
-            </div>
-            <div className="mt-8 flex gap-4">
+          <div className="min-w-0">
+            <p className="editorial-kicker text-foreground">Connect with us</p>
+            <div className="mt-5 flex flex-wrap gap-4">
               {settings.footer_facebook_url ? <Social href={settings.footer_facebook_url} label="Facebook"><Facebook /></Social> : null}
               {settings.footer_instagram_url ? <Social href={settings.footer_instagram_url} label="Instagram"><Instagram /></Social> : null}
               {settings.footer_twitter_url ? <Social href={settings.footer_twitter_url} label="Twitter"><Twitter /></Social> : null}

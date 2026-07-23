@@ -7,7 +7,6 @@ import { SiteFooter } from "@/components/site-footer"
 import { Breadcrumb } from "@/components/breadcrumb"
 import { ProductGrid } from "@/components/product-grid"
 import { CategoryFilters } from "@/components/category-filters"
-import { NewsletterSection } from "@/components/newsletter-section"
 import { ecommerceApi, ProductByColorEntry } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -253,7 +252,6 @@ function AllProductsContent() {
             </div>
           </div>
         </div>
-        <NewsletterSection />
       </main>
       <SiteFooter />
     </div>

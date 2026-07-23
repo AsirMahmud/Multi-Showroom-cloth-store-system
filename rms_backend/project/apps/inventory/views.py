@@ -897,82 +897,44 @@ class ProductViewSet(viewsets.ModelViewSet):
             }
             processed_slugs.append(status.slug)
 
-        # Maintain backward compatibility for hardcoded frontend keys if they don't exist in dynamic sections
-        # But try to encourage dynamic use. 
-        # For now, we return EVERYTHING in a flat structure as before, but dynamically populated.
+        # Only include legacy fallbacks if explicitly requested via query parameter ?include_legacy=true
+        include_legacy = request.query_params.get('include_legacy', 'false').lower() == 'true'
         
-        # New Arrivals (legacy support if needed)
-        if 'new-arrivals' not in sections_data:
-            new_arrivals = Product.objects.filter(
-                is_active=True,
-                assign_to_online=True,
-                is_new_arrival=True,
-            )
-            if online_category:
-                new_arrivals = new_arrivals.filter(online_categories__id=online_category)
-            new_arrivals = new_arrivals.order_by('-updated_at', '-created_at')[:int(request.query_params.get('new_arrivals_limit', 4))]
-            new_arrivals_data = EcommerceProductSerializer(new_arrivals, many=True, context={'request': request}).data
-            sections_data['new_arrivals'] = {
-                'products': new_arrivals_data,
-                'count': len(new_arrivals_data)
-            }
+        if include_legacy:
+            if 'new-arrivals' not in sections_data and 'new_arrivals' not in sections_data:
+                new_arrivals = Product.objects.filter(
+                    is_active=True,
+                    assign_to_online=True,
+                    is_new_arrival=True,
+                )
+                if online_category:
+                    new_arrivals = new_arrivals.filter(online_categories__id=online_category)
+                new_arrivals = new_arrivals.order_by('-updated_at', '-created_at')[:int(request.query_params.get('new_arrivals_limit', 4))]
+                new_arrivals_data = EcommerceProductSerializer(new_arrivals, many=True, context={'request': request}).data
+                if len(new_arrivals_data) > 0:
+                    sections_data['new_arrivals'] = {
+                        'name': 'New Arrivals',
+                        'products': new_arrivals_data,
+                        'count': len(new_arrivals_data)
+                    }
 
-        # Top Selling (special logic, usually not a status)
-        if 'top-selling' not in sections_data:
-            end_date = timezone.now()
-            start_date = end_date - timedelta(days=30)
-            top_selling = Product.objects.filter(
-                is_active=True,
-                assign_to_online=True,
-                saleitem__sale__date__range=[start_date, end_date]
-            ).annotate(
-                total_sold=Sum('saleitem__quantity')
-            ).filter(
-                total_sold__gt=0
-            ).order_by('-total_sold')
-            
-            if online_category:
-                top_selling = top_selling.filter(online_categories__id=online_category)
-            top_selling = top_selling[:int(request.query_params.get('top_selling_limit', 4))]
-            top_selling_data = EcommerceProductSerializer(top_selling, many=True, context={'request': request}).data
-            sections_data['top_selling'] = {
-                'products': top_selling_data,
-                'count': len(top_selling_data)
-            }
-
-        # Featured (legacy support)
-        if 'featured' not in sections_data:
-            featured = Product.objects.filter(
-                is_active=True,
-                assign_to_online=True,
-                is_featured=True,
-                stock_quantity__gt=0,
-            ).order_by('-updated_at')
-            if online_category:
-                featured = featured.filter(online_categories__id=online_category)
-            featured = featured[:int(request.query_params.get('featured_limit', 4))]
-            featured_data = EcommerceProductSerializer(featured, many=True, context={'request': request}).data
-            sections_data['featured'] = {
-                'products': featured_data,
-                'count': len(featured_data)
-            }
-
-        # Trending (legacy support)
-        if 'trending' not in sections_data:
-            trending = Product.objects.filter(
-                is_active=True,
-                assign_to_online=True,
-                is_trending=True,
-                stock_quantity__gt=0,
-            )
-            if online_category:
-                trending = trending.filter(online_categories__id=online_category)
-            trending = trending.order_by('-updated_at')[:int(request.query_params.get('trending_limit', 4))]
-            trending_data = EcommerceProductSerializer(trending, many=True, context={'request': request}).data
-            sections_data['trending'] = {
-                'products': trending_data,
-                'count': len(trending_data)
-            }
+            if 'featured' not in sections_data:
+                featured = Product.objects.filter(
+                    is_active=True,
+                    assign_to_online=True,
+                    is_featured=True,
+                    stock_quantity__gt=0,
+                ).order_by('-updated_at')
+                if online_category:
+                    featured = featured.filter(online_categories__id=online_category)
+                featured = featured[:int(request.query_params.get('featured_limit', 4))]
+                featured_data = EcommerceProductSerializer(featured, many=True, context={'request': request}).data
+                if len(featured_data) > 0:
+                    sections_data['featured'] = {
+                        'name': 'Featured Products',
+                        'products': featured_data,
+                        'count': len(featured_data)
+                    }
 
         response_data = {
             **sections_data,

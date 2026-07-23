@@ -14,6 +14,8 @@ export function getMediaUrl(
 ): string {
   if (!value) return fallback
   if (/^https?:\/\//i.test(value)) return value
+  // If the path is a nextjs public image, serve directly
+  if (value.startsWith("/images/") || value.startsWith("/noise")) return value
   if (value.startsWith("/")) return `${API_ORIGIN}${value}`
   return `${API_ORIGIN}/media/${value}`
 }

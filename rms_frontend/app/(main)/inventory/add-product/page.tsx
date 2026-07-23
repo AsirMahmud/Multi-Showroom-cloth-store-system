@@ -45,25 +45,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 import { HierarchicalCategorySelect } from "@/components/inventory/hierarchical-category-select";
 import { MultiOnlineCategorySelect } from "@/components/inventory/multi-online-category-select";
+import { ColorSelect } from "@/components/inventory/color-select";
 import { Badge } from "@/components/ui/badge";
 import { getApiErrorMessage, getFirstFormError } from "@/utils/form-error";
-
-const COLORS = {
-  "Black": "#000000",
-  "White": "#FFFFFF",
-  "Red": "#FF0000",
-  "Blue": "#0000FF",
-  "Green": "#00FF00",
-  "Yellow": "#FFFF00",
-  "Pink": "#FFC0CB",
-  "Purple": "#800080",
-  "Orange": "#FFA500",
-  "Grey": "#808080",
-  "Navy": "#000080",
-  "Maroon": "#800000",
-  "Gold": "#FFD700",
-  "Silver": "#C0C0C0",
-};
+import { COLORS } from "./constants";
 
 // Define the form schema using Zod
 const productFormSchema = z.object({
@@ -633,47 +618,74 @@ const onInvalid = (errors: unknown) => {
               </DataPanel>
 
               {/* Pricing Information */}
-              <DataPanel title="Pricing" description="Configure the 3-tier pricing model.">
+              <DataPanel title="Pricing & Profit Margins" description="Configure cost, wholesale, and retail pricing model.">
                 <div className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="cost_price"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Cost Price</FormLabel>
-                        <FormControl>
-                          <Input type="number" step="0.01" placeholder="0.00" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="wholesale_price"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Wholesale Price</FormLabel>
-                        <FormControl>
-                          <Input type="number" step="0.01" placeholder="0.00" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="retail_price"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Retail Price</FormLabel>
-                        <FormControl>
-                          <Input type="number" step="0.01" placeholder="0.00" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="cost_price"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Cost Price (৳)</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="wholesale_price"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Wholesale Price (৳)</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="retail_price"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Retail Price (৳)</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Real-time Profit Margin Indicator */}
+                  {(() => {
+                    const cost = parseFloat(form.watch("cost_price") || "0");
+                    const retail = parseFloat(form.watch("retail_price") || "0");
+                    if (cost > 0 && retail > cost) {
+                      const profit = retail - cost;
+                      const marginPct = ((profit / retail) * 100).toFixed(1);
+                      const markupPct = ((profit / cost) * 100).toFixed(1);
+                      return (
+                        <div className="p-3 rounded-xl bg-emerald-50/80 border border-emerald-200/60 flex items-center justify-between text-xs text-emerald-900">
+                          <div>
+                            <span className="font-bold">Estimated Profit per item: </span>
+                            <span className="font-mono font-bold text-emerald-700">৳ {profit.toFixed(2)}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <Badge className="bg-emerald-600 text-white font-bold">Margin: {marginPct}%</Badge>
+                            <Badge variant="outline" className="border-emerald-600 text-emerald-700 font-bold">Markup: {markupPct}%</Badge>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
                   <FormField
                     control={form.control}
                     name="wholesale_cutoff"
@@ -699,8 +711,8 @@ const onInvalid = (errors: unknown) => {
 
             {/* Designs & Variations Section */}
             <DataPanel
-              title="Designs & Variations"
-              description="Manage designs and their respective color variations."
+              title="Designs & Color Variations"
+              description="Manage designs and their respective color variations with 100+ standard and custom colors."
               actions={
                 <Button data-testid="add-design" type="button" variant="outline" size="sm" onClick={addDesign} className="border-brand-primary/10 hover:bg-brand-primary/5 text-brand-primary">
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Design
@@ -708,99 +720,79 @@ const onInvalid = (errors: unknown) => {
               }
             >
               <div className="space-y-6">
-                {designs.map((design) => (
-                  <div key={design.id} className="p-4 rounded-lg bg-slate-50 border border-brand-primary/5 space-y-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <FormItem className="flex-1">
-                        <FormLabel>Design Name</FormLabel>
-                        <FormControl>
-                          <Input
-                            data-testid="design-name"
-                            placeholder="Design Name (e.g. Floral Embroidery)"
-                            value={design.name}
-                            onChange={(e) => updateDesignName(design.id, e.target.value)}
-                          />
-                        </FormControl>
-                      </FormItem>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => removeDesign(design.id)} className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 mt-8">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-
-                    <div className="space-y-4 pl-4 border-l-2 border-brand-primary/10">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-semibold text-sm">Colors & Stock</h4>
-                        <Button data-testid="add-color" type="button" variant="ghost" size="sm" onClick={() => addColorVariant(design.id)} className="hover:bg-brand-primary/5 text-brand-primary">
-                          <PlusCircle className="mr-2 h-4 w-4" /> Add Color
+                {designs.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-slate-400 border-2 border-dashed border-slate-200/80 rounded-xl bg-slate-50/50">
+                    <p className="text-sm mb-3">No designs added yet. Click below to create your first design and color variations.</p>
+                    <Button type="button" size="sm" onClick={addDesign} className="bg-brand-primary text-white">
+                      <PlusCircle className="mr-2 h-4 w-4" /> Create First Design
+                    </Button>
+                  </div>
+                ) : (
+                  designs.map((design) => (
+                    <div key={design.id} className="p-4 rounded-xl bg-slate-50 border border-brand-primary/10 space-y-4 shadow-xs">
+                      <div className="flex items-start justify-between gap-4">
+                        <FormItem className="flex-1">
+                          <FormLabel className="font-semibold text-slate-700">Design Name</FormLabel>
+                          <FormControl>
+                            <Input
+                              data-testid="design-name"
+                              placeholder="Design Name (e.g. Floral Embroidery, Solid Standard)"
+                              value={design.name}
+                              onChange={(e) => updateDesignName(design.id, e.target.value)}
+                              className="bg-white"
+                            />
+                          </FormControl>
+                        </FormItem>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => removeDesign(design.id)} className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 mt-7">
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
 
-                      {design.colors.map((color) => (
-                        <div key={color.id} className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
-                          <FormItem>
-                            <FormLabel className="text-xs text-slate-500">Color</FormLabel>
-                            <Select
-                              value={color.color}
-                              onValueChange={(val) => updateColorVariant(design.id, color.id, "color", val)}
-                            >
-                              <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Select color">
-                                  <span className="flex items-center gap-2">
-                                    <span
-                                      className="inline-block h-3 w-3 rounded-full border border-slate-300 flex-shrink-0"
-                                      style={{ backgroundColor: color.colorHex || '#000' }}
-                                    />
-                                    {color.color || 'Select color'}
-                                  </span>
-                                </SelectValue>
-                              </SelectTrigger>
-                              <SelectContent>
-                                {getAvailableColorsForVariant(design.id).map((colorName) => (
-                                  <SelectItem key={colorName} value={colorName}>
-                                    <span className="flex items-center gap-2">
-                                      <span
-                                        className="inline-block h-3 w-3 rounded-full border border-slate-300 flex-shrink-0"
-                                        style={{ backgroundColor: COLORS[colorName as keyof typeof COLORS] || '#000' }}
-                                      />
-                                      {colorName}
-                                    </span>
-                                  </SelectItem>
-                                ))}
-                                {/* Include current color in options even if it's "used" */}
-                                {color.color && !getAvailableColorsForVariant(design.id).includes(color.color) && (
-                                  <SelectItem key={color.color} value={color.color}>
-                                    <span className="flex items-center gap-2">
-                                      <span
-                                        className="inline-block h-3 w-3 rounded-full border border-slate-300 flex-shrink-0"
-                                        style={{ backgroundColor: color.colorHex || '#000' }}
-                                      />
-                                      {color.color}
-                                    </span>
-                                  </SelectItem>
-                                )}
-                              </SelectContent>
-                            </Select>
-                          </FormItem>
-                          <FormItem>
-                            <FormLabel className="text-xs text-slate-500">Stock</FormLabel>
-                            <Input
-                              data-testid="color-stock"
-                              type="number"
-                              placeholder="0"
-                              value={color.stock}
-                              onChange={(e) => updateColorVariant(design.id, color.id, "stock", parseInt(e.target.value))}
-                            />
-                          </FormItem>
-                          <Button type="button" variant="ghost" size="sm" onClick={() => removeColorVariant(design.id, color.id)} className="text-rose-500 hover:text-rose-600 hover:bg-rose-50">
-                            <Trash2 className="h-4 w-4" />
+                      <div className="space-y-4 pl-4 border-l-2 border-brand-primary/20">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-bold text-xs uppercase tracking-wider text-slate-600">Colors & Stock Inventory</h4>
+                          <Button data-testid="add-color" type="button" variant="outline" size="sm" onClick={() => addColorVariant(design.id)} className="border-brand-primary/20 hover:bg-brand-primary/10 text-brand-primary h-7 text-xs">
+                            <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> Add Color
                           </Button>
                         </div>
-                      ))}
+
+                        {design.colors.map((color) => (
+                          <div key={color.id} className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end bg-white p-3 rounded-xl border border-slate-200/80 shadow-xs">
+                            <FormItem className="sm:col-span-2">
+                              <FormLabel className="text-xs text-slate-500 font-semibold">Select Color (100+ Available)</FormLabel>
+                              <ColorSelect
+                                value={color.color}
+                                valueHex={color.colorHex}
+                                availableColors={getAvailableColorsForVariant(design.id)}
+                                onSelect={(name, hex) => {
+                                  updateColorVariant(design.id, color.id, "color", name);
+                                }}
+                              />
+                            </FormItem>
+                            <div className="flex items-end gap-2">
+                              <FormItem className="flex-1">
+                                <FormLabel className="text-xs text-slate-500 font-semibold">Initial Stock</FormLabel>
+                                <Input
+                                  data-testid="color-stock"
+                                  type="number"
+                                  min="0"
+                                  placeholder="0"
+                                  value={color.stock}
+                                  onChange={(e) => updateColorVariant(design.id, color.id, "stock", parseInt(e.target.value || "0", 10))}
+                                />
+                              </FormItem>
+                              <Button type="button" variant="ghost" size="sm" onClick={() => removeColorVariant(design.id, color.id)} className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 shrink-0 h-10 w-10 p-0">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
-                </div>
-              </DataPanel>
+                  ))
+                )}
+              </div>
+            </DataPanel>
 
             {/* Gallery Section - Moved here for better flow */}
             <DataPanel title="Design & Color Media" description="Upload a separate image gallery for every design and color combination.">

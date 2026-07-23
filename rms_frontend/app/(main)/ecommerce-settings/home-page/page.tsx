@@ -24,7 +24,8 @@ import {
   Loader2,
   CheckCircle2,
   Package,
-  Grid2x2
+  Grid2x2,
+  ShoppingBag
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useHomePageSettings, useUpdateHomePageSettings } from "@/hooks/queries/useEcommerce";
@@ -32,6 +33,8 @@ import { cn } from "@/lib/utils";
 
 interface HomePageSettings {
   id?: number;
+  min_product_buying_count?: number;
+  min_order_amount?: number;
   logo_image?: string;
   logo_image_url?: string;
   logo_text?: string;
@@ -262,8 +265,57 @@ export default function HomePageSettingsPage() {
               <TabsTrigger value="hero" className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-md font-black text-[10px] uppercase tracking-widest py-3 transition-all"><Layout className="h-3 w-3 mr-2" /> Hero Matrix</TabsTrigger>
               <TabsTrigger value="collage" className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-md font-black text-[10px] uppercase tracking-widest py-3 transition-all"><Grid2x2 className="h-3 w-3 mr-2" /> Category Collage</TabsTrigger>
               <TabsTrigger value="stats" className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-md font-black text-[10px] uppercase tracking-widest py-3 transition-all"><BarChart3 className="h-3 w-3 mr-2" /> Metrics</TabsTrigger>
+              <TabsTrigger value="ordering" className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-md font-black text-[10px] uppercase tracking-widest py-3 transition-all"><ShoppingBag className="h-3 w-3 mr-2" /> Ordering Rules</TabsTrigger>
               <TabsTrigger value="footer" className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-md font-black text-[10px] uppercase tracking-widest py-3 transition-all"><Globe className="h-3 w-3 mr-2" /> Footer</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="ordering" className="space-y-8 focus-visible:outline-none">
+              <div className="bg-slate-50/70 border border-slate-100 rounded-3xl p-6 sm:p-8 space-y-6">
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 tracking-tight">Product Purchase Limits & Ordering Rules</h3>
+                  <p className="text-xs font-semibold text-slate-500 mt-1">
+                    Control minimum buying count and total order thresholds for customers purchasing from the online store.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-200/60">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">
+                      Minimum Product Buying Count (Quantity)
+                    </Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={settings.min_product_buying_count ?? 1}
+                      onChange={(e) => handleChange('min_product_buying_count', Math.max(1, parseInt(e.target.value) || 1))}
+                      placeholder="1"
+                      className="h-12 rounded-xl bg-white border border-slate-200 font-bold"
+                    />
+                    <p className="text-[11px] font-medium text-slate-400 ml-1">
+                      Customers will not be allowed to place an order with fewer than this total number of items.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">
+                      Minimum Order Total Amount (৳ BDT)
+                    </Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={settings.min_order_amount ?? 0}
+                      onChange={(e) => handleChange('min_order_amount', Math.max(0, parseFloat(e.target.value) || 0))}
+                      placeholder="0.00"
+                      className="h-12 rounded-xl bg-white border border-slate-200 font-bold"
+                    />
+                    <p className="text-[11px] font-medium text-slate-400 ml-1">
+                      Customers must meet or exceed this order subtotal (in BDT) to checkout. Set 0 for no minimum amount limit.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
 
             <TabsContent value="logo" className="space-y-8 focus-visible:outline-none">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

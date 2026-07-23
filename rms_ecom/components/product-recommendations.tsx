@@ -17,6 +17,10 @@ interface ProductRecommendationsProps {
 }
 
 export function ProductRecommendations({ products, isLoading = false }: ProductRecommendationsProps) {
+  if (!isLoading && (!products || products.length === 0)) {
+    return null;
+  }
+
   return (
     <section className="container py-10 lg:py-20">
       <p className="editorial-kicker">Curated for you</p>

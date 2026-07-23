@@ -137,6 +137,29 @@ export function CheckoutForm() {
         throw new Error("Please enter a valid 11-digit Bangladeshi mobile number (e.g., 01712345678).")
       }
 
+      // Check minimum buying count and minimum order total from homepage settings
+      try {
+        const homeSettings = await ecommerceApi.getHomePageSettings()
+        const minCount = homeSettings.min_product_buying_count ?? 1
+        const minAmount = Number(homeSettings.min_order_amount ?? 0)
+
+        const checkoutItems = getCheckoutItems()
+        const totalQty = checkoutItems.reduce((acc: number, item: any) => acc + (Number(item.quantity) || 0), 0)
+
+        if (minCount > 1 && totalQty < minCount) {
+          throw new Error(`Minimum product buying count requirement is ${minCount} item(s). Your selection has ${totalQty} item(s). Please add more items to proceed.`)
+        }
+
+        const subtotal = checkoutItems.reduce((acc: number, item: any) => acc + ((Number(item.unit_price) || 0) * (Number(item.quantity) || 0)), 0)
+        if (minAmount > 0 && subtotal < minAmount) {
+          throw new Error(`Minimum order total requirement is ৳${minAmount.toFixed(2)}. Your selection subtotal is ৳${subtotal.toFixed(2)}.`)
+        }
+      } catch (err: any) {
+        if (err.message && err.message.startsWith("Minimum")) {
+          throw err
+        }
+      }
+
       // Build shipping address based on delivery method
       let shipping_address: any = {}
 

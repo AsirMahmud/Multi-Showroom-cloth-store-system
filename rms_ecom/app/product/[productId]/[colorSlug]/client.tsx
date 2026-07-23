@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
-import { NewsletterSection } from "@/components/newsletter-section"
 import { ProductGallery } from "@/components/product-gallery"
 import { ProductInfo } from "@/components/product-info"
 import { Breadcrumb } from "@/components/breadcrumb"
@@ -54,16 +53,22 @@ export default function ProductByColorPage() {
                     combinationId,
                 )
                 setData(response)
-                const categorySlug = response.product.online_categories?.[0]?.slug
-                const [showcase, paginatedResponse] = await Promise.all([
+                let categorySlug = response.product.online_categories?.[0]?.slug
+                if (categorySlug === "undefined" || !categorySlug) {
+                    categorySlug = undefined
+                }
+
+                // 1. First priority: Try fetching products under the same category
+                const [showcase, categoryResponse] = await Promise.all([
                     ecommerceApi.getProductDetail(productId),
                     ecommerceApi.getProductsByColorPaginated({
                         only_in_stock: true,
-                        page_size: 8,
+                        page_size: 20,
                         page: 1,
-                        online_category: categorySlug,
-                    }),
+                        ...(categorySlug ? { online_category: categorySlug } : {}),
+                    }).catch(() => ({ results: [] })),
                 ])
+
                 setProductDescription(showcase.product.description || "")
                 setDetailExtras({
                     material_composition: showcase.product.material_composition,
@@ -71,14 +76,42 @@ export default function ProductByColorPage() {
                     features: showcase.product.features,
                 })
 
-                // Fetch products from the same category for "YOU MIGHT ALSO LIKE" section
-                // Try to find a primary category slug from the product details
-                // Filter out the current product
-                const filteredProducts = paginatedResponse.results.filter(
+                // Filter out current product from category results
+                let related = (categoryResponse.results || []).filter(
                     entry => entry.product_id !== productId
                 )
 
-                setSuggested(filteredProducts.slice(0, 8))
+                // 2. If no products (or fewer than 8) under category, fetch random fallback products from general store catalog
+                if (related.length < 8) {
+                    try {
+                        const fallbackResponse = await ecommerceApi.getProductsByColorPaginated({
+                            only_in_stock: true,
+                            page_size: 30,
+                            page: 1,
+                        })
+
+                        let randomCatalog = (fallbackResponse.results || []).filter(
+                            entry => entry.product_id !== productId
+                        )
+
+                        // Shuffle catalog items randomly
+                        randomCatalog = randomCatalog.sort(() => 0.5 - Math.random())
+
+                        const existingKeys = new Set(related.map(r => r.combination_id || `${r.product_id}-${r.color_slug}`))
+                        for (const item of randomCatalog) {
+                            if (related.length >= 8) break
+                            const key = item.combination_id || `${item.product_id}-${item.color_slug}`
+                            if (!existingKeys.has(key)) {
+                                related.push(item)
+                                existingKeys.add(key)
+                            }
+                        }
+                    } catch (err) {
+                        console.error("Failed to fetch random fallback related products:", err)
+                    }
+                }
+
+                setSuggested(related.slice(0, 8))
             } catch (e) {
                 console.error(e)
                 // Redirect to Not Available page if the color/product is not found
@@ -266,7 +299,6 @@ export default function ProductByColorPage() {
                     </div>
                 )}
 
-                <NewsletterSection />
             </main>
             <SiteFooter />
         </div>

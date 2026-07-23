@@ -50,6 +50,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { HydrationWrapper } from "@/components/hydration-wrapper";
 import { HierarchicalCategorySelect } from "@/components/inventory/hierarchical-category-select";
 import { MultiOnlineCategorySelect } from "@/components/inventory/multi-online-category-select";
+import { ColorSelect } from "@/components/inventory/color-select";
 import { COLORS, globalSizes } from "../../add-product/constants";
 import { getImageUrl } from "@/lib/utils";
 import { getApiErrorMessage, getFirstFormError } from "@/utils/form-error";
@@ -1297,29 +1298,14 @@ export default function EditProductPage() {
                           >
                             <FormItem className="flex-1">
                               <FormLabel className="text-xs">Color</FormLabel>
-                              <Select
+                              <ColorSelect
                                 value={color.color}
-                                onValueChange={(value) =>
-                                  updateColorVariant(design.id, color.id, "color", value)
+                                valueHex={color.colorHex}
+                                availableColors={getAvailableColorsForVariant(design.id)}
+                                onSelect={(name) =>
+                                  updateColorVariant(design.id, color.id, "color", name)
                                 }
-                              >
-                                <SelectTrigger className="h-9">
-                                  <SelectValue placeholder="Select color" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {Object.keys(COLORS).map((colorName) => (
-                                    <SelectItem key={colorName} value={colorName}>
-                                      <div className="flex items-center gap-2">
-                                        <div
-                                          className="w-4 h-4 rounded-full border"
-                                          style={{ backgroundColor: COLORS[colorName as keyof typeof COLORS] }}
-                                        />
-                                        {colorName}
-                                      </div>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              />
                             </FormItem>
 
                             <FormItem className="w-32">

@@ -22,6 +22,10 @@ interface ProductSectionProps {
 }
 
 export function ProductSection({ title, products, viewAllHref = "/products", isLoading = false }: ProductSectionProps) {
+  if (!isLoading && (!products || products.length === 0)) {
+    return null;
+  }
+
   return (
     <section className="w-full py-16 md:py-24">
       <div className="container">

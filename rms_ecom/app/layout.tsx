@@ -1,9 +1,7 @@
-
 import type React from "react"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Hanken_Grotesk, Playfair_Display } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
-import Script from "next/script"
 import "./globals.css"
 import { Suspense } from "react"
 import { DiscountInitializer } from "@/components/discount-initializer"
@@ -23,6 +21,13 @@ const playfair = Playfair_Display({
   variable: "--font-playfair",
   display: "swap",
 })
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+}
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://example.com'),
@@ -91,8 +96,11 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${hanken.variable} ${playfair.variable} antialiased`} suppressHydrationWarning>
-      <body className="bg-background font-sans text-foreground">
+    <html lang="en" className={`${hanken.variable} ${playfair.variable} antialiased max-w-full overflow-x-hidden`} suppressHydrationWarning>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+      </head>
+      <body className="bg-background font-sans text-foreground max-w-full overflow-x-hidden relative">
         <LoadingProvider>
           <Toaster
             position="top-center"

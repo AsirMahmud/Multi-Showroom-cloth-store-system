@@ -26,6 +26,31 @@ class PublicCreateOnlinePreorderView(APIView):
 
     def post(self, request):
         payload = request.data.copy()
+
+        # Enforce minimum buying quantity and minimum order amount from HomePageSettings
+        try:
+            from apps.ecommerce.models import HomePageSettings
+            home_settings = HomePageSettings.load()
+            min_count = getattr(home_settings, 'min_product_buying_count', 1) or 1
+            min_amount = float(getattr(home_settings, 'min_order_amount', 0) or 0)
+
+            items = payload.get('items', [])
+            total_qty = sum(int(item.get('quantity', 0)) for item in items if isinstance(item, dict))
+            if min_count > 1 and total_qty < min_count:
+                return Response(
+                    {'error': f'Minimum product buying count requirement is {min_count} item(s). You currently have {total_qty}.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            total_amount = float(payload.get('total_amount', 0) or 0)
+            if min_amount > 0 and total_amount < min_amount:
+                return Response(
+                    {'error': f'Minimum order total requirement is ৳{min_amount:.2f}. Your current order total is ৳{total_amount:.2f}.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except Exception:
+            pass
+
         # Serializer enforces ONLINE/COD/online
         serializer = OnlinePreorderCreateSerializer(data=payload)
         if not serializer.is_valid():
@@ -50,6 +75,12 @@ class OnlinePreorderViewSet(
     """Admin/staff management of online preorders. Public order creation goes through PublicCreateOnlinePreorderView."""
     queryset = OnlinePreorder.objects.all().order_by('-created_at')
     permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        """Allow public access for retrieving order completion details by order ID."""
+        if self.action == 'retrieve':
+            return [AllowAny()]
+        return [permission() for permission in self.permission_classes]
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:

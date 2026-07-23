@@ -5,11 +5,8 @@ import { SiteHeader } from "@/components/site-header"
 import { PromoBanner } from "@/components/promo-banner"
 import { HeroSection } from "@/components/hero-section"
 import { CategoryCollageSection } from "@/components/category-collage-section"
-import { BrandShowcase } from "@/components/brand-showcase"
 import { ProductSection } from "@/components/product-section"
-import { AdvertisementSection } from "@/components/advertisement-section"
 import { FeaturesSection } from "@/components/features-section"
-import { NewsletterSection } from "@/components/newsletter-section"
 import { SiteFooter } from "@/components/site-footer"
 import { ecommerceApi, EcommerceProduct, ProductByColorEntry, ShowcaseResponse, ShowcaseSection } from "@/lib/api"
 import { StructuredData } from "@/components/structured-data"
@@ -27,38 +24,30 @@ export default function HomePageClient() {
       try {
         startLoading();
 
-        // 1. Fetch dynamic landing page sections
-        let sectionsTree: any[] = [];
-        try {
-          sectionsTree = await ecommerceApi.getLandingPageTree();
-        } catch (err) {
-          console.error("Failed to load landing page tree, falling back to showcase:", err);
+        // 1. Fetch both showcase data (dynamic product status sections) and landing page tree
+        const [showcaseResult, treeResult] = await Promise.allSettled([
+          ecommerceApi.getShowcase({ limit: 12 }),
+          ecommerceApi.getLandingPageTree(),
+        ]);
+
+        if (showcaseResult.status === "fulfilled") {
+          setShowcaseData(showcaseResult.value);
         }
 
-        if (sectionsTree && sectionsTree.length > 0) {
-          setCustomSections(sectionsTree);
-          return;
+        if (treeResult.status === "fulfilled" && treeResult.value && treeResult.value.length > 0) {
+          setCustomSections(treeResult.value);
         } else {
           setCustomSections([]);
         }
 
-        // 2. Legacy fallback
-        let data: ShowcaseResponse = {};
-        try {
-          data = await ecommerceApi.getShowcase({ limit: 50 });
-        } catch (error) {
-          console.error("Failed to fetch showcase data:", error);
-        }
-
-        setShowcaseData(data);
-
+        const data = showcaseResult.status === "fulfilled" ? showcaseResult.value : {};
         const hasShowcaseProducts = Object.values(data).some((section) => (
           section &&
           typeof section === "object" &&
           "products" in section &&
           Array.isArray(section.products) &&
           section.products.length > 0
-        ))
+        ));
 
         if (!hasShowcaseProducts) {
           try {
@@ -66,14 +55,14 @@ export default function HomePageClient() {
               page: 1,
               page_size: 8,
               only_in_stock: true,
-            })
-            setCatalogFallback(catalog.results)
+            });
+            setCatalogFallback(catalog.results || []);
           } catch (error) {
             console.error("Failed to fetch catalog fallback:", error);
-            setCatalogFallback([])
+            setCatalogFallback([]);
           }
         } else {
-          setCatalogFallback([])
+          setCatalogFallback([]);
         }
       } finally {
         stopLoading();
@@ -85,17 +74,53 @@ export default function HomePageClient() {
 
   // Transform API data to match component interface
   const toCard = (entry: any) => ({
-    id: entry.product_url ? entry.product_url.replace(/^\/product\//, "") : String(entry.product_id),
-    name: entry.display_name || entry.product_name,
-    price: Number(entry.product_price),
+    id: entry.product_url ? entry.product_url.replace(/^\/product\//, "") : String(entry.product_id || entry.id),
+    name: entry.display_name || entry.product_name || entry.name,
+    price: Number(entry.product_price || entry.selling_price || 0),
+    originalPrice: entry.discount_info?.original_price || (entry.original_price ? Number(entry.original_price) : undefined),
     rating: 4.5,
-    image: entry.cover_image_url || "/placeholder.jpg",
+    image: entry.cover_image_url || entry.image_url || entry.primary_image || entry.image || "/placeholder.jpg",
     discountInfo: entry.discount_info,
-  })
+  });
 
   // Get sections as an array, respecting the order from the API
   const getSortedSections = (data: ShowcaseResponse): Array<{ key: string; section: ShowcaseSection }> => {
     return Object.entries(data).map(([key, section]) => ({ key, section }));
+  };
+
+  const renderShowcaseSections = () => {
+    if (!showcaseData) return null;
+    const sections = getSortedSections(showcaseData);
+    const activeSections = sections.filter(
+      ({ key, section }) =>
+        key !== "dynamic_section_slugs" &&
+        key !== "online_category" &&
+        section?.products &&
+        Array.isArray(section.products) &&
+        section.products.length > 0
+    );
+
+    if (activeSections.length === 0 && catalogFallback.length > 0) {
+      return (
+        <ProductSection
+          title="SHOP THE COLLECTION"
+          products={catalogFallback.map(toCard)}
+          viewAllHref="/products"
+        />
+      );
+    }
+
+    return activeSections.map(({ key, section }, index) => (
+      <div key={key}>
+        {index > 0 && <div className="container px-4"><hr className="border-border" /></div>}
+        <ColorSection
+          title={section.name.toUpperCase()}
+          baseProducts={section.products}
+          toCard={toCard}
+          statusSlug={key}
+        />
+      </div>
+    ));
   };
 
   return (
@@ -105,92 +130,10 @@ export default function HomePageClient() {
       <PromoBanner />
       <SiteHeader />
       <main className="flex-1">
-        {customSections && customSections.length > 0 ? (
-          /* Render dynamic layout builder sections registry */
-          customSections.map((sec) => {
-            switch (sec.section_type) {
-              case "HERO":
-                return (
-                  <HeroSection
-                    key={sec.id}
-                    layoutVariant={sec.layout_variant}
-                    config={sec.config}
-                    imageUrl={sec.image_url}
-                    mobileImageUrl={sec.mobile_image_url}
-                  />
-                )
-              case "CATEGORY_COLLAGE":
-                return (
-                  <CategoryCollageSection
-                    key={sec.id}
-                    layoutVariant={sec.layout_variant}
-                    config={sec.config}
-                    collageItems={sec.collage_items}
-                  />
-                )
-              case "AD_BANNER":
-                return (
-                  <AdvertisementSection
-                    key={sec.id}
-                    layoutVariant={sec.layout_variant}
-                    imageUrl={sec.image_url}
-                    mobileImageUrl={sec.mobile_image_url}
-                    config={sec.config}
-                  />
-                )
-              case "PRODUCT_SECTION":
-                return (
-                  <ProductSection
-                    key={sec.id}
-                    title={sec.config?.title?.toUpperCase() || "FEATURED PRODUCTS"}
-                    products={(sec.products || []).map(toCard)}
-                    viewAllHref={sec.config?.view_all_link || "/products"}
-                  />
-                )
-              default:
-                return null
-            }
-          })
-        ) : (
-          /* Fallback: render legacy static storefront layout */
-          <>
-            <HeroSection />
-            <CategoryCollageSection />
-            <BrandShowcase />
-            {showcaseData ? (
-              <>
-                {getSortedSections(showcaseData).map(({ key, section }, index) => (
-                  <div key={key}>
-                    {index > 0 && <div className="container px-4"><hr className="border-border" /></div>}
-                    {section?.products && section?.name && Array.isArray(section.products) && section.products.length > 0 && (
-                      <ColorSection
-                        title={section.name.toUpperCase()}
-                        baseProducts={section.products}
-                        toCard={toCard}
-                        statusSlug={key}
-                      />
-                    )}
-                  </div>
-                ))}
-                {catalogFallback.length > 0 ? (
-                  <ProductSection
-                    title="SHOP THE COLLECTION"
-                    products={catalogFallback.map(toCard)}
-                    viewAllHref="/products"
-                  />
-                ) : null}
-              </>
-            ) : (
-              <>
-                <ProductSection title="LOADING..." products={[]} isLoading={true} />
-                <div className="container px-4"><hr className="border-border" /></div>
-                <ProductSection title="LOADING..." products={[]} isLoading={true} />
-              </>
-            )}
-          </>
-        )}
+        <HeroSection />
+        <CategoryCollageSection />
+        {renderShowcaseSections()}
         <FeaturesSection />
-        <NewsletterSection />
       </main>
       <SiteFooter />
     </div>
@@ -200,30 +143,46 @@ export default function HomePageClient() {
 function ColorSection({ title, baseProducts, toCard, statusSlug }: {
   title: string;
   baseProducts: EcommerceProduct[];
-  toCard: (e: ProductByColorEntry) => { id: string; name: string; price: number; rating: number; image: string };
+  toCard: (e: any) => { id: string; name: string; price: number; rating: number; image: string; originalPrice?: number; discountInfo?: any };
   statusSlug: string;
 }) {
   const [entries, setEntries] = useState<ProductByColorEntry[]>([])
+  const [loading, setLoading] = useState(true)
+
   useEffect(() => {
     const load = async () => {
       try {
+        setLoading(true)
         const ids = baseProducts.map(p => p.id)
         if (ids.length === 0) { setEntries([]); return }
-        const data = await ecommerceApi.getProductsByColor({ product_ids: ids })
-        setEntries(data)
+        const data = await ecommerceApi.getProductsByColor({ product_ids: ids, status: statusSlug })
+        if (data && data.length > 0) {
+          setEntries(data)
+        } else {
+          setEntries([])
+        }
       } catch {
         setEntries([])
+      } finally {
+        setLoading(false)
       }
     }
     load()
-  }, [baseProducts])
+  }, [baseProducts, statusSlug])
+
+  // Fallback to baseProducts directly if per-color entries are not available
+  const formattedProducts = entries.length > 0
+    ? entries.map(toCard)
+    : baseProducts.map(toCard)
+
+  if (!loading && formattedProducts.length === 0) return null;
 
   return (
     <ProductSection
       title={title}
-      products={entries.map(toCard)}
+      products={formattedProducts}
       viewAllHref={`/products?status=${statusSlug}`}
-      isLoading={entries.length === 0}
+      isLoading={loading}
     />
   )
 }

@@ -35,10 +35,15 @@ export function CartSummary() {
   const shippingMethod = useCheckoutStore((state) => state.deliveryMethod)
   const setShippingMethod = useCheckoutStore((state) => state.setDeliveryMethod)
   const [cartPricing, setCartPricing] = useState<CartPricing | null>(null)
+  const [homeSettings, setHomeSettings] = useState<{ min_product_buying_count?: number; min_order_amount?: number } | null>(null)
   const [localLoading, setLocalLoading] = useState(false)
   const { startLoading, stopLoading } = useLoading()
 
   const itemCount = useMemo(() => items.reduce((n, it) => n + it.quantity, 0), [items])
+
+  useEffect(() => {
+    ecommerceApi.getHomePageSettings().then(setHomeSettings).catch(() => null)
+  }, [])
 
   useEffect(() => {
     const fetchCartPricing = async () => {
@@ -251,12 +256,59 @@ export function CartSummary() {
         </div>
       </div>
 
+      {/* Purchase Limits Warning */}
+      {(() => {
+        const minCount = homeSettings?.min_product_buying_count ?? 1
+        const minAmount = Number(homeSettings?.min_order_amount ?? 0)
+        const isBelowMinCount = itemCount < minCount
+        const isBelowMinAmount = minAmount > 0 && subtotal < minAmount
+
+        if (isBelowMinCount || isBelowMinAmount) {
+          return (
+            <div className="mt-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-1">
+              {isBelowMinCount && (
+                <p className="font-semibold">
+                  ⚠️ Minimum product buying count requirement is {minCount} item(s). Please add {minCount - itemCount} more item(s) to proceed.
+                </p>
+              )}
+              {isBelowMinAmount && (
+                <p className="font-semibold">
+                  ⚠️ Minimum order amount requirement is ৳{minAmount.toFixed(2)}. Your current subtotal is ৳{subtotal.toFixed(2)}.
+                </p>
+              )}
+            </div>
+          )
+        }
+        return null
+      })()}
+
       {/* Checkout Button */}
-      <Link href="/checkout">
-        <Button size="lg" className="w-full mt-6 h-12 text-base" disabled={localLoading || items.length === 0} onClick={handleCheckout}>
-          Checkout
-        </Button>
-      </Link>
+      {(() => {
+        const minCount = homeSettings?.min_product_buying_count ?? 1
+        const minAmount = Number(homeSettings?.min_order_amount ?? 0)
+        const isBelowMinCount = itemCount < minCount
+        const isBelowMinAmount = minAmount > 0 && subtotal < minAmount
+        const isDisabled = localLoading || items.length === 0 || isBelowMinCount || isBelowMinAmount
+
+        return (
+          <Link href={isDisabled ? "#" : "/checkout"} tabIndex={isDisabled ? -1 : 0}>
+            <Button
+              size="lg"
+              className="w-full mt-6 h-12 text-base"
+              disabled={isDisabled}
+              onClick={(e) => {
+                if (isDisabled) {
+                  e.preventDefault()
+                  return
+                }
+                handleCheckout()
+              }}
+            >
+              Checkout
+            </Button>
+          </Link>
+        )
+      })()}
     </div>
   )
 }

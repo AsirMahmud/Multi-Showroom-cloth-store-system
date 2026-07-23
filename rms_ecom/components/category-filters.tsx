@@ -38,15 +38,24 @@ interface Category {
 }
 
 const colors = [
-  { name: "White", value: "white", hex: "#FFFFFF" },
   { name: "Black", value: "black", hex: "#000000" },
+  { name: "White", value: "white", hex: "#FFFFFF" },
   { name: "Red", value: "red", hex: "#FF0000" },
   { name: "Blue", value: "blue", hex: "#0000FF" },
+  { name: "Navy", value: "navy", hex: "#000080" },
   { name: "Green", value: "green", hex: "#008000" },
+  { name: "Olive", value: "olive", hex: "#808000" },
   { name: "Yellow", value: "yellow", hex: "#FFFF00" },
   { name: "Pink", value: "pink", hex: "#FFC0CB" },
   { name: "Purple", value: "purple", hex: "#800080" },
   { name: "Orange", value: "orange", hex: "#FFA500" },
+  { name: "Grey", value: "grey", hex: "#808080" },
+  { name: "Brown", value: "brown", hex: "#A52A2A" },
+  { name: "Beige", value: "beige", hex: "#F5F5DC" },
+  { name: "Maroon", value: "maroon", hex: "#800000" },
+  { name: "Burgundy", value: "burgundy", hex: "#800020" },
+  { name: "Teal", value: "teal", hex: "#008080" },
+  { name: "Gold", value: "gold", hex: "#FFD700" },
 ]
 
 export function CategoryFilters({

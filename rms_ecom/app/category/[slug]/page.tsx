@@ -6,7 +6,6 @@ import { SiteHeader } from "@/components/site-header"
 import { Breadcrumb } from "@/components/breadcrumb"
 import { CategoryFilters } from "@/components/category-filters"
 import { ProductGrid } from "@/components/product-grid"
-import { NewsletterSection } from "@/components/newsletter-section"
 import { SiteFooter } from "@/components/site-footer"
 import { ecommerceApi, ProductByColorEntry } from "@/lib/api"
 import { sendGTMEvent, normalizeProductId } from "@/lib/gtm"
@@ -301,7 +300,6 @@ export default function CategoryPage() {
             </div>
           </div>
         </div>
-        <NewsletterSection />
       </main>
       <SiteFooter />
     </div>

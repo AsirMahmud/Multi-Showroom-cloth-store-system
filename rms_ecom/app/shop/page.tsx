@@ -6,7 +6,6 @@ import { SiteFooter } from "@/components/site-footer"
 import { Breadcrumb } from "@/components/breadcrumb"
 import { ProductGrid } from "@/components/product-grid"
 import { CategoryFilters } from "@/components/category-filters"
-import { NewsletterSection } from "@/components/newsletter-section"
 import { ecommerceApi, EcommerceProduct } from "@/lib/api"
 import { useLoading } from "@/hooks/useLoading"
 
@@ -66,7 +65,6 @@ export default function ShopPage() {
             </div>
           </div>
         </div>
-        <NewsletterSection />
       </main>
       <SiteFooter />
     </div>

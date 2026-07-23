@@ -2,7 +2,6 @@ import { SiteHeader } from "@/components/site-header"
 import { Breadcrumb } from "@/components/breadcrumb"
 import { CartItems } from "@/components/cart-items"
 import { CartSummary } from "@/components/cart-summary"
-import { NewsletterSection } from "@/components/newsletter-section"
 import { SiteFooter } from "@/components/site-footer"
 import { CheckoutProgress } from "@/components/checkout-progress"
 
@@ -39,7 +38,6 @@ export default function CartPage() {
           </div>
         </div>
 
-        <NewsletterSection />
       </main>
 
       <SiteFooter />

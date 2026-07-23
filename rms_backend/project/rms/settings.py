@@ -198,17 +198,35 @@ USE_TZ = True
 MEDIA_URL = '/media/'
 
 # Production vs Development media root
-if not DEBUG:
-    # Production settings
-    MEDIA_ROOT = os.getenv('PROD_MEDIA_ROOT', os.path.join(BASE_DIR, 'media'))
+cpanel_user_home = Path.home()
+cpanel_public_html = cpanel_user_home / 'public_html'
+env_media_root = os.getenv('PROD_MEDIA_ROOT')
+
+if env_media_root:
+    env_path = Path(env_media_root)
+    # If the env path exists or its parent directory exists, use it
+    if env_path.parent.exists():
+        MEDIA_ROOT = str(env_path)
+    # If env path contains a different cPanel user (e.g. /home/torongox/), remap to current cPanel user
+    elif cpanel_public_html.exists():
+        MEDIA_ROOT = str(cpanel_public_html / 'media')
+    else:
+        MEDIA_ROOT = str(BASE_DIR / 'media')
+elif cpanel_public_html.exists():
+    # Target public_html/media automatically for any cPanel username
+    MEDIA_ROOT = str(cpanel_public_html / 'media')
 else:
-    # Development settings
-    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+    # Local development fallback
+    MEDIA_ROOT = str(BASE_DIR / 'media')
 
-# File upload settings
+FILE_UPLOAD_PERMISSIONS = 0o644
+FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o755
 
-
-# Ensure media directory exists in production
+# Ensure media directory exists
+try:
+    os.makedirs(MEDIA_ROOT, exist_ok=True)
+except Exception:
+    pass
 
 
 # Static files configuration

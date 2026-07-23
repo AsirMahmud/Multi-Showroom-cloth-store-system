@@ -353,6 +353,8 @@ export const ecommerceApi = {
   getHomePageSettings: async (): Promise<{
     logo_image_url?: string;
     logo_text?: string;
+    min_product_buying_count?: number;
+    min_order_amount?: number;
     footer_tagline?: string;
     footer_address?: string;
     footer_phone?: string;

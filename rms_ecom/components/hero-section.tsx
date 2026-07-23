@@ -63,10 +63,10 @@ export function HeroSection({
       const localSlides: Slide[] = [
         {
           id: -1,
-          title: "Ferdous Textile",
-          subtitle: "Traditional Weaves, Timeless Beauty",
-          button_text: "Shop the collection",
-          image_url: "/hero-slide-1.jpg",
+          title: "The Signature Edit",
+          subtitle: "Discover our luxurious 3-Piece unstitched lawn and cotton collection, crafted with meticulous embroidery and premium fabrics.",
+          button_text: "Explore Collection",
+          image_url: "/images/three-piece/ai_hero_1.png",
           bg_color: "#000000",
           layout: "split",
           title_class: "",
@@ -78,9 +78,9 @@ export function HeroSection({
         {
           id: -2,
           title: "ফেরদৌস টেক্সটাইল",
-          subtitle: "Quality First - ডিজিটাল প্রিন্ট এন্ড ডাইং",
-          button_text: "Explore More",
-          image_url: "/hero-slide-2.jpg",
+          subtitle: "অতুলনীয় সুতি ও লন থ্রি-পিস কালেকশন - প্রিমিয়াম কোয়ালিটির নিশ্চয়তা",
+          button_text: "সকল কালেকশন দেখুন",
+          image_url: "/images/three-piece/ai_hero_2.png",
           bg_color: "#000000",
           layout: "split",
           title_class: "",
@@ -91,14 +91,7 @@ export function HeroSection({
         }
       ]
 
-      if (slidesResult.status === "fulfilled") {
-        const fetchedSlides = slidesResult.value
-          .filter((slide) => slide.is_active)
-          .sort((a, b) => a.display_order - b.display_order)
-        setSlides([...localSlides, ...fetchedSlides])
-      } else {
-        setSlides(localSlides)
-      }
+      setSlides(localSlides)
 
       setLoading(false)
     }

@@ -56,7 +56,7 @@ class CustomerSerializer(serializers.ModelSerializer):
         last_sale = Sale.objects.filter(
             customer=obj,
             status='completed'
-        ).order_by('-date').first()
+        ).prefetch_related('items__product').order_by('-date').first()
         return last_sale.date if last_sale else None
 
     def get_ranking(self, obj):
@@ -104,7 +104,7 @@ class CustomerSerializer(serializers.ModelSerializer):
     def get_purchase_history(self, obj):
         sales = Sale.objects.filter(
             customer=obj
-        ).order_by('-date')
+        ).prefetch_related('items__product').order_by('-date')
         
         history = []
         for sale in sales:
@@ -112,7 +112,11 @@ class CustomerSerializer(serializers.ModelSerializer):
             for item in sale.items.all():
                 items.append({
                     'product_name': item.product.name,
-                    'size': item.size,
+                    # SaleItem.size was removed in migration 0006. Keep this
+                    # response key for older clients without reading a field
+                    # that no longer exists.
+                    'size': None,
+                    'design_name': item.design_name,
                     'color': item.color,
                     'quantity': item.quantity,
                     'unit_price': str(item.unit_price),
@@ -173,7 +177,7 @@ class TopCustomerSerializer(serializers.ModelSerializer):
         last_sale = Sale.objects.filter(
             customer=obj,
             status='completed'
-        ).order_by('-date').first()
+        ).prefetch_related('items__product').order_by('-date').first()
         return last_sale.date if last_sale else None
 
     def get_ranking(self, obj):

@@ -5,7 +5,6 @@ import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { Breadcrumb } from "@/components/breadcrumb"
 import { ProductGrid } from "@/components/product-grid"
-import { NewsletterSection } from "@/components/newsletter-section"
 import { ecommerceApi, ProductByColorEntry } from "@/lib/api"
 import { StructuredData } from "@/components/structured-data"
 import { generateBreadcrumbStructuredData } from "@/lib/seo"
@@ -70,7 +69,6 @@ export default function MenCollectionPage() {
               onPageChange={setPage}
             />
         </div>
-        <NewsletterSection />
       </main>
       <SiteFooter />
     </div>
