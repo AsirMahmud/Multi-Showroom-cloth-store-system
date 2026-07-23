@@ -32,7 +32,7 @@ class PublicCreateOnlinePreorderView(APIView):
             from apps.ecommerce.models import HomePageSettings
             home_settings = HomePageSettings.load()
             min_count = getattr(home_settings, 'min_product_buying_count', 1) or 1
-            min_variants = getattr(home_settings, 'min_unique_product_variants', 1) or 1
+            min_variants = getattr(home_settings, 'min_unique_product_variants', 3) or 3
             min_amount = float(getattr(home_settings, 'min_order_amount', 0) or 0)
 
             items = payload.get('items', [])

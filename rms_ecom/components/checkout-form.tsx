@@ -88,11 +88,39 @@ export function CheckoutForm() {
 
 
 
+  const [homeSettings, setHomeSettings] = useState<{ min_product_buying_count?: number; min_unique_product_variants?: number; min_order_amount?: number } | null>(null)
+
+  useEffect(() => {
+    ecommerceApi.getHomePageSettings().then(setHomeSettings).catch(() => null)
+  }, [])
+
+  const checkoutItems = getCheckoutItems()
+  const activeItems = checkoutItems.filter((item: any) => (Number(item.quantity) || 0) > 0)
+  const totalQty = activeItems.reduce((acc: number, item: any) => acc + (Number(item.quantity) || 0), 0)
+  const uniqueVariantsCount = activeItems.length
+
+  const minCount = homeSettings?.min_product_buying_count ?? 3
+  const minVariants = homeSettings?.min_unique_product_variants ?? 1
+  const minAmount = Number(homeSettings?.min_order_amount ?? 0)
+
+  const isBelowMinCount = minCount > 1 && totalQty < minCount
+  const isBelowMinVariants = minVariants > 1 && uniqueVariantsCount < minVariants
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError(null)
     startLoading()
     try {
+      // Validate minimum product count
+      if (minCount > 1 && totalQty < minCount) {
+        throw new Error(`Minimum product buying count requirement is ${minCount} item(s). Your selection currently has ${totalQty} item(s). Please add ${minCount - totalQty} more item(s) to proceed.`)
+      }
+
+      // Validate minimum unique variants if configured
+      if (minVariants > 1 && uniqueVariantsCount < minVariants) {
+        throw new Error(`Minimum unique product variants requirement is ${minVariants}. Your selection has only ${uniqueVariantsCount} unique product variant(s). Please add more items to your cart to proceed.`)
+      }
+
       const form = e.currentTarget
       const formData = new FormData(form)
       const firstName = String(formData.get("firstName") || "").trim()
@@ -116,35 +144,9 @@ export function CheckoutForm() {
         throw new Error("Please enter a valid 11-digit Bangladeshi mobile number (e.g., 01712345678).")
       }
 
-      // Check minimum buying count and minimum order total from homepage settings
-      try {
-        const homeSettings = await ecommerceApi.getHomePageSettings()
-        const minCount = homeSettings.min_product_buying_count ?? 1
-        const minVariants = homeSettings.min_unique_product_variants ?? 1
-        const minAmount = Number(homeSettings.min_order_amount ?? 0)
-
-        const checkoutItems = getCheckoutItems()
-        const totalQty = checkoutItems.reduce((acc: number, item: any) => acc + (Number(item.quantity) || 0), 0)
-        
-        const activeItems = checkoutItems.filter((item: any) => (Number(item.quantity) || 0) > 0)
-        const uniqueVariantsCount = activeItems.length
-
-        if (minCount > 1 && totalQty < minCount) {
-          throw new Error(`Minimum product buying count requirement is ${minCount} item(s). Your selection has ${totalQty} item(s). Please add more items to proceed.`)
-        }
-        
-        if (minVariants > 1 && uniqueVariantsCount < minVariants) {
-          throw new Error(`Minimum unique product variants requirement is ${minVariants}. Your selection has ${uniqueVariantsCount} unique product variant(s). Please add more unique items to proceed.`)
-        }
-
-        const subtotal = checkoutItems.reduce((acc: number, item: any) => acc + ((Number(item.unit_price) || 0) * (Number(item.quantity) || 0)), 0)
-        if (minAmount > 0 && subtotal < minAmount) {
-          throw new Error(`Minimum order total requirement is ৳${minAmount.toFixed(2)}. Your selection subtotal is ৳${subtotal.toFixed(2)}.`)
-        }
-      } catch (err: any) {
-        if (err.message && err.message.startsWith("Minimum")) {
-          throw err
-        }
+      const subtotal = checkoutItems.reduce((acc: number, item: any) => acc + ((Number(item.unit_price) || 0) * (Number(item.quantity) || 0)), 0)
+      if (minAmount > 0 && subtotal < minAmount) {
+        throw new Error(`Minimum order total requirement is ৳${minAmount.toFixed(2)}. Your selection subtotal is ৳${subtotal.toFixed(2)}.`)
       }
 
       // Build shipping address based on delivery method
@@ -686,9 +688,20 @@ export function CheckoutForm() {
         />
       </div>
 
+      {(isBelowMinCount || isBelowMinVariants) && (
+        <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-900 text-sm space-y-1" role="alert">
+          <p className="font-bold flex items-center gap-2">
+            <span>🚫</span> Cannot Place Order (Minimum {minCount} Items Required)
+          </p>
+          <p className="text-xs text-red-700 leading-relaxed">
+            Your selection currently contains <strong>{totalQty}</strong> item(s). Each order requires at least <strong>{minCount} items</strong> to proceed. Please add <strong>{minCount - totalQty}</strong> more item(s) to your selection.
+          </p>
+        </div>
+      )}
+
       {error && (
-        <div className="text-red-600 text-sm" role="alert">
-          {error}
+        <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-800 text-sm font-medium" role="alert">
+          ⚠️ {error}
         </div>
       )}
 
@@ -698,8 +711,17 @@ export function CheckoutForm() {
       </div>
 
       {/* Submit Button */}
-      <Button type="submit" size="lg" className="w-full h-12 text-base">
-        Place Order
+      <Button
+        type="submit"
+        size="lg"
+        disabled={isBelowMinCount || isBelowMinVariants}
+        className="w-full h-12 text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {isBelowMinCount
+          ? `Add ${minCount - totalQty} More Item(s) to Place Order`
+          : isBelowMinVariants
+            ? `Add ${minVariants - uniqueVariantsCount} More Unique Item(s) to Order`
+            : "Place Order"}
       </Button>
     </form>
   )

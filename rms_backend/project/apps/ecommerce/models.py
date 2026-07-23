@@ -172,7 +172,7 @@ class HomePageSettings(models.Model):
 
     # Ordering Rules & Purchase Limits Settings
     min_product_buying_count = models.PositiveIntegerField(
-        default=1,
+        default=3,
         help_text="Minimum total quantity of products a customer must buy per order",
     )
     min_unique_product_variants = models.PositiveIntegerField(

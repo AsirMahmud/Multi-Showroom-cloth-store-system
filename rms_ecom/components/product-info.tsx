@@ -270,7 +270,7 @@ export function ProductInfo({ productId, product, colorLinks, designLinks, hideV
           Ordering Instructions & Notice
         </div>
         <ul className="space-y-1.5 list-disc list-inside text-muted-foreground leading-relaxed">
-          <li><strong className="text-slate-800">Minimum Order Rule:</strong> Each order requires at least <strong>3 unique product variants</strong> (or items) to proceed.</li>
+          <li><strong className="text-slate-800">Minimum Order Rule:</strong> Each order requires a total of at least <strong>3 items</strong> (e.g. 3 of any product, color, or design) to proceed.</li>
           <li><strong className="text-slate-800">Cash on Delivery:</strong> Available across all districts in Bangladesh.</li>
           <li><strong className="text-slate-800">Order Verification:</strong> Our team will contact you via phone call to verify your shipping address before dispatching.</li>
           <li><strong className="text-slate-800">Authentic Quality:</strong> 100% Premium Pure Lawn & Cotton directly from our Narayanganj textile facility.</li>

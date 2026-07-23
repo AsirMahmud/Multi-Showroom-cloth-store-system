@@ -242,7 +242,7 @@ export function CartSummary() {
 
       {/* Purchase Limits Warning & Ordering Instructions */}
       {(() => {
-        const minCount = homeSettings?.min_product_buying_count ?? 1
+        const minCount = homeSettings?.min_product_buying_count ?? 3
         const minVariants = homeSettings?.min_unique_product_variants ?? 1
         const minAmount = Number(homeSettings?.min_order_amount ?? 0)
         
@@ -251,7 +251,7 @@ export function CartSummary() {
         const uniqueVariantsCount = activeItems.length
 
         const isBelowMinCount = itemCount < minCount
-        const isBelowMinVariants = uniqueVariantsCount < minVariants
+        const isBelowMinVariants = minVariants > 1 && uniqueVariantsCount < minVariants
         const isBelowMinAmount = minAmount > 0 && subtotal < minAmount
 
         return (
@@ -262,7 +262,7 @@ export function CartSummary() {
                 <span>📋</span> Ordering Guidelines:
               </p>
               <ul className="list-disc list-inside text-muted-foreground space-y-1 leading-relaxed">
-                <li>Minimum order requires at least <strong className="text-slate-800">{minVariants} unique product variant(s)</strong>.</li>
+                <li>Minimum order requires at least <strong className="text-slate-800">{minCount} item(s)</strong> (total quantity).</li>
                 <li>Full Cash on Delivery (COD) across all districts in Bangladesh.</li>
                 <li>Phone confirmation call is required before order delivery.</li>
               </ul>
@@ -273,7 +273,7 @@ export function CartSummary() {
               <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-1">
                 {isBelowMinCount && (
                   <p className="font-semibold">
-                    ⚠️ Minimum product count requirement is {minCount} item(s). Please add {minCount - itemCount} more item(s) to proceed.
+                    ⚠️ Minimum product count requirement is {minCount} item(s). You currently have {itemCount}. Please add {minCount - itemCount} more item(s) to proceed.
                   </p>
                 )}
                 {isBelowMinVariants && (
@@ -294,7 +294,7 @@ export function CartSummary() {
 
       {/* Checkout Button */}
       {(() => {
-        const minCount = homeSettings?.min_product_buying_count ?? 1
+        const minCount = homeSettings?.min_product_buying_count ?? 3
         const minVariants = homeSettings?.min_unique_product_variants ?? 1
         const minAmount = Number(homeSettings?.min_order_amount ?? 0)
         
@@ -302,7 +302,7 @@ export function CartSummary() {
         const uniqueVariantsCount = activeItems.length
 
         const isBelowMinCount = itemCount < minCount
-        const isBelowMinVariants = uniqueVariantsCount < minVariants
+        const isBelowMinVariants = minVariants > 1 && uniqueVariantsCount < minVariants
         const isBelowMinAmount = minAmount > 0 && subtotal < minAmount
         
         const isDisabled = localLoading || items.length === 0 || isBelowMinCount || isBelowMinVariants || isBelowMinAmount
