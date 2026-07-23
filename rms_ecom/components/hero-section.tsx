@@ -62,6 +62,48 @@ export function HeroSection({
 
       const localSlides: Slide[] = [
         {
+          id: -102,
+          title: "Precision Craftsmanship\n& Intricate Embroidery",
+          subtitle: "High-density stitching, delicate neckline patches, and intricate dupatta borders crafted on advanced computerized multi-head embroidery machinery.",
+          button_text: "View Embroidery Edit",
+          image_url: "/images/three-piece/embroidery_facility.jpg",
+          bg_color: "#000000",
+          layout: "split",
+          title_class: "",
+          subtitle_class: "",
+          stats: [],
+          display_order: -5,
+          is_active: true
+        },
+        {
+          id: -103,
+          title: "Vibrant Dyeing &\nDigital Print Art",
+          subtitle: "State-of-the-art reactive digital printing technology ensuring brilliant hues, long-lasting color fastness, and ultra-soft breathable cotton fabrics.",
+          button_text: "Shop Printed Lawn",
+          image_url: "/images/three-piece/digital_printing_facility.jpg",
+          bg_color: "#000000",
+          layout: "split",
+          title_class: "",
+          subtitle_class: "",
+          stats: [],
+          display_order: -4,
+          is_active: true
+        },
+        {
+          id: -101,
+          title: "Ferdous Textile\nAraihazar Facility",
+          subtitle: "Welcome to our primary textile facility & corporate office in Araihazar, Narayanganj. Explore luxury 3-piece unstitched lawn & cotton collections directly from the source.",
+          button_text: "Explore Outlet",
+          image_url: "/images/three-piece/factory_office.jpg",
+          bg_color: "#000000",
+          layout: "split",
+          title_class: "",
+          subtitle_class: "",
+          stats: [],
+          display_order: -3,
+          is_active: true
+        },
+        {
           id: -1,
           title: "The Signature Edit",
           subtitle: "Discover our luxurious 3-Piece unstitched lawn and cotton collection, crafted with meticulous embroidery and premium fabrics.",

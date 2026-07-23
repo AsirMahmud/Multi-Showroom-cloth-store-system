@@ -263,6 +263,20 @@ export function ProductInfo({ productId, product, colorLinks, designLinks, hideV
 
       <div className="h-px bg-border" />
 
+      {/* Ordering Instructions & Notice Box */}
+      <div className="rounded-xl border border-amber-200/80 bg-amber-50/60 p-4 text-slate-800 space-y-2 text-xs md:text-sm">
+        <div className="flex items-center gap-2 font-semibold text-amber-900 text-sm">
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-200 text-amber-900 font-bold text-xs">i</span>
+          Ordering Instructions & Notice
+        </div>
+        <ul className="space-y-1.5 list-disc list-inside text-muted-foreground leading-relaxed">
+          <li><strong className="text-slate-800">Minimum Order Rule:</strong> Each order requires at least <strong>3 unique product variants</strong> (or items) to proceed.</li>
+          <li><strong className="text-slate-800">Cash on Delivery:</strong> Available across all districts in Bangladesh.</li>
+          <li><strong className="text-slate-800">Order Verification:</strong> Our team will contact you via phone call to verify your shipping address before dispatching.</li>
+          <li><strong className="text-slate-800">Authentic Quality:</strong> 100% Premium Pure Lawn & Cotton directly from our Narayanganj textile facility.</li>
+        </ul>
+      </div>
+
       <div className="flex flex-col gap-3 pt-2">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex items-center justify-between border border-input bg-white w-full sm:w-auto">

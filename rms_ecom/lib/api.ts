@@ -350,14 +350,15 @@ export const ecommerceApi = {
   },
 
   // Get home page settings
-  getHomePageSettings: async (): Promise<{
-    logo_image_url?: string;
-    logo_text?: string;
-    min_product_buying_count?: number;
-    min_order_amount?: number;
-    footer_tagline?: string;
-    footer_address?: string;
-    footer_phone?: string;
+    getHomePageSettings: async (): Promise<{
+      logo_image_url?: string;
+      logo_text?: string;
+      min_product_buying_count?: number;
+      min_unique_product_variants?: number;
+      min_order_amount?: number;
+      footer_tagline?: string;
+      footer_address?: string;
+      footer_phone?: string;
     footer_email?: string;
     footer_facebook_url?: string;
     footer_instagram_url?: string;

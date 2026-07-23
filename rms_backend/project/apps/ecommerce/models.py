@@ -175,6 +175,10 @@ class HomePageSettings(models.Model):
         default=1,
         help_text="Minimum total quantity of products a customer must buy per order",
     )
+    min_unique_product_variants = models.PositiveIntegerField(
+        default=1,
+        help_text="Minimum unique product variants required in the cart to place an order",
+    )
     min_order_amount = models.DecimalField(
         max_digits=10,
         decimal_places=2,

@@ -32,13 +32,24 @@ class PublicCreateOnlinePreorderView(APIView):
             from apps.ecommerce.models import HomePageSettings
             home_settings = HomePageSettings.load()
             min_count = getattr(home_settings, 'min_product_buying_count', 1) or 1
+            min_variants = getattr(home_settings, 'min_unique_product_variants', 1) or 1
             min_amount = float(getattr(home_settings, 'min_order_amount', 0) or 0)
 
             items = payload.get('items', [])
             total_qty = sum(int(item.get('quantity', 0)) for item in items if isinstance(item, dict))
+            
+            # 1. Validate total quantity
             if min_count > 1 and total_qty < min_count:
                 return Response(
                     {'error': f'Minimum product buying count requirement is {min_count} item(s). You currently have {total_qty}.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # 2. Validate unique product variants
+            unique_variants_count = len([item for item in items if isinstance(item, dict) and item.get('quantity', 0) > 0])
+            if min_variants > 1 and unique_variants_count < min_variants:
+                return Response(
+                    {'error': f'Minimum unique product variants requirement is {min_variants}. You currently have {unique_variants_count}.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 

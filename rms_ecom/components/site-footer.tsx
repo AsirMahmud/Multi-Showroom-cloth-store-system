@@ -45,7 +45,7 @@ export function SiteFooter() {
           <div className="min-w-0">
             <p className="editorial-kicker text-foreground">Connect with us</p>
             <div className="mt-5 flex flex-wrap gap-4">
-              {settings.footer_facebook_url ? <Social href={settings.footer_facebook_url} label="Facebook"><Facebook /></Social> : null}
+              <Social href={settings.footer_facebook_url || "https://www.facebook.com/share/1GwQR9G9su/?mibextid=wwXIfr"} label="Facebook"><Facebook /></Social>
               {settings.footer_instagram_url ? <Social href={settings.footer_instagram_url} label="Instagram"><Instagram /></Social> : null}
               {settings.footer_twitter_url ? <Social href={settings.footer_twitter_url} label="Twitter"><Twitter /></Social> : null}
             </div>

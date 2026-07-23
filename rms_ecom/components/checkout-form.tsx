@@ -120,13 +120,21 @@ export function CheckoutForm() {
       try {
         const homeSettings = await ecommerceApi.getHomePageSettings()
         const minCount = homeSettings.min_product_buying_count ?? 1
+        const minVariants = homeSettings.min_unique_product_variants ?? 1
         const minAmount = Number(homeSettings.min_order_amount ?? 0)
 
         const checkoutItems = getCheckoutItems()
         const totalQty = checkoutItems.reduce((acc: number, item: any) => acc + (Number(item.quantity) || 0), 0)
+        
+        const activeItems = checkoutItems.filter((item: any) => (Number(item.quantity) || 0) > 0)
+        const uniqueVariantsCount = activeItems.length
 
         if (minCount > 1 && totalQty < minCount) {
           throw new Error(`Minimum product buying count requirement is ${minCount} item(s). Your selection has ${totalQty} item(s). Please add more items to proceed.`)
+        }
+        
+        if (minVariants > 1 && uniqueVariantsCount < minVariants) {
+          throw new Error(`Minimum unique product variants requirement is ${minVariants}. Your selection has ${uniqueVariantsCount} unique product variant(s). Please add more unique items to proceed.`)
         }
 
         const subtotal = checkoutItems.reduce((acc: number, item: any) => acc + ((Number(item.unit_price) || 0) * (Number(item.quantity) || 0)), 0)
@@ -323,6 +331,20 @@ export function CheckoutForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
+      {/* Ordering Instructions & Guidelines Banner */}
+      <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 md:p-5 text-foreground space-y-2">
+        <h3 className="font-serif text-lg font-bold text-slate-900 flex items-center gap-2">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground font-sans text-xs font-bold">✓</span>
+          Ordering Instructions & Notice
+        </h3>
+        <ul className="text-xs md:text-sm text-muted-foreground space-y-1.5 list-disc list-inside leading-relaxed">
+          <li><strong>Minimum Requirement:</strong> Orders require at least <strong>3 unique product variants</strong> (or items) to place an order successfully.</li>
+          <li><strong>100% Cash on Delivery:</strong> Pay conveniently when your parcel is delivered to your doorstep.</li>
+          <li><strong>Phone Verification:</strong> Please ensure your phone number is correct. Our customer care representative will call you to confirm the order before shipment.</li>
+          <li><strong>Delivery Coverage:</strong> Delivery within 2-3 business days inside Dhaka, and 3-5 business days outside Dhaka.</li>
+        </ul>
+      </div>
+
       {/* Contact Information */}
       <div className="space-y-4">
         <h2 className="text-2xl font-bold">Contact Information</h2>

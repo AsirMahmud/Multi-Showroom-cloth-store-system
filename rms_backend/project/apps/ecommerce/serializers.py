@@ -236,6 +236,7 @@ class HomePageSettingsSerializer(serializers.ModelSerializer):
             'logo_image_url',
             'logo_text',
             'min_product_buying_count',
+            'min_unique_product_variants',
             'min_order_amount',
             'footer_tagline',
             'footer_address',

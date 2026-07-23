@@ -35,7 +35,7 @@ export function CartSummary() {
   const shippingMethod = useCheckoutStore((state) => state.deliveryMethod)
   const setShippingMethod = useCheckoutStore((state) => state.setDeliveryMethod)
   const [cartPricing, setCartPricing] = useState<CartPricing | null>(null)
-  const [homeSettings, setHomeSettings] = useState<{ min_product_buying_count?: number; min_order_amount?: number } | null>(null)
+  const [homeSettings, setHomeSettings] = useState<{ min_product_buying_count?: number; min_unique_product_variants?: number; min_order_amount?: number } | null>(null)
   const [localLoading, setLocalLoading] = useState(false)
   const { startLoading, stopLoading } = useLoading()
 
@@ -240,39 +240,72 @@ export function CartSummary() {
         </div>
       </div>
 
-      {/* Purchase Limits Warning */}
+      {/* Purchase Limits Warning & Ordering Instructions */}
       {(() => {
         const minCount = homeSettings?.min_product_buying_count ?? 1
+        const minVariants = homeSettings?.min_unique_product_variants ?? 1
         const minAmount = Number(homeSettings?.min_order_amount ?? 0)
+        
+        // Items is an array of variants. So unique variants is just items.length where quantity > 0
+        const activeItems = items.filter(item => item.quantity > 0)
+        const uniqueVariantsCount = activeItems.length
+
         const isBelowMinCount = itemCount < minCount
+        const isBelowMinVariants = uniqueVariantsCount < minVariants
         const isBelowMinAmount = minAmount > 0 && subtotal < minAmount
 
-        if (isBelowMinCount || isBelowMinAmount) {
-          return (
-            <div className="mt-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-1">
-              {isBelowMinCount && (
-                <p className="font-semibold">
-                  ⚠️ Minimum product buying count requirement is {minCount} item(s). Please add {minCount - itemCount} more item(s) to proceed.
-                </p>
-              )}
-              {isBelowMinAmount && (
-                <p className="font-semibold">
-                  ⚠️ Minimum order amount requirement is ৳{minAmount.toFixed(2)}. Your current subtotal is ৳{subtotal.toFixed(2)}.
-                </p>
-              )}
+        return (
+          <div className="mt-4 space-y-3">
+            {/* General Ordering Instructions */}
+            <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/80 text-slate-800 text-xs space-y-1.5">
+              <p className="font-semibold text-slate-900 flex items-center gap-1.5">
+                <span>📋</span> Ordering Guidelines:
+              </p>
+              <ul className="list-disc list-inside text-muted-foreground space-y-1 leading-relaxed">
+                <li>Minimum order requires at least <strong className="text-slate-800">{minVariants} unique product variant(s)</strong>.</li>
+                <li>Full Cash on Delivery (COD) across all districts in Bangladesh.</li>
+                <li>Phone confirmation call is required before order delivery.</li>
+              </ul>
             </div>
-          )
-        }
-        return null
+
+            {/* Warning block if minimum requirements not met */}
+            {(isBelowMinCount || isBelowMinVariants || isBelowMinAmount) && (
+              <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-1">
+                {isBelowMinCount && (
+                  <p className="font-semibold">
+                    ⚠️ Minimum product count requirement is {minCount} item(s). Please add {minCount - itemCount} more item(s) to proceed.
+                  </p>
+                )}
+                {isBelowMinVariants && (
+                  <p className="font-semibold">
+                    ⚠️ Minimum unique product variants requirement is {minVariants}. You currently have {uniqueVariantsCount}. Please add {minVariants - uniqueVariantsCount} more unique product variant(s) to checkout.
+                  </p>
+                )}
+                {isBelowMinAmount && (
+                  <p className="font-semibold">
+                    ⚠️ Minimum order amount requirement is ৳{minAmount.toFixed(2)}. Your current subtotal is ৳{subtotal.toFixed(2)}.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )
       })()}
 
       {/* Checkout Button */}
       {(() => {
         const minCount = homeSettings?.min_product_buying_count ?? 1
+        const minVariants = homeSettings?.min_unique_product_variants ?? 1
         const minAmount = Number(homeSettings?.min_order_amount ?? 0)
+        
+        const activeItems = items.filter(item => item.quantity > 0)
+        const uniqueVariantsCount = activeItems.length
+
         const isBelowMinCount = itemCount < minCount
+        const isBelowMinVariants = uniqueVariantsCount < minVariants
         const isBelowMinAmount = minAmount > 0 && subtotal < minAmount
-        const isDisabled = localLoading || items.length === 0 || isBelowMinCount || isBelowMinAmount
+        
+        const isDisabled = localLoading || items.length === 0 || isBelowMinCount || isBelowMinVariants || isBelowMinAmount
 
         return (
           <Link href={isDisabled ? "#" : "/checkout"} tabIndex={isDisabled ? -1 : 0}>
