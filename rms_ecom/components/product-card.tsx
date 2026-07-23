@@ -51,9 +51,9 @@ export function ProductCard({ id, name, price, originalPrice, image, discount, d
                 event.preventDefault()
                 setModalOpen(true)
               }}
-              className="absolute inset-x-3 bottom-3 flex translate-y-3 items-center justify-center gap-2 bg-white/95 py-3 text-[10px] font-semibold uppercase tracking-[0.14em] opacity-0 shadow-sm transition-all group-hover:translate-y-0 group-hover:opacity-100 focus:translate-y-0 focus:opacity-100"
+              className="absolute inset-x-2 bottom-2 md:inset-x-3 md:bottom-3 flex translate-y-0 opacity-100 md:translate-y-3 items-center justify-center gap-1.5 md:gap-2 bg-white/95 py-2 md:py-3 text-[9px] md:text-[10px] font-semibold uppercase tracking-[0.1em] md:tracking-[0.14em] md:opacity-0 shadow-sm transition-all md:group-hover:translate-y-0 md:group-hover:opacity-100 focus:translate-y-0 focus:opacity-100 rounded-sm md:rounded-none"
             >
-              <ShoppingBag className="size-4" /> Quick add
+              <ShoppingBag className="size-3.5 md:size-4" /> Quick add
             </button>
           </div>
           <div className="pt-4">

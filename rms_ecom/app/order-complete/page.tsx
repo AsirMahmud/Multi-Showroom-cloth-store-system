@@ -227,8 +227,8 @@ export default function OrderCompletePage() {
                 </div>
                 <div className="divide-y">
                   {order.items.map((item, index) => (
-                    <div key={index} className="p-6 flex gap-6 hover:bg-muted/10 transition-colors">
-                      <div className="w-20 h-24 flex-shrink-0 bg-muted rounded-lg overflow-hidden border">
+                    <div key={index} className="p-4 sm:p-6 flex gap-3 sm:gap-6 hover:bg-muted/10 transition-colors">
+                      <div className="w-16 h-20 sm:w-20 sm:h-24 flex-shrink-0 bg-muted rounded-lg overflow-hidden border">
                         {item.product_image ? (
                           <img
                             src={item.product_image}
@@ -237,35 +237,37 @@ export default function OrderCompletePage() {
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                            <CheckCircle2 className="w-8 h-8 opacity-20" />
+                            <CheckCircle2 className="w-6 h-6 sm:w-8 sm:h-8 opacity-20" />
                           </div>
                         )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-lg truncate mb-1">
-                          {item.product_name || `Product ID: ${item.product_id}`}
-                        </h4>
-                        <div className="flex flex-wrap gap-y-1 gap-x-4 text-sm text-muted-foreground">
-                          {item.color && (
-                            <span className="flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full border" style={{ backgroundColor: item.color }} />
-                              Color: {item.color}
-                            </span>
-                          )}
-                          {item.size && <span>Size: {item.size}</span>}
-                          <span>Qty: {item.quantity}</span>
+                      <div className="flex-1 min-w-0 flex flex-col justify-between">
+                        <div>
+                          <h4 className="font-semibold text-sm sm:text-lg truncate mb-1">
+                            {item.product_name || `Product ID: ${item.product_id}`}
+                          </h4>
+                          <div className="flex flex-wrap gap-y-1 gap-x-2 sm:gap-x-4 text-xs sm:text-sm text-muted-foreground">
+                            {item.color && (
+                              <span className="flex items-center gap-1 sm:gap-1.5">
+                                <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full border" style={{ backgroundColor: item.color }} />
+                                <span className="hidden sm:inline">Color: </span>{item.color}
+                              </span>
+                            )}
+                            {item.size && <span><span className="hidden sm:inline">Size: </span>{item.size}</span>}
+                            <span>Qty: {item.quantity}</span>
+                          </div>
                         </div>
-                        <div className="mt-2 flex items-baseline gap-2">
-                          <span className="font-bold">৳{formatPrice(item.unit_price)}</span>
+                        <div className="mt-2 flex flex-wrap items-baseline gap-2">
+                          <span className="font-bold text-sm sm:text-base">৳{formatPrice(item.unit_price)}</span>
                           {item.discount && item.discount > 0 && (
-                            <span className="text-xs text-green-600 bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 rounded">
+                            <span className="text-[10px] sm:text-xs text-green-600 bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 rounded">
                               Saved ৳{formatPrice(item.discount)}
                             </span>
                           )}
                         </div>
                       </div>
-                      <div className="text-right flex flex-col justify-end">
-                        <p className="font-bold text-lg">
+                      <div className="text-right flex flex-col justify-end shrink-0">
+                        <p className="font-bold text-base sm:text-lg">
                           ৳{formatPrice((item.unit_price * item.quantity) - (item.discount || 0))}
                         </p>
                       </div>
@@ -290,7 +292,7 @@ export default function OrderCompletePage() {
                     {order.customer_email && (
                       <div className="flex flex-col">
                         <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Email</span>
-                        <span className="font-medium text-primary decoration-1 underline-offset-4">{order.customer_email}</span>
+                        <span className="font-medium text-primary decoration-1 underline-offset-4 break-all">{order.customer_email}</span>
                       </div>
                     )}
                   </div>

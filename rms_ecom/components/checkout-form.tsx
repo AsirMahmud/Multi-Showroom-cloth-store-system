@@ -386,9 +386,9 @@ export function CheckoutForm() {
       {/* Shipping Address */}
       <div className="space-y-4">
         <h2 className="text-2xl font-bold">Shipping Address</h2>
-        {/* Delivery Location Toggle - Bottom Right */}
-        <div className="flex justify-end pt-4">
-          <div className="inline-flex rounded-lg border border-input bg-background p-1">
+        {/* Delivery Location Toggle */}
+        <div className="flex flex-col sm:flex-row sm:justify-end pt-4">
+          <div className="flex flex-col sm:inline-flex sm:flex-row rounded-lg border border-input bg-background p-1 gap-1">
             <button
               type="button"
               onClick={() => {

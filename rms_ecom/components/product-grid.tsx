@@ -158,6 +158,15 @@ export function ProductGrid({ category, products: propProducts, totalCount, page
     })
   }
 
+  const handlePageChange = (newPage: number) => {
+    if (isServerPaginated) {
+      onPageChange!(newPage)
+    } else {
+      setCurrentPage(newPage)
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
   return (
     <div className="space-y-8">
       {/* Product Grid */}
@@ -189,7 +198,7 @@ export function ProductGrid({ category, products: propProducts, totalCount, page
         <div className="mt-12 flex items-center justify-center gap-2 border-t border-border/70 pt-10">
           <Button
             variant="ghost"
-            onClick={() => (isServerPaginated ? onPageChange!(Math.max(1, effectivePage - 1)) : setCurrentPage((prev) => Math.max(1, prev - 1)))}
+            onClick={() => handlePageChange(Math.max(1, effectivePage - 1))}
             disabled={effectivePage === 1}
             className="h-10 px-3 text-[10px] sm:px-5"
           >
@@ -203,7 +212,7 @@ export function ProductGrid({ category, products: propProducts, totalCount, page
                 key={index}
                 variant={pageNum === effectivePage ? "default" : "ghost"}
                 size="icon"
-                onClick={() => typeof pageNum === "number" && (isServerPaginated ? onPageChange!(pageNum) : setCurrentPage(pageNum))}
+                onClick={() => typeof pageNum === "number" && handlePageChange(pageNum)}
                 disabled={pageNum === "..."}
                 className={cn(
                   "h-9 w-9 rounded-none text-xs",
@@ -221,7 +230,7 @@ export function ProductGrid({ category, products: propProducts, totalCount, page
 
           <Button
             variant="ghost"
-            onClick={() => (isServerPaginated ? onPageChange!(Math.min(totalPages, effectivePage + 1)) : setCurrentPage((prev) => Math.min(totalPages, prev + 1)))}
+            onClick={() => handlePageChange(Math.min(totalPages, effectivePage + 1))}
             disabled={effectivePage === totalPages}
             className="h-10 px-3 text-[10px] sm:px-5"
           >

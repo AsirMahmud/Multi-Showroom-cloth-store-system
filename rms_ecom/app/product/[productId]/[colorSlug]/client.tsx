@@ -169,7 +169,36 @@ export default function ProductByColorPage() {
         }))
     }, [data, productId])
 
-    if (!data) return null
+    if (!data) {
+        return (
+            <div className="flex min-h-screen flex-col">
+                <SiteHeader />
+                <main className="flex-1">
+                    <div className="container pt-6 pb-3 md:pt-16 md:pb-8">
+                        <div className="h-4 w-48 animate-pulse rounded bg-accent"></div>
+                    </div>
+                    <div className="container pt-3 pb-12 md:pt-8 md:pb-24">
+                        <div className="grid grid-cols-1 gap-7 lg:grid-cols-[1.15fr_.85fr] lg:gap-16">
+                            <div className="aspect-[3/4] w-full animate-pulse rounded-none bg-accent"></div>
+                            <div className="flex flex-col gap-4 lg:gap-5">
+                                <div className="h-10 w-3/4 animate-pulse rounded bg-accent"></div>
+                                <div className="h-6 w-1/4 animate-pulse rounded bg-accent"></div>
+                                <div className="mt-8 space-y-3">
+                                    <div className="h-4 w-full animate-pulse rounded bg-accent"></div>
+                                    <div className="h-4 w-5/6 animate-pulse rounded bg-accent"></div>
+                                    <div className="h-4 w-4/6 animate-pulse rounded bg-accent"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="pb-10">
+                        <ProductRecommendations products={[]} isLoading={true} />
+                    </div>
+                </main>
+                <SiteFooter />
+            </div>
+        )
+    }
 
     const images = data.images ?? []
     const sizes = data.sizes ?? (data.variations ?? []).map((variation) => ({
