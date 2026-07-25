@@ -8,7 +8,7 @@ from django.db.models import Q, F, Sum, Count, Avg, Case, When, IntegerField
 from django.utils import timezone
 from datetime import datetime, timedelta
 from django.db.models.functions import TruncDate, TruncMonth, TruncYear
-from .models import Category, OnlineCategory, Product, Design, ProductVariation, StockMovement, InventoryAlert, MeterialComposition, WhoIsThisFor, Features, Gallery, Image, WholesalePricingSettings
+from .models import Category, OnlineCategory, Product, Design, ProductVariation, StockMovement, InventoryAlert, MeterialComposition, WhoIsThisFor, Features, Gallery, Image, WholesalePricingSettings, StockTransfer, StockTransferItem, BranchVariationStock, BranchProduct
 from apps.supplier.models import Supplier
 from apps.supplier.serializers import SupplierSerializer
 from .serializers import (
@@ -23,6 +23,7 @@ from .serializers import (
     StockMovementSerializer,
     InventoryAlertSerializer,
     BulkPriceUpdateSerializer,
+
     BulkImageUploadSerializer,
     MeterialCompositionSerializer,
     WhoIsThisForSerializer,
@@ -30,6 +31,8 @@ from .serializers import (
     EcommerceProductSerializer,
     EcommerceProductDetailSerializer,
     WholesalePricingSettingsSerializer,
+    StockTransferSerializer,
+    CreateStockTransferSerializer,
 )
 from rest_framework.exceptions import ValidationError
 from apps.sales.models import SaleItem
@@ -1034,22 +1037,6 @@ class ProductViewSet(viewsets.ModelViewSet):
             'products': serializer.data
         })
 
-
-
-
-
-        # Update all products
-        updated_count = Product.objects.filter(id__in=product_ids).update(**ecommerce_fields)
-        
-        # Return updated products
-        products = Product.objects.filter(id__in=product_ids)
-        serializer = ProductSerializer(products, many=True, context={'request': request})
-        
-        return Response({
-            'message': f'Updated {updated_count} products',
-            'products': serializer.data
-        })
-
     @action(detail=False, methods=['get'], permission_classes=[AllowAny])
     def all_online(self, request):
         """Public: list all products assigned to online (optionally filter by online_category)"""
@@ -1553,3 +1540,130 @@ class OnlineCategoryViewSet(viewsets.ModelViewSet):
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+from django.db import transaction
+
+class StockTransferViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated, HasReadWritePermission]
+    
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return CreateStockTransferSerializer
+        return StockTransferSerializer
+
+    def get_queryset(self):
+        qs = StockTransfer.objects.all().select_related(
+            'source_branch', 'dest_branch', 'requested_by', 'approved_by'
+        ).prefetch_related('items__product', 'items__variation', 'items__variation__design')
+        
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            qs = qs.filter(status=status_filter.upper())
+            
+        branch_q = _branch_filter_q(self.request, field='source_branch_id') | _branch_filter_q(self.request, field='dest_branch_id')
+        qs = qs.filter(branch_q)
+        return qs
+
+    def perform_create(self, serializer):
+        data = serializer.validated_data
+        with transaction.atomic():
+            transfer = StockTransfer.objects.create(
+                source_branch_id=data['source_branch'],
+                dest_branch_id=data['dest_branch'],
+                notes=data.get('notes', ''),
+                requested_by=self.request.user,
+                status=StockTransfer.Status.PENDING
+            )
+            for item in data['items']:
+                StockTransferItem.objects.create(
+                    transfer=transfer,
+                    product_id=item['product'],
+                    variation_id=item.get('variation'),
+                    quantity=item['quantity']
+                )
+
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        transfer = self.get_object()
+        if transfer.status != StockTransfer.Status.PENDING:
+            return Response({"detail": "Only pending transfers can be approved."}, status=400)
+        
+        transfer.status = StockTransfer.Status.APPROVED
+        transfer.approved_by = request.user
+        transfer.save()
+        return Response(StockTransferSerializer(transfer).data)
+
+    @action(detail=True, methods=['post'])
+    def complete(self, request, pk=None):
+        transfer = self.get_object()
+        if transfer.status != StockTransfer.Status.APPROVED:
+            return Response({"detail": "Only approved transfers can be completed."}, status=400)
+            
+        with transaction.atomic():
+            transfer.status = StockTransfer.Status.COMPLETED
+            transfer.save()
+            
+            for item in transfer.items.all():
+                if item.variation:
+                    source_bvs, _ = BranchVariationStock.objects.get_or_create(
+                        branch=transfer.source_branch,
+                        variation=item.variation,
+                        defaults={'stock': 0}
+                    )
+                    source_bvs.stock = max(0, source_bvs.stock - item.quantity)
+                    source_bvs.save()
+                    
+                    dest_bvs, _ = BranchVariationStock.objects.get_or_create(
+                        branch=transfer.dest_branch,
+                        variation=item.variation,
+                        defaults={'stock': 0}
+                    )
+                    dest_bvs.stock += item.quantity
+                    dest_bvs.save()
+                    
+                    StockMovement.objects.create(
+                        product=item.product,
+                        variation=item.variation,
+                        branch=transfer.source_branch,
+                        movement_type='OUT',
+                        quantity=item.quantity,
+                        reference_number=f"TRF-{transfer.id}",
+                        notes=f"Transfer out to {transfer.dest_branch.name}",
+                        created_by=request.user
+                    )
+                    StockMovement.objects.create(
+                        product=item.product,
+                        variation=item.variation,
+                        branch=transfer.dest_branch,
+                        movement_type='IN',
+                        quantity=item.quantity,
+                        reference_number=f"TRF-{transfer.id}",
+                        notes=f"Transfer in from {transfer.source_branch.name}",
+                        created_by=request.user
+                    )
+                
+                source_bp, _ = BranchProduct.objects.get_or_create(
+                    branch=transfer.source_branch,
+                    product=item.product
+                )
+                source_bp.stock_quantity = max(0, source_bp.stock_quantity - item.quantity)
+                source_bp.save()
+                
+                dest_bp, _ = BranchProduct.objects.get_or_create(
+                    branch=transfer.dest_branch,
+                    product=item.product
+                )
+                dest_bp.stock_quantity += item.quantity
+                dest_bp.save()
+                
+        return Response(StockTransferSerializer(transfer).data)
+
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        transfer = self.get_object()
+        if transfer.status in [StockTransfer.Status.COMPLETED, StockTransfer.Status.CANCELLED]:
+            return Response({"detail": "Transfer cannot be cancelled."}, status=400)
+            
+        transfer.status = StockTransfer.Status.CANCELLED
+        transfer.save()
+        return Response(StockTransferSerializer(transfer).data)

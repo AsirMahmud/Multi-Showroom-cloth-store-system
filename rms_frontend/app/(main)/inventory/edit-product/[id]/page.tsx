@@ -227,6 +227,13 @@ export default function EditProductPage() {
   // Watch form values for dynamic updates
   const watchedGender = form.watch("gender");
 
+  const getAvailableColorsForVariant = (designId: string) => {
+    const design = designs.find(d => d.id === designId);
+    if (!design) return Object.keys(COLORS);
+    const used = design.colors.map(c => c.color.toLowerCase());
+    return Object.keys(COLORS).filter(c => !used.includes(c.toLowerCase()));
+  };
+
   // Sync galleries with variants
   const syncGalleriesWithVariants = useCallback((currentGalleries: ColorGallery[], currentDesigns: DesignVariant[]) => {
     return currentDesigns.flatMap(design => design.colors.map(color => {

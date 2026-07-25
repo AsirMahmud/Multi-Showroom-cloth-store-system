@@ -23,7 +23,8 @@ import {
   Activity,
   History,
   Settings,
-  StickyNote
+  StickyNote,
+  TrendingUp
 } from "lucide-react";
 import Link from "next/link";
 import { useCustomer } from "@/hooks/queries/use-customer";

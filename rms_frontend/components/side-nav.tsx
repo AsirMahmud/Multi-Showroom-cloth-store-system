@@ -129,7 +129,6 @@ const mainNavItems: NavItem[] = [
       { title: "Branches", icon: Store, href: "/admin/branches" },
       { title: "Account Center", icon: Store, href: "/admin/accounts" },
       { title: "Roles & Permissions", icon: Store, href: "/admin/roles" },
-      { title: "Financial Overview", icon: Store, href: "/admin/financial-overview" },
       { title: "Audit Log", icon: Store, href: "/admin/audit-log" },
     ],
   },

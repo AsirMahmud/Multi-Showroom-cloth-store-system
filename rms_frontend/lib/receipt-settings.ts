@@ -12,8 +12,8 @@ export interface ReceiptSettings {
 const DEFAULT_RECEIPT_SETTINGS: ReceiptSettings = {
   headerTitle: "Receipt",
   headerSubtitle: "",
-  address: "",
-  phone: "",
+  address: "সুরুজ মনোয়ারা শপিং কমপ্লেক্সের দোতালায়, বান্টি বাজার, আড়াইহাজার, নারায়ণগঞ্জ",
+  phone: "01896285447",
   footerMessage: "Thanks for your purchase",
   returnPolicy: "Return policy applies with receipt.",
 };

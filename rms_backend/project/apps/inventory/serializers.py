@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.core.validators import MinValueValidator
 from django.utils.text import slugify
-from .models import Category, OnlineCategory, Product, Design, ProductVariation, StockMovement, InventoryAlert, MeterialComposition, WhoIsThisFor, Features, Gallery, Image, WholesalePricingSettings
+from .models import Category, OnlineCategory, Product, Design, ProductVariation, StockMovement, InventoryAlert, MeterialComposition, WhoIsThisFor, Features, Gallery, Image, WholesalePricingSettings, StockTransfer, StockTransferItem
 from apps.supplier.models import Supplier
 from apps.supplier.serializers import SupplierSerializer
 
@@ -1194,3 +1194,59 @@ class OnlineCategorySerializer(serializers.ModelSerializer):
         if 'name' in validated_data:
             validated_data['slug'] = slugify(validated_data['name'])
         return super().update(instance, validated_data)
+
+class StockTransferItemSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    variation_label = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StockTransferItem
+        fields = ['id', 'product', 'product_name', 'variation', 'variation_label', 'quantity']
+        
+    def get_variation_label(self, obj):
+        if obj.variation:
+            return f"{obj.variation.design.name} / {obj.variation.color}"
+        return None
+
+class StockTransferSerializer(serializers.ModelSerializer):
+    items = StockTransferItemSerializer(many=True, read_only=True)
+    source_branch_name = serializers.CharField(source='source_branch.name', read_only=True)
+    dest_branch_name = serializers.CharField(source='dest_branch.name', read_only=True)
+    requested_by_name = serializers.SerializerMethodField()
+    approved_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StockTransfer
+        fields = [
+            'id', 'source_branch', 'source_branch_name', 'dest_branch', 'dest_branch_name',
+            'status', 'notes', 'requested_by', 'requested_by_name', 'approved_by', 'approved_by_name',
+            'items', 'created_at', 'updated_at'
+        ]
+
+    def get_requested_by_name(self, obj):
+        if obj.requested_by:
+            return f"{obj.requested_by.first_name} {obj.requested_by.last_name}".strip() or obj.requested_by.username
+        return None
+
+    def get_approved_by_name(self, obj):
+        if obj.approved_by:
+            return f"{obj.approved_by.first_name} {obj.approved_by.last_name}".strip() or obj.approved_by.username
+        return None
+
+class CreateStockTransferItemSerializer(serializers.Serializer):
+    product = serializers.IntegerField()
+    variation = serializers.IntegerField(required=False, allow_null=True)
+    quantity = serializers.IntegerField(min_value=1)
+
+class CreateStockTransferSerializer(serializers.Serializer):
+    source_branch = serializers.IntegerField()
+    dest_branch = serializers.IntegerField()
+    notes = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    items = CreateStockTransferItemSerializer(many=True)
+
+    def validate(self, data):
+        if data.get('source_branch') == data.get('dest_branch'):
+            raise serializers.ValidationError("Source and destination branches cannot be the same.")
+        if not data.get('items'):
+            raise serializers.ValidationError("At least one item must be provided.")
+        return data

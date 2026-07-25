@@ -14,6 +14,7 @@ import {
   User,
   Building2,
   Filter,
+  Activity,
 } from "lucide-react";
 
 import { RoleGuard } from "@/components/auth/role-guard";
@@ -43,6 +44,7 @@ import {
 } from "@/components/ui/table";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { NewTransferModal } from "./components/new-transfer-modal";
 
 const STATUS_CONFIG: Record<
   string,
@@ -59,6 +61,7 @@ export default function TransfersPage() {
   const qc = useQueryClient();
   const { availableBranches } = useBranch();
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [isNewTransferOpen, setIsNewTransferOpen] = useState(false);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["transfers", statusFilter],
@@ -69,27 +72,30 @@ export default function TransfersPage() {
   });
 
   const approveMutation = useMutation({
-    mutationFn: transfersApi.approve,
+    mutationFn: (id: number) => transfersApi.approve(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["transfers"] });
       toast({ title: "Transfer Authorized", description: "Node migration has been approved." });
     },
+    onError: () => toast({ title: "Authorization Failed", description: "Kernel rejected the state change.", variant: "destructive" }),
   });
 
   const completeMutation = useMutation({
-    mutationFn: transfersApi.complete,
+    mutationFn: (id: number) => transfersApi.complete(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["transfers"] });
-      toast({ title: "Transfer Finalized", description: "Inventory nodes have been remapped successfully." });
+      toast({ title: "Remap Successful", description: "Asset migration completed successfully." });
     },
+    onError: () => toast({ title: "Remap Failed", description: "Critical error during asset integration.", variant: "destructive" }),
   });
 
   const cancelMutation = useMutation({
-    mutationFn: transfersApi.cancel,
+    mutationFn: (id: number) => transfersApi.cancel(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["transfers"] });
       toast({ title: "Transfer Aborted", description: "The node migration protocol was terminated." });
     },
+    onError: () => toast({ title: "Abort Failed", description: "Could not terminate the protocol sequence.", variant: "destructive" }),
   });
 
   const transfers = data?.results ?? [];
@@ -159,6 +165,10 @@ export default function TransfersPage() {
                   <SelectItem value="CANCELLED">Aborted</SelectItem>
                 </SelectContent>
               </Select>
+              <Button size="sm" className="h-10 px-4 rounded-xl font-bold bg-brand-primary text-brand-secondary hover:bg-emerald-900 transition-colors" onClick={() => setIsNewTransferOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Transfer
+              </Button>
             </div>
           }
         >
@@ -275,6 +285,8 @@ export default function TransfersPage() {
             </div>
           )}
         </DataPanel>
+        
+        <NewTransferModal open={isNewTransferOpen} onOpenChange={setIsNewTransferOpen} />
       </motion.div>
     </RoleGuard>
   );

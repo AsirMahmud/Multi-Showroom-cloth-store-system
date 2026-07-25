@@ -14,6 +14,7 @@ from .views import (
     GalleryViewSet,
     ImageViewSet,
     WholesalePricingSettingsViewSet,
+    StockTransferViewSet,
 )
 
 router = DefaultRouter()
@@ -30,6 +31,7 @@ router.register(r'features', FeaturesViewSet)
 router.register(r'galleries', GalleryViewSet)
 router.register(r'images', ImageViewSet)
 router.register(r'wholesale-settings', WholesalePricingSettingsViewSet, basename='wholesale-settings')
+router.register(r'transfers', StockTransferViewSet, basename='transfers')
 
 
 urlpatterns = [
