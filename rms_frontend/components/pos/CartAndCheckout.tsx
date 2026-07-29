@@ -329,7 +329,7 @@ export default function CartAndCheckout() {
                                           </DialogHeader>
                                           <div className="grid gap-2 py-2">
                                             <Tabs defaultValue="percentage">
-                                              <TabsList className="grid h-8 w-full grid-cols-2">
+                                              <TabsList className="grid h-8 w-full grid-cols-1 md:grid-cols-2">
                                                 <TabsTrigger value="percentage" className="text-xs">
                                                   Percentage (%)
                                                 </TabsTrigger>

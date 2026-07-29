@@ -878,7 +878,7 @@ export function POSCheckout() {
           <div className="space-y-3">
             <Label>Payment Method</Label>
             <Tabs defaultValue="card" className="w-full">
-              <TabsList className="grid grid-cols-3 w-full">
+              <TabsList className="grid grid-cols-1 md:grid-cols-3 w-full">
                 <TabsTrigger value="card">
                   <CreditCard className="h-4 w-4 mr-2" />
                   Card
@@ -895,7 +895,7 @@ export function POSCheckout() {
               <TabsContent value="card">
                 <Card>
                   <CardContent className="p-4 space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="col-span-2">
                         <Label htmlFor="cardNumber">Card Number</Label>
                         <Input
@@ -951,7 +951,7 @@ export function POSCheckout() {
                         ${change > 0 ? change.toFixed(2) : "0.00"}
                       </span>
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                       {[20, 50, 100].map((amount) => (
                         <Button
                           key={amount}
@@ -1009,7 +1009,7 @@ export function POSCheckout() {
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <Button variant="outline" className="flex gap-2">
                 <Printer className="h-4 w-4" />
                 Print Receipt

@@ -838,7 +838,7 @@ function HeroSlidePreview({
                 <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
               {stats.length > 0 && (
-                <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3 md:gap-4">
                   {stats.map((stat, idx) => (
                     <div key={idx} className="bg-white/10 rounded-lg p-3 sm:p-4">
                       <div className="text-lg sm:text-2xl font-black text-white">{stat.value}</div>
@@ -1404,7 +1404,7 @@ export default function HeroSlidesPage() {
                           />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Structural Layout</Label>
                             <Select value={formData.layout} onValueChange={(value: any) => setFormData({ ...formData, layout: value })}>
@@ -1501,7 +1501,7 @@ export default function HeroSlidesPage() {
 
                         <div className="space-y-6 pt-4 border-t border-slate-100">
                           <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 block">Status & Logistics</Label>
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                               <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Sequence Order</Label>
                               <Input

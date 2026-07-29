@@ -322,7 +322,7 @@ export default function AuditLogPage() {
                 </div>
                 
                 <div className="p-8 space-y-8">
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-1">
                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Origin Node</p>
                       <p className="text-xs font-black text-brand-primary uppercase tracking-tight">{detail.branch_name || "Global Root"}</p>

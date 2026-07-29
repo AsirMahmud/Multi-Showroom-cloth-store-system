@@ -209,7 +209,7 @@ export function ProductPerformanceReport({ dateRange }: ProductPerformanceReport
                     <Progress value={averageProfitMargin} className="h-2 bg-slate-100" />
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
                       <div className="text-xl font-black text-emerald-700">
                         {productData.profit_by_product.filter(p => parseFloat(p.profit_margin) > 20).length}

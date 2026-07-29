@@ -212,7 +212,7 @@ export function ColorSelect({
                         </Button>
                     </div>
                 ) : (
-                    <div className="max-h-60 overflow-y-auto p-2 grid grid-cols-2 gap-1 bg-white">
+                    <div className="max-h-60 overflow-y-auto p-2 grid grid-cols-1 md:grid-cols-2 gap-1 bg-white">
                         {filteredColors.length === 0 ? (
                             <div className="col-span-2 py-8 text-center text-xs text-slate-400">
                                 No colors matching "{searchQuery}"

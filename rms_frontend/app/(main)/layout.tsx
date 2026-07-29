@@ -26,7 +26,7 @@ export default function MainLayout({
     <AuthProvider>
       <BranchProvider>
         <TaskProvider>
-          <ThemeProvider attribute="class" defaultTheme="light">
+          <ThemeProvider attribute="class" defaultTheme="light" forcedTheme="light" enableSystem={false}>
             <BismillahProvider>
               <SidebarProvider>
                 <MainShell>{children}</MainShell>

@@ -338,7 +338,7 @@ export default function SalesReturnsPage() {
           
           {selectedReturn && (
             <div className="p-8 space-y-8 overflow-y-auto max-h-[60vh] custom-scrollbar">
-              <div className="grid grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-4">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block border-b border-slate-100 pb-2">Core Data</Label>
                   <div className="space-y-3">

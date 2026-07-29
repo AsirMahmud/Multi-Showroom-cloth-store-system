@@ -186,7 +186,7 @@ export default function PaymentSection({
       {/* Scrollable Config Area */}
       <div className="flex-1 overflow-y-auto pr-1 space-y-3 min-h-0 pb-2 scrollbar-thin">
         {/* Payment Method Selection */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           {(["cash", "card", "mobile"] as const).map((method) => {
             const isActive = paymentMethod === method;
             return (
@@ -364,7 +364,7 @@ export default function PaymentSection({
             </div>
             
             {/* Quick Amount Buttons */}
-            <div className="grid grid-cols-4 gap-1">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-1">
               <Button
                 variant="outline"
                 size="sm"

@@ -28,7 +28,7 @@ export default function CustomerAddModal() {
           <DialogDescription>Create a new customer profile.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
             <Label htmlFor="first_name" className="text-right">
               First Name
             </Label>
@@ -42,7 +42,7 @@ export default function CustomerAddModal() {
             />
           </div>
 
-          <div className="grid grid-cols-4 items-center gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
             <Label htmlFor="phone" className="text-right">
               Phone*
             </Label>

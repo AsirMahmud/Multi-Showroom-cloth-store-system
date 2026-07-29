@@ -44,7 +44,7 @@ export default function DiscountModal() {
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <Tabs defaultValue="percentage">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-1 md:grid-cols-2">
               <TabsTrigger value="percentage">Percentage (%)</TabsTrigger>
               <TabsTrigger value="fixed">Fixed Amount ($)</TabsTrigger>
             </TabsList>

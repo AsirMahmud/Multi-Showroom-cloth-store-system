@@ -87,7 +87,7 @@ export function BulkPriceUpdateDialog() {
 
           <div className="space-y-2">
             <Label>Apply To</Label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div className="flex items-center space-x-2">
                 <input type="checkbox" id="apply-s" defaultChecked className="h-4 w-4" />
                 <Label htmlFor="apply-s">Size S</Label>

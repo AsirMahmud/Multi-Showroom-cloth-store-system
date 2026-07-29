@@ -451,7 +451,7 @@ export function PromotionalModalManager() {
                                             <div className="space-y-4">
                                                 <p className="text-xs font-medium text-slate-500 line-clamp-2 leading-relaxed italic">"{modal.description}"</p>
                                                 
-                                                <div className="grid grid-cols-2 gap-4 py-4 border-t border-slate-50">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4 border-t border-slate-50">
                                                     <div className="space-y-1">
                                                         <span className="text-[9px] font-black uppercase tracking-widest text-slate-300">Trigger</span>
                                                         <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600">

@@ -696,7 +696,7 @@ export default function ReceiptModal({
 
               {/* Action Buttons */}
               <div className="space-y-3 pt-6 border-t border-slate-100 mt-6 sm:mt-8">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <Button
                     variant="outline"
                     className="h-10 rounded-xl border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all duration-200"

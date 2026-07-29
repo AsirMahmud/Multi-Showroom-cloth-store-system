@@ -227,7 +227,7 @@ export default function PreorderPage() {
             {typedStats?.status_breakdown && (
               <motion.div variants={item} className="lg:col-span-2">
                 <DataPanel title="Detailed Logistics" description="Granular breakdown of all order lifecycle stages.">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 md:grid-cols-4 gap-3">
                     {Object.entries(typedStats.status_breakdown).map(([status, count]) => (
                       <div key={status} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-brand-primary/5 transition-all hover:bg-white hover:shadow-sm">
                         <Badge className={cn("rounded-lg font-bold text-[9px] uppercase tracking-widest border-none", getStatusColor(status))}>

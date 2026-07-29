@@ -84,7 +84,7 @@ function KpiStrip({
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-2 mt-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-4">
       {items.map((item) => {
         const Icon = item.icon;
         return (

@@ -86,7 +86,7 @@ function ProductSkeleton() {
           <div className="space-y-4">
             <div>
               <Skeleton className="h-6 w-40 mb-4" />
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[...Array(4)].map((_, i) => (
                   <div key={i}>
                     <Skeleton className="h-4 w-20 mb-1" />
@@ -98,7 +98,7 @@ function ProductSkeleton() {
             <Skeleton className="h-1 w-full" />
             <div>
               <Skeleton className="h-6 w-40 mb-4" />
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[...Array(3)].map((_, i) => (
                   <div key={i}>
                     <Skeleton className="h-4 w-20 mb-1" />
@@ -111,7 +111,7 @@ function ProductSkeleton() {
           <div className="space-y-4">
             <div>
               <Skeleton className="h-6 w-40 mb-4" />
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[...Array(3)].map((_, i) => (
                   <div key={i}>
                     <Skeleton className="h-4 w-20 mb-1" />
@@ -123,7 +123,7 @@ function ProductSkeleton() {
             <Skeleton className="h-1 w-full" />
             <div>
               <Skeleton className="h-6 w-40 mb-4" />
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[...Array(2)].map((_, i) => (
                   <div key={i}>
                     <Skeleton className="h-4 w-20 mb-1" />
@@ -227,7 +227,7 @@ function ProductDetails({ product }: ProductDetailsProps) {
       </div>
 
       <Tabs defaultValue="details" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-1 md:grid-cols-3">
           <TabsTrigger value="details">Product Details</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="variations">Variations</TabsTrigger>
@@ -269,7 +269,7 @@ function ProductDetails({ product }: ProductDetailsProps) {
                       <Package className="h-5 w-5 text-blue-500" />
                       Product Information
                     </h3>
-                    <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
                       <div>
                         <p className="text-sm font-medium text-muted-foreground">
                           SKU
@@ -315,7 +315,7 @@ function ProductDetails({ product }: ProductDetailsProps) {
                       <DollarSign className="h-5 w-5 text-green-500" />
                       Pricing
                     </h3>
-                    <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
                       <div>
                         <p className="text-sm font-medium text-muted-foreground">
                           Cost Price
@@ -380,7 +380,7 @@ function ProductDetails({ product }: ProductDetailsProps) {
                       <Warehouse className="h-5 w-5 text-purple-500" />
                       Stock Information
                     </h3>
-                    <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
                       <div>
                         <p className="text-sm font-medium text-muted-foreground">
                           Current Stock
@@ -438,7 +438,7 @@ function ProductDetails({ product }: ProductDetailsProps) {
                       <Calendar className="h-5 w-5 text-orange-500" />
                       Timestamps
                     </h3>
-                    <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
                       <div>
                         <p className="text-sm font-medium text-muted-foreground">
                           Created At
@@ -718,7 +718,7 @@ function ProductDetails({ product }: ProductDetailsProps) {
                       </div>
 
                       {gallery.images && gallery.images.length > 0 ? (
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                           {gallery.images.map((image, imageIndex) => {
                             const imageUrl = getImageUrl((image as any).image_url || image.image);
                             return (

@@ -259,7 +259,7 @@ export function SideNav() {
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger
           asChild
-          className="md:hidden absolute h-screen top-4 left-4 z-50"
+          className="md:hidden fixed top-4 left-4 z-50"
         >
           <Button
             variant="outline"

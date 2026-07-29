@@ -93,7 +93,7 @@ export function EmployeeDashboard({ employeeId }: { employeeId: string }) {
             </Badge>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-4 w-full md:w-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full md:w-auto">
           <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
             <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Branch</div>
             <div className="text-xs font-black text-slate-700">{employee.branch_name || employee.branch}</div>

@@ -444,7 +444,7 @@ export default function ProductsPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Tag className="h-3 w-3 text-muted-foreground" />
@@ -503,7 +503,7 @@ export default function ProductsPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <div className="space-y-1">
               <p className="text-[10px] text-muted-foreground uppercase font-bold">Cost</p>
               <p className="text-sm font-bold text-slate-500">
@@ -524,7 +524,7 @@ export default function ProductsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Total Value</p>
               <p className="text-lg font-bold text-blue-600">

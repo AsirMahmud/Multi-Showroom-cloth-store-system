@@ -462,7 +462,7 @@ export default function DueSalesPage() {
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {analytics.ageAnalysis.map((entry, index) => (
                 <div key={index} className="flex items-center gap-2 p-2 bg-slate-50 rounded-xl border border-slate-100">
                   <div className="h-2 w-2 rounded-full" style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }} />
@@ -548,7 +548,7 @@ export default function DueSalesPage() {
           </DialogHeader>
           
           <div className="p-8 space-y-6">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Payload</p>
                 <p className="text-lg font-black text-brand-primary">{formatCurrency(selectedSale?.total || 0)}</p>

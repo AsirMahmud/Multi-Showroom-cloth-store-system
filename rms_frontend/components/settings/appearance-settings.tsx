@@ -34,7 +34,7 @@ export function AppearanceSettings() {
           <p className="text-[11px] font-medium text-slate-400">Select your preferred lighting environment.</p>
         </div>
         
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {[
             { id: "light", icon: Sun, label: "Light" },
             { id: "dark", icon: Moon, label: "Dark" },
@@ -82,7 +82,7 @@ export function AppearanceSettings() {
           <p className="text-[11px] font-medium text-slate-400">Choose a signature color for your workspace.</p>
         </div>
 
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
           {presets.map((p) => (
             <button
               key={p.id}

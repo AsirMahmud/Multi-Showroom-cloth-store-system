@@ -178,7 +178,7 @@ export function ProductAnalytics({ productId }: ProductAnalyticsProps) {
 
              {/* Complete Overview */}
                <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-1 md:grid-cols-5">
             <TabsTrigger value="overview">Complete Overview</TabsTrigger>
             <TabsTrigger value="stock">Stock Analysis</TabsTrigger>
             <TabsTrigger value="sales">Sales History</TabsTrigger>

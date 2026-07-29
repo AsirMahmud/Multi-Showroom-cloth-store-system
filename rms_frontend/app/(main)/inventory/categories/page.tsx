@@ -195,7 +195,7 @@ export default function CategoriesPage() {
         </DropdownMenu>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
         <div className="bg-slate-50/50 rounded-2xl p-3 border border-slate-50">
           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Sub-Nodes</p>
           <p className="text-sm font-black text-slate-900">{category.children?.length || 0}</p>
@@ -329,7 +329,7 @@ export default function CategoriesPage() {
 
           {statsCategory?.detailed_stats ? (
             <Tabs defaultValue="inventory" className="w-full mt-4">
-              <TabsList className="grid w-full grid-cols-5 mb-8 bg-slate-50 p-1 rounded-2xl h-12">
+              <TabsList className="grid w-full grid-cols-1 md:grid-cols-5 mb-8 bg-slate-50 p-1 rounded-2xl h-12">
                 <TabsTrigger value="inventory" className="flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-[10px] uppercase tracking-widest">
                   <Box className="h-3.5 w-3.5" /> Inventory
                 </TabsTrigger>
@@ -416,7 +416,7 @@ export default function CategoriesPage() {
               <TabsContent value="breakdown" className="space-y-6">
                 <div className="bg-slate-50/50 rounded-[24px] p-6 border border-slate-100 shadow-inner">
                   <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Dimensional Availability</h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
                     {statsCategory.detailed_stats.size_breakdown?.map((item) => (
                       <div key={item.size} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col items-center justify-center group hover:border-brand-primary transition-all">
                         <span className="text-sm font-black text-slate-900 uppercase">{item.size}</span>

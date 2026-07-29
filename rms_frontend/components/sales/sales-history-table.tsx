@@ -648,7 +648,7 @@ export default function SalesHistory() {
                 {getStatusBadge(selectedOrder.status || 'pending')}
               </div>
               <div className="p-8 space-y-6">
-                <div className="grid grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-2">
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Customer</span>
                     <div className="flex flex-col"><span className="text-sm font-bold text-slate-700">{selectedOrder.customer ? `${selectedOrder.customer.first_name} ${selectedOrder.customer.last_name}` : "Guest"}</span></div>

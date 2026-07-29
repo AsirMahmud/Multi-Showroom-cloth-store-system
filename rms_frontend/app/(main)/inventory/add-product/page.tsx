@@ -555,7 +555,7 @@ const onInvalid = (errors: unknown) => {
                       </FormItem>
                     )}
                   />
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="category"
@@ -816,7 +816,7 @@ const onInvalid = (errors: unknown) => {
                           {gallery.images.filter(img => img.file).length} / 4 Images
                         </Badge>
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 md:grid-cols-4 gap-4">
                         {gallery.images.map((img) => (
                           <div key={img.id} className="relative aspect-square rounded-xl border-2 border-dashed border-brand-primary/10 overflow-hidden group hover:border-brand-primary/30 transition-all bg-white shadow-sm">
                             {img.preview ? (

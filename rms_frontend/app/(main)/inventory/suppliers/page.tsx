@@ -180,7 +180,7 @@ export default function SuppliersPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 pt-6 border-t border-slate-50">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-6 border-t border-slate-50">
         <div>
           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">SKU Count</p>
           <p className="text-sm font-black text-brand-primary">{supplier.products_count || 0}</p>

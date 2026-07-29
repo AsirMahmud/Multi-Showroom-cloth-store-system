@@ -478,7 +478,7 @@ export default function HomePageSettingsPage() {
                         <h3 className="mt-2 text-2xl font-black tracking-tight text-brand-primary">{settings.collage_heading}</h3>
                       ) : null}
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="relative row-span-2 min-h-[280px] overflow-hidden rounded-[24px] bg-white">
                         {settings.collage_card_1_image_url ? (
                           <img src={settings.collage_card_1_image_url} alt="" className="h-full w-full object-cover" />
@@ -501,7 +501,7 @@ export default function HomePageSettingsPage() {
                           <p className="text-[10px] uppercase tracking-widest text-white/80">{settings.collage_card_2_subtitle || "Discover"}</p>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="relative min-h-[134px] overflow-hidden rounded-[24px] bg-white">
                           {settings.collage_card_3_image_url ? (
                             <img src={settings.collage_card_3_image_url} alt="" className="h-full w-full object-cover" />

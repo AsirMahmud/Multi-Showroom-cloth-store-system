@@ -105,7 +105,7 @@ export function NewTransferModal({ open, onOpenChange }: NewTransferModalProps) 
           <DialogDescription>Create a new stock migration request between branches.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6 mt-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Source Node</label>
               <Select value={sourceBranch} onValueChange={setSourceBranch}>

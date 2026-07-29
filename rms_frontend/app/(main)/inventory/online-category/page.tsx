@@ -128,7 +128,7 @@ function SortableCategoryItem({ category, onEdit, onDelete, onShowStats }: {
         >
           <GripVertical className="h-4 w-4" />
         </div>
-        <div className="flex-1 grid grid-cols-2 gap-4 items-center">
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
           <div className="font-medium text-sm">{category.name}</div>
           <div className="text-xs text-gray-500">{category.slug}</div>
           <div className="flex items-center gap-2">
@@ -229,7 +229,7 @@ function SortableParentCategoryItem({
               ) : (
                 <div className="w-6" />
               )}
-              <div className="flex-1 grid grid-cols-3 gap-4 items-center">
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                 <div className="font-medium">{category.name}</div>
                 <div className="text-sm text-gray-500">{category.slug}</div>
                 <div className="text-sm font-medium text-blue-600">
@@ -667,7 +667,7 @@ export default function OnlineCategoriesPage() {
               onDragEnd={handleDragEnd}
             >
               <div className="space-y-2">
-                <div className="grid grid-cols-4 gap-4 px-4 py-2 text-sm font-semibold text-gray-600 border-b">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 px-4 py-2 text-sm font-semibold text-gray-600 border-b">
                   <div>Name</div>
                   <div>Slug</div>
                   <div>Gender</div>
@@ -865,7 +865,7 @@ export default function OnlineCategoriesPage() {
 
             {statsCategory?.detailed_stats ? (
               <Tabs defaultValue="inventory" className="w-full mt-4">
-                <TabsList className="grid w-full grid-cols-5 mb-6">
+                <TabsList className="grid w-full grid-cols-1 md:grid-cols-5 mb-6">
                   <TabsTrigger value="inventory" className="flex items-center gap-2 py-3">
                     <Box className="h-4 w-4" /> Inventory
                   </TabsTrigger>
@@ -1003,7 +1003,7 @@ export default function OnlineCategoriesPage() {
                       <CardDescription className="text-slate-500">Stock distribution across different sizes</CardDescription>
                     </CardHeader>
                     <CardContent className="pt-2 pb-6">
-                      <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 xs:grid-cols-1 md:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
                         {statsCategory.detailed_stats.size_breakdown?.map((item) => (
                           <div key={item.size} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center transition-all hover:border-blue-400 hover:shadow-md group">
                             <span className="text-lg font-black text-slate-900 group-hover:text-blue-600 transition-colors uppercase">{item.size}</span>

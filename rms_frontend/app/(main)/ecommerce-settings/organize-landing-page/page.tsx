@@ -573,7 +573,7 @@ export default function OrganizeLandingPagePage() {
               <hr className="my-4 border-slate-100" />
               
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Add Section Block</p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {(['HERO', 'CATEGORY_COLLAGE', 'AD_BANNER', 'PRODUCT_SECTION'] as const).map((type) => (
                   <Button
                     key={type}
@@ -700,7 +700,7 @@ export default function OrganizeLandingPagePage() {
                           <div className="text-center py-2">
                             <h3 className="text-xs font-serif uppercase">{sec.config?.collage_heading || "Category Edit"}</h3>
                           </div>
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                             {sec.collage_items?.slice(0, 4).map((item, i) => (
                               <div key={i} className="aspect-square bg-slate-200 rounded-lg relative overflow-hidden flex flex-col justify-end p-2 text-white">
                                 {item.image_url && <img src={item.image_url} className="absolute inset-0 object-cover w-full h-full" alt="" />}
@@ -738,7 +738,7 @@ export default function OrganizeLandingPagePage() {
                             <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">View All</span>
                           </div>
                           {/* Grid or slider */}
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                             {sec.products && sec.products.length > 0 ? (
                               sec.products.slice(0, 2).map((prod: any, i) => (
                                 <div key={i} className="border border-slate-100 rounded-lg p-1.5 bg-white space-y-1">
@@ -852,7 +852,7 @@ export default function OrganizeLandingPagePage() {
                 </div>
 
                 {/* Scheduling controls */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Start Date</Label>
                     <Input
@@ -925,7 +925,7 @@ export default function OrganizeLandingPagePage() {
                                 </div>
                               </div>
                               
-                              <div className="grid grid-cols-3 gap-2">
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                                 <div className="col-span-1">
                                   <div className="relative aspect-square rounded-lg bg-slate-200 overflow-hidden flex items-center justify-center border border-slate-300">
                                     {slide.image_url ? (
@@ -989,7 +989,7 @@ export default function OrganizeLandingPagePage() {
                             className="bg-slate-50 border-none rounded-xl font-bold text-xs min-h-[80px]"
                           />
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">CTA Label</Label>
                             <Input
@@ -1014,7 +1014,7 @@ export default function OrganizeLandingPagePage() {
                         </div>
                         
                         {/* Image assets */}
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Hero Image</Label>
                             <div className="relative aspect-video rounded-xl bg-slate-50 overflow-hidden flex items-center justify-center border border-slate-100 group">
@@ -1105,7 +1105,7 @@ export default function OrganizeLandingPagePage() {
                             <X className="h-3 w-3" />
                           </Button>
                           
-                          <div className="grid grid-cols-3 gap-2">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                             <div className="col-span-1 space-y-1">
                               <Label className="text-[8px] font-black uppercase tracking-widest text-slate-400">Card Photo</Label>
                               <div className="relative aspect-square rounded-lg bg-slate-200 overflow-hidden flex items-center justify-center border border-slate-300 group/img cursor-pointer">
@@ -1193,7 +1193,7 @@ export default function OrganizeLandingPagePage() {
                     </div>
 
                     {/* Image asset uploads */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="space-y-2">
                         <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Banner Photo</Label>
                         <div className="relative aspect-video rounded-xl bg-slate-50 overflow-hidden flex items-center justify-center border border-slate-100 group">

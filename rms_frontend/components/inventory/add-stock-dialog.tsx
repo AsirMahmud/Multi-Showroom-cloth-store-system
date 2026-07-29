@@ -159,7 +159,7 @@ export function AddStockDialog({ productId, designs, trigger }: AddStockDialogPr
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
             <Label htmlFor="design" className="text-right">
               Design
             </Label>
@@ -179,7 +179,7 @@ export function AddStockDialog({ productId, designs, trigger }: AddStockDialogPr
             </div>
           </div>
           
-          <div className="grid grid-cols-4 items-center gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
             <Label htmlFor="color" className="text-right">
               Color
             </Label>
@@ -202,7 +202,7 @@ export function AddStockDialog({ productId, designs, trigger }: AddStockDialogPr
               </Select>
             </div>
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
             <Label htmlFor="quantity" className="text-right">
               Quantity to Add
             </Label>
@@ -216,7 +216,7 @@ export function AddStockDialog({ productId, designs, trigger }: AddStockDialogPr
             />
           </div>
           {selectedDesignIndex >= 0 && selectedColorIndex >= 0 && (
-            <div className="grid grid-cols-4 items-center gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
               <Label className="text-right text-sm text-muted-foreground">
                 New Stock
               </Label>
@@ -225,7 +225,7 @@ export function AddStockDialog({ productId, designs, trigger }: AddStockDialogPr
               </div>
             </div>
           )}
-          <div className="grid grid-cols-4 items-start gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 items-start gap-4">
             <Label htmlFor="notes" className="text-right pt-2">
               Notes
             </Label>

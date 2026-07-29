@@ -799,7 +799,7 @@ export function EnhancedPOS() {
         </div>
 
         {/* Quick action buttons */}
-        <div className="grid grid-cols-4 gap-2 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-4">
           {quickItems.map((item) => (
             <TooltipProvider key={item.id}>
               <Tooltip>
@@ -953,7 +953,7 @@ export function EnhancedPOS() {
 
         {/* Quick checkout buttons */}
         {cartItems.length > 0 && (
-          <div className="grid grid-cols-2 gap-3 mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -1216,7 +1216,7 @@ export function EnhancedPOS() {
               Quick Checkout
             </Button>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <Button variant="outline" className="flex gap-2">
                 <Printer className="h-4 w-4" />
                 Print Receipt
@@ -1238,7 +1238,7 @@ export function EnhancedPOS() {
           {/* Keyboard shortcuts help */}
           <div className="mt-4 pt-4 border-t">
             <h3 className="text-sm font-medium mb-2">Keyboard Shortcuts</h3>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 text-xs">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Search Products</span>
                 <Badge variant="outline">F2</Badge>
@@ -1281,7 +1281,7 @@ export function EnhancedPOS() {
 
           {paymentMethod === "card" ? (
             <div className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <Label htmlFor="cardNumber">Card Number</Label>
                   <Input
@@ -1322,7 +1322,7 @@ export function EnhancedPOS() {
                   ${change > 0 ? change.toFixed(2) : "0.00"}
                 </span>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 {[20, 50, 100].map((amount) => (
                   <Button
                     key={amount}

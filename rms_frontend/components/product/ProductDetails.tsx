@@ -48,7 +48,7 @@ export function ProductDetails({ product }: ProductDetailsProps) {
               <h2 className="text-lg font-semibold mb-4">
                 Product Information
               </h2>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">SKU</p>
                   <p className="font-medium">{product.sku}</p>
@@ -76,7 +76,7 @@ export function ProductDetails({ product }: ProductDetailsProps) {
 
             <div>
               <h2 className="text-lg font-semibold mb-4">Pricing</h2>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Cost Price</p>
                   <p className="font-medium">${product.cost_price}</p>
@@ -104,7 +104,7 @@ export function ProductDetails({ product }: ProductDetailsProps) {
           <div className="space-y-4">
             <div>
               <h2 className="text-lg font-semibold mb-4">Stock Information</h2>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Current Stock</p>
                   <p className="font-medium">{product.stock_quantity}</p>
@@ -138,7 +138,7 @@ export function ProductDetails({ product }: ProductDetailsProps) {
 
             <div>
               <h2 className="text-lg font-semibold mb-4">Timestamps</h2>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Created At</p>
                   <p className="font-medium">

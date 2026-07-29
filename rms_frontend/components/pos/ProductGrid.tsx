@@ -217,7 +217,7 @@ export default function ProductGrid({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-1.5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
                     <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-1.5">
                       <div className="text-[7px] font-black uppercase text-emerald-600">Retail</div>
                       <div className="text-[11px] font-black text-slate-900">
@@ -437,7 +437,7 @@ export default function ProductGrid({
                           </Badge>
                           <div className="shrink-0 text-[9px] font-black uppercase text-emerald-600">Active</div>
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div>
                             <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">Retail Price</div>
                             <div className="truncate text-base font-black text-slate-900">{formatCurrency(Number(activeProduct.retail_price))}</div>

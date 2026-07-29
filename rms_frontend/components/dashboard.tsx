@@ -70,7 +70,7 @@ export function Dashboard() {
       </div>
 
       {/* Quick Access Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 md:grid-cols-4 gap-4">
         <Link href="/pos" className="block">
           <Card className="hover:border-[#1E3A8A] transition-colors">
             <CardContent className="p-4 flex flex-col items-center justify-center text-center">
@@ -177,7 +177,7 @@ export function Dashboard() {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid grid-cols-4 md:w-[500px]">
+        <TabsList className="grid grid-cols-1 md:grid-cols-4 md:w-[500px]">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="alerts">Alerts</TabsTrigger>

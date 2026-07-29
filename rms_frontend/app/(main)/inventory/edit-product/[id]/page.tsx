@@ -1520,7 +1520,7 @@ export default function EditProductPage() {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 md:grid-cols-4 gap-4">
                     {gallery.images.map((image, imageIndex) => (
                       <div key={image.id} className="space-y-2">
                         <div className={`aspect-square border-2 border-dashed rounded-lg flex items-center justify-center overflow-hidden ${image.preview ? 'border-gray-300' :

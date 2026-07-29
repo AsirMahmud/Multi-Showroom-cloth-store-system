@@ -186,7 +186,7 @@ export function TopCustomersAnalysis() {
         </div>
 
         <div className="mt-6 pt-4 border-t">
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
               <div className="text-muted-foreground">Total Revenue</div>
               <div className="font-semibold">
