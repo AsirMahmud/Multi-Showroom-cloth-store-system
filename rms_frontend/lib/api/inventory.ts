@@ -240,8 +240,9 @@ export const productsApi = {
         return data;
     },
 
-    update: async ({ id, ...product }: UpdateProductDTO): Promise<Product> => {
-        const { data } = await axiosInstance.put(`/inventory/products/${id}/`, product);
+    update: async ({ id, ...product }: any): Promise<Product> => {
+        const payload = product.data ? product.data : product;
+        const { data } = await axiosInstance.put(`/inventory/products/${id}/`, payload);
         return data;
     },
 

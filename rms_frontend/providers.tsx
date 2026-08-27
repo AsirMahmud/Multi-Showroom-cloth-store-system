@@ -3,7 +3,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { ColorProvider } from "@/contexts/color-context";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -17,6 +17,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
         },
       })
   );
+
+  useEffect(() => {
+    try {
+      localStorage.removeItem("theme");
+      document.documentElement.classList.remove("dark");
+    } catch {}
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

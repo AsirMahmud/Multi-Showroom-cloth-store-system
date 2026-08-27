@@ -202,6 +202,7 @@ class SaleSerializer(serializers.ModelSerializer):
     customer_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
     customer_phone = serializers.CharField(write_only=True, required=False, allow_blank=True)
     customer_name = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    customer_address = serializers.CharField(write_only=True, required=False, allow_blank=True)
     
     # Payment information for the sale
     payment_data = serializers.ListField(
@@ -252,7 +253,7 @@ class SaleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Sale
         fields = [
-            'id', 'invoice_number', 'branch', 'branch_name', 'customer', 'customer_id', 'customer_phone', 'customer_name',
+            'id', 'invoice_number', 'branch', 'branch_name', 'customer', 'customer_id', 'customer_phone', 'customer_name', 'customer_address',
             'date', 'sale_type', 'subtotal', 'tax', 'discount', 'total', 'total_profit', 'total_loss',
             'payment_method', 'status', 'amount_paid', 'amount_due', 'gift_amount',
             'is_fully_paid', 'payment_status', 'notes', 'items', 'payments', 'sale_payments',
@@ -330,17 +331,24 @@ class SaleSerializer(serializers.ModelSerializer):
             design_name = item.get('design_name') or item.get('design') or ''
             color = item['color']
 
-            try:
-                variation = ProductVariation.objects.get(
-                    design__product=product,
-                    design__name=design_name,
-                    color=color,
-                    is_active=True,
-                )
-            except ProductVariation.DoesNotExist as exc:
+            var_qs = ProductVariation.objects.filter(
+                design__product=product,
+                is_active=True,
+            )
+            if design_name:
+                var_qs = var_qs.filter(design__name=design_name)
+
+            if color and color not in ['Standard', 'Default', '']:
+                filtered_by_color = var_qs.filter(color=color)
+                if filtered_by_color.exists():
+                    var_qs = filtered_by_color
+
+            variation = var_qs.order_by('-stock').first()
+
+            if not variation:
                 raise serializers.ValidationError(
                     f"Invalid variation for {product.name} - Design: {design_name}, Color: {color}"
-                ) from exc
+                )
 
             key = (product.id, design_name, color)
             requested_quantities[key] = requested_quantities.get(key, 0) + quantity
@@ -395,10 +403,11 @@ class SaleSerializer(serializers.ModelSerializer):
         payment_data = validated_data.pop('payment_data', [])
         customer_phone = validated_data.pop('customer_phone', None)
         customer_name = validated_data.pop('customer_name', None)
+        customer_address = validated_data.pop('customer_address', None)
 
         # Find or create customer based on phone number
         if customer_phone:
-            customer = Sale.find_or_create_customer(customer_phone, customer_name)
+            customer = Sale.find_or_create_customer(customer_phone, customer_name, customer_address)
             validated_data['customer'] = customer
             validated_data['customer_phone'] = customer_phone
 

@@ -46,6 +46,7 @@ class Sale(models.Model):
     subtotal = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.00'))])
     tax = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.00'))])
     discount = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0.00'))])
+    discount_type = models.CharField(max_length=20, default='fixed', blank=True, null=True)
     total = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.00'))])
     total_profit = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0.00'))])
     total_loss = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0.00'))])
@@ -222,22 +223,34 @@ class Sale(models.Model):
                 )
 
     @classmethod
-    def find_or_create_customer(cls, phone, name=None):
+    def find_or_create_customer(cls, phone, name=None, address=None):
         """Find existing customer by phone or create new one"""
+        if not phone:
+            return None
         try:
             customer = Customer.objects.get(phone=phone)
+            updated = False
+            if name and not customer.first_name:
+                parts = name.split()
+                customer.first_name = parts[0]
+                if len(parts) > 1:
+                    customer.last_name = ' '.join(parts[1:])
+                updated = True
+            if address and (not customer.address or customer.address == "To be updated"):
+                customer.address = address
+                updated = True
+            if updated:
+                customer.save()
         except Customer.DoesNotExist:
-            if name:
-                customer = Customer.objects.create(
-                    first_name=name.split()[0] if name else '',
-                    last_name=' '.join(name.split()[1:]) if name and len(name.split()) > 1 else '',
-                    phone=phone,
-                    email=f"{phone}@temp.com",  # Temporary email
-                    address="To be updated",
-                    gender='O'  # Default to Other
-                )
-            else:
-                customer = None
+            parts = name.split() if name else []
+            customer = Customer.objects.create(
+                first_name=parts[0] if len(parts) > 0 else '',
+                last_name=' '.join(parts[1:]) if len(parts) > 1 else '',
+                phone=phone,
+                email=f"{phone}@temp.com",
+                address=address or "To be updated",
+                gender='O'
+            )
         return customer
 
     def save(self, *args, **kwargs):
@@ -328,6 +341,7 @@ class SaleItem(models.Model):
     wholesale_price_snapshot = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0.00'))])
     wholesale_cutoff_snapshot = models.PositiveIntegerField(default=10)
     discount = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0.00'))])
+    discount_type = models.CharField(max_length=20, default='fixed', blank=True, null=True)
     total = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.00'))])
     profit = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0.00'))])
     loss = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0.00'))])
@@ -340,13 +354,18 @@ class SaleItem(models.Model):
         """Get the product variation based on design and color"""
         try:
             from apps.inventory.models import ProductVariation
-            return ProductVariation.objects.get(
+            qs = ProductVariation.objects.filter(
                 design__product=self.product,
-                design__name=self.design_name,
-                color=self.color,
                 is_active=True
             )
-        except ProductVariation.DoesNotExist:
+            if self.design_name:
+                qs = qs.filter(design__name=self.design_name)
+            if self.color and self.color not in ['Standard', 'Default', '']:
+                filtered = qs.filter(color=self.color)
+                if filtered.exists():
+                    qs = filtered
+            return qs.order_by('-stock').first()
+        except Exception:
             return None
 
     def clean(self):

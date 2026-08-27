@@ -19,7 +19,7 @@ from .serializers import (
     LandingPageSerializer, LandingPageSectionSerializer, LandingPageCollageItemSerializer
 )
 from django.utils.text import slugify
-from apps.inventory.models import Product, ProductVariation, Gallery, Image, OnlineCategory
+from apps.inventory.models import Product, Design, ProductVariation, Gallery, Image, OnlineCategory
 from apps.inventory.serializers import EcommerceProductSerializer
 from apps.customer.models import Customer
 from apps.online_preorder.models import OnlinePreorder
@@ -328,20 +328,16 @@ class PublicProductsByColorView(APIView):
     """Public API: list each design-color combination as a separate product."""
     permission_classes = [AllowAny]
 
-    def get_cover_image_url(self, request, variation: ProductVariation):
-        product = variation.design.product
-        gallery = Gallery.objects.filter(
-            design=variation.design,
-            color__iexact=variation.color,
-        ).first()
+    def get_cover_image_url(self, request, design: Design):
+        gallery = Gallery.objects.filter(design=design).first()
         if gallery:
             primary = gallery.images.filter(imageType='PRIMARY').first()
             image_obj = primary or gallery.images.first()
             if image_obj and image_obj.image:
                 return request.build_absolute_uri(image_obj.image.url)
         # Fallback to product.image
-        if product.image:
-            return request.build_absolute_uri(product.image.url)
+        if design.product and design.product.image:
+            return request.build_absolute_uri(design.product.image.url)
         return None
 
     def get(self, request):
@@ -449,45 +445,69 @@ class PublicProductsByColorView(APIView):
         products = products.distinct()
 
         result = []
-        variations = ProductVariation.objects.filter(
-            design__product__in=products,
-            is_active=True,
-        ).select_related('design__product').order_by('design__product_id', 'design_id', 'id')
-        for variation in variations:
-            product = variation.design.product
-            color_name = variation.color.strip()
-            design_name = variation.design.name.strip()
-            total_stock = max(0, variation.stock)
-            if wanted_colors and color_name.lower() not in wanted_colors:
-                continue
-            if wanted_sizes and design_name.lower() not in wanted_sizes:
-                continue
-            if only_in_stock and total_stock <= 0:
-                continue
+        for product in products:
+            prod_designs = list(product.designs.all())
+            if not prod_designs:
+                discount_info = calculate_discounted_price(product)
+                total_stock = max(0, product.stock_quantity)
+                if only_in_stock and total_stock <= 0:
+                    continue
+                cover_url = request.build_absolute_uri(product.image.url) if product.image else None
+                result.append({
+                    'combination_id': product.id,
+                    'parent_product_id': product.id,
+                    'product_id': product.id,
+                    'product_name': product.name,
+                    'display_name': product.name,
+                    'product_price': str(discount_info['final_price']),
+                    'discount_info': discount_info if discount_info['discount_type'] else None,
+                    'design_id': None,
+                    'design_name': '',
+                    'design_slug': '',
+                    'color_name': 'Standard',
+                    'color_slug': 'standard',
+                    'total_stock': total_stock,
+                    'cover_image_url': cover_url,
+                    'product_url': f'/product/{product.id}/standard',
+                })
+            else:
+                for design in prod_designs:
+                    design_name = design.name.strip()
+                    design_slug = slugify(design_name)
+                    vars_list = list(design.colors.filter(is_active=True))
+                    total_stock = sum(max(0, v.stock) for v in vars_list) if vars_list else max(0, product.stock_quantity)
+                    first_var_id = vars_list[0].id if vars_list else product.id
+                    first_color = vars_list[0].color if vars_list else 'Standard'
+                    color_slug = slugify(first_color)
 
-            discount_info = calculate_discounted_price(product)
-            color_slug = slugify(color_name)
-            design_slug = slugify(design_name)
-            result.append({
-                'combination_id': variation.id,
-                'parent_product_id': product.id,
-                'product_id': product.id,
-                'product_name': product.name,
-                'display_name': f'{product.name} - {design_name} - {color_name}',
-                'product_price': str(discount_info['final_price']),
-                'discount_info': discount_info if discount_info['discount_type'] else None,
-                'design_id': variation.design_id,
-                'design_name': design_name,
-                'design_slug': design_slug,
-                'color_name': color_name,
-                'color_slug': color_slug,
-                'total_stock': total_stock,
-                'cover_image_url': self.get_cover_image_url(request, variation),
-                'product_url': (
-                    f'/product/{product.id}/{color_slug}'
-                    f'?design={design_slug}&combination_id={variation.id}'
-                ),
-            })
+                    if wanted_sizes and design_name.lower() not in wanted_sizes:
+                        continue
+                    if only_in_stock and total_stock <= 0:
+                        continue
+
+                    discount_info = calculate_discounted_price(product)
+                    display_name = f"{product.name} - {design_name}" if design_name and design_name.lower() != 'standard' else product.name
+
+                    result.append({
+                        'combination_id': first_var_id,
+                        'parent_product_id': product.id,
+                        'product_id': product.id,
+                        'product_name': product.name,
+                        'display_name': display_name,
+                        'product_price': str(discount_info['final_price']),
+                        'discount_info': discount_info if discount_info['discount_type'] else None,
+                        'design_id': design.id,
+                        'design_name': design_name,
+                        'design_slug': design_slug,
+                        'color_name': first_color,
+                        'color_slug': color_slug,
+                        'total_stock': total_stock,
+                        'cover_image_url': self.get_cover_image_url(request, design),
+                        'product_url': (
+                            f'/product/{product.id}/{color_slug}'
+                            f'?design={design_slug}&combination_id={first_var_id}'
+                        ),
+                    })
 
         # Sorting (on resulting flat list)
         sort = request.query_params.get('sort') or ''

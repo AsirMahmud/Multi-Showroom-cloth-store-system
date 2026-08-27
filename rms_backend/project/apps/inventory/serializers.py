@@ -163,7 +163,6 @@ class ImageSerializer(serializers.ModelSerializer):
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(obj.image.url)
-            # Fallback: return the relative URL
             return obj.image.url
         return None
 
@@ -179,8 +178,8 @@ class GallerySerializer(serializers.ModelSerializer):
 
 class ColorImagesUploadSerializer(serializers.Serializer):
     design_id = serializers.IntegerField(min_value=1)
-    color = serializers.CharField(max_length=50)
-    color_hax = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    color = serializers.CharField(max_length=50, required=False, allow_blank=True, default='Standard')
+    color_hax = serializers.CharField(max_length=50, required=False, allow_blank=True, default='#FFFFFF')
     images = serializers.ListField(child=serializers.ImageField(), min_length=1, max_length=4)
     image_types = serializers.ListField(
         child=serializers.ChoiceField(choices=[choice[0] for choice in Image.IMAGE_TYPES]),
@@ -204,7 +203,6 @@ class FeaturesSerializer(serializers.ModelSerializer):
         model = Features
         fields = ['id', 'title', 'description']
 
-# Variation serializer (placed before EcommerceProductSerializer for reference)
 class ProductVariationSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)
     combination_id = serializers.IntegerField(source='id', read_only=True)
@@ -227,7 +225,6 @@ class DesignSerializer(serializers.ModelSerializer):
 
 # Ecommerce Showcase Serializers
 class EcommerceProductSerializer(serializers.ModelSerializer):
-    """Simplified serializer for ecommerce showcase"""
     image_url = serializers.SerializerMethodField()
     online_category = serializers.SerializerMethodField()
     online_categories = serializers.SerializerMethodField()
@@ -827,6 +824,29 @@ class ProductCreateSerializer(serializers.ModelSerializer):
             'is_active': {'required': False},
             'stock_quantity': {'read_only': True}  # Make stock_quantity read-only
         }
+
+    def to_internal_value(self, data):
+        if isinstance(data, dict):
+            data = data.copy()
+            for field in ['category', 'online_category', 'supplier']:
+                val = data.get(field)
+                if isinstance(val, dict) and 'id' in val:
+                    data[field] = val['id']
+                elif val == '':
+                    data[field] = None
+
+            for field in ['online_categories', 'ecommerce_statuses']:
+                val = data.get(field)
+                if isinstance(val, list):
+                    normalized = []
+                    for item in val:
+                        if isinstance(item, dict) and 'id' in item:
+                            normalized.append(item['id'])
+                        else:
+                            normalized.append(item)
+                    data[field] = normalized
+
+        return super().to_internal_value(data)
 
     def validate(self, data):
         # Handle empty strings for optional fields

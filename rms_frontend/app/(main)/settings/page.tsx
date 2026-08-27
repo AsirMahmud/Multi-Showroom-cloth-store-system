@@ -419,21 +419,21 @@ function ReceiptSettingsPanel() {
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-brand-primary">Header Title</Label>
+              <Label className="text-[10px] font-black uppercase tracking-widest text-brand-primary">Shop / Business Name (ব্যবসার নাম)</Label>
               <Input
                 value={form.receipt_header_title}
                 onChange={(e) => updateField("receipt_header_title", e.target.value)}
-                placeholder={branchSettings?.name || "Branch name"}
+                placeholder="ফেরদৌস কালেকশন"
                 disabled={isLoading || saveSettings.isPending}
                 className="h-12 rounded-xl border-none bg-slate-50 font-bold text-brand-primary"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-brand-primary">Header Subtitle</Label>
+              <Label className="text-[10px] font-black uppercase tracking-widest text-brand-primary">Distributor Subtitle (পরিবেশক)</Label>
               <Input
                 value={form.receipt_header_subtitle}
                 onChange={(e) => updateField("receipt_header_subtitle", e.target.value)}
-                placeholder="Location or short branch descriptor"
+                placeholder="পরিবেশক : Torongox"
                 disabled={isLoading || saveSettings.isPending}
                 className="h-12 rounded-xl border-none bg-slate-50 font-bold text-brand-primary"
               />
@@ -441,44 +441,44 @@ function ReceiptSettingsPanel() {
           </div>
 
           <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-brand-primary">Receipt Address</Label>
+            <Label className="text-[10px] font-black uppercase tracking-widest text-brand-primary">Proprietor & Location Info (প্রোপাইটর ও ঠিকানা)</Label>
             <Textarea
               value={form.receipt_address}
               onChange={(e) => updateField("receipt_address", e.target.value)}
-              placeholder={branchSettings?.address || "Branch address"}
+              placeholder="প্রোপাইটর : হাজী নুরুল ইসলাম মোঃ শফিক কাজেম, বাড়ি আদর্শ বাজার, আড়াইহাজার, নারায়ণগঞ্জ।"
               disabled={isLoading || saveSettings.isPending}
               className="min-h-[100px] rounded-xl border-none bg-slate-50 font-medium"
             />
           </div>
 
           <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-brand-primary">Receipt Phone</Label>
+            <Label className="text-[10px] font-black uppercase tracking-widest text-brand-primary">Contact Phones (মোবাইল নম্বরসমূহ)</Label>
             <Input
               value={form.receipt_phone}
               onChange={(e) => updateField("receipt_phone", e.target.value)}
-              placeholder={branchSettings?.phone || "+880..."}
+              placeholder="01896-285446, 01896-285447, 01896-285448"
               disabled={isLoading || saveSettings.isPending}
               className="h-12 rounded-xl border-none bg-slate-50 font-bold text-brand-primary"
             />
           </div>
 
           <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-brand-primary">Footer Message</Label>
+            <Label className="text-[10px] font-black uppercase tracking-widest text-brand-primary">Footer Note / Prayer Reminder (ধন্যবাদ বাণী)</Label>
             <Input
               value={form.receipt_footer_message}
               onChange={(e) => updateField("receipt_footer_message", e.target.value)}
-              placeholder="Thanks for your purchase"
+              placeholder="ধন্যবাদ! নিজে নামাজ পড়ুন এবং অন্যকে নামাজ পড়তে উৎসাহিত করুন।"
               disabled={isLoading || saveSettings.isPending}
               className="h-12 rounded-xl border-none bg-slate-50 font-bold text-brand-primary"
             />
           </div>
 
           <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-brand-primary">Return Policy</Label>
+            <Label className="text-[10px] font-black uppercase tracking-widest text-brand-primary">Tagline & Products Description (পণ্য বিবরণ ও ট্যাগলাইন)</Label>
             <Textarea
               value={form.receipt_return_policy}
               onChange={(e) => updateField("receipt_return_policy", e.target.value)}
-              placeholder="Return policy shown at the bottom of the receipt"
+              placeholder="Optional custom tagline or business description"
               disabled={isLoading || saveSettings.isPending}
               className="min-h-[110px] rounded-xl border-none bg-slate-50 font-medium"
             />

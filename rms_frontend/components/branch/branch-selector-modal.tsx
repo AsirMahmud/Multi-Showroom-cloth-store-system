@@ -133,7 +133,7 @@ export function BranchSelectorModal() {
           </div>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto px-6 py-6 bg-slate-100/80 dark:bg-slate-950 scrollbar-none hover:scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
+          <div className="flex-1 overflow-y-auto px-6 py-6 bg-slate-50 scrollbar-none hover:scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
             {/* All Branches pinned card - admin only */}
             {isAdmin && (
               <div className="mb-6 px-2">

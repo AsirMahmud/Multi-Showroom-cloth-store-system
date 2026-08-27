@@ -4,7 +4,7 @@ import { useTheme } from "next-themes";
 import { useColor, ColorPreset } from "@/contexts/color-context";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Sun, Moon, Monitor, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
@@ -22,58 +22,10 @@ const presets: { id: ColorPreset; name: string; color: string }[] = [
 ];
 
 export function AppearanceSettings() {
-  const { theme, setTheme } = useTheme();
   const { preset, setPreset } = useColor();
 
   return (
     <div className="space-y-8">
-      {/* Mode Selection */}
-      <div className="space-y-4">
-        <div className="space-y-1">
-          <Label className="text-[10px] font-black uppercase tracking-widest text-brand-primary">Interface Mode</Label>
-          <p className="text-[11px] font-medium text-slate-400">Select your preferred lighting environment.</p>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {[
-            { id: "light", icon: Sun, label: "Light" },
-            { id: "dark", icon: Moon, label: "Dark" },
-            { id: "system", icon: Monitor, label: "System" },
-          ].map((mode) => (
-            <button
-              key={mode.id}
-              onClick={() => setTheme(mode.id)}
-              className={cn(
-                "group relative flex flex-col items-center justify-center gap-3 p-4 rounded-2xl border transition-all duration-300",
-                theme === mode.id 
-                  ? "bg-white border-brand-primary/20 shadow-xl shadow-brand-primary/5 ring-1 ring-brand-primary/10" 
-                  : "bg-slate-50 border-transparent hover:bg-white hover:border-slate-200"
-              )}
-            >
-              <div className={cn(
-                "h-10 w-10 rounded-xl flex items-center justify-center transition-all duration-300",
-                theme === mode.id ? "bg-brand-primary text-white scale-110" : "bg-white text-slate-400 group-hover:text-brand-primary"
-              )}>
-                <mode.icon className="h-5 w-5" />
-              </div>
-              <span className={cn(
-                "text-[10px] font-black uppercase tracking-widest transition-colors",
-                theme === mode.id ? "text-brand-primary" : "text-slate-400 group-hover:text-slate-600"
-              )}>
-                {mode.label}
-              </span>
-              {theme === mode.id && (
-                <motion.div 
-                  layoutId="mode-active"
-                  className="absolute -top-1 -right-1 h-5 w-5 bg-brand-accent rounded-full flex items-center justify-center text-white shadow-lg"
-                >
-                  <Check className="h-3 w-3 stroke-[4]" />
-                </motion.div>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
 
       {/* Color Presets */}
       <div className="space-y-4">

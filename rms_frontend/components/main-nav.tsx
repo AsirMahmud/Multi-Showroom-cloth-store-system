@@ -2,7 +2,7 @@
 
 import React, { useState } from "react"
 import { usePathname } from "next/navigation"
-import { Bell, HelpCircle, Search, Moon, Sun, MessageSquare } from "lucide-react"
+import { Bell, HelpCircle, Search, MessageSquare } from "lucide-react"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -98,10 +98,6 @@ export function MainNav() {
 
         <Button variant="ghost" size="icon" className="hover:bg-brand-secondary/30 text-slate-600 hover:text-brand-primary rounded-xl transition-all">
           <MessageSquare className="h-5 w-5" />
-        </Button>
-
-        <Button variant="ghost" size="icon" className="hover:bg-brand-secondary/30 text-slate-600 hover:text-brand-primary rounded-xl transition-all" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
-          {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </Button>
 
         <Button variant="ghost" size="icon" className="hover:bg-brand-secondary/30 text-slate-600 hover:text-brand-primary rounded-xl transition-all">

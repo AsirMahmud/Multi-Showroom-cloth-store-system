@@ -170,44 +170,7 @@ export function ProductInfo({ productId, product, colorLinks, designLinks, hideV
         </>
       )}
 
-      <div>
-        <h3 className="mb-3 text-muted-foreground text-sm lg:text-base">Select Colors</h3>
-        <div className="flex gap-2 lg:gap-4 flex-wrap">
-          {(colorLinks && colorLinks.length > 0 ? colorLinks : product.colors.map((c, idx) => ({ name: c.name, value: c.value, href: "", active: idx === selectedColor, oos: false }))).map((color, index) => {
-            const swatch = (
-              <span
-                className={cn(
-                  "relative inline-block h-9 w-9 rounded-full border border-foreground/20 transition-all",
-                  (colorLinks ? color.active : selectedColor === index) && "ring-2 ring-foreground ring-offset-2",
-                  color.oos && "opacity-50"
-                )}
-                style={{ backgroundColor: color.value }}
-                aria-label={color.name}
-              >
-                {!colorLinks && selectedColor === index && (
-                  <Check className="absolute inset-0 m-auto h-5 w-5 text-white drop-shadow-md" />
-                )}
-              </span>
-            )
-            return colorLinks ? (
-              <a key={color.href + index} href={color.href} className="rounded-full" aria-label={color.name}>
-                {swatch}
-              </a>
-            ) : (
-              <button
-                key={index}
-                onClick={() => setSelectedColor(index)}
-                aria-label={color.name}
-                className="rounded-full"
-              >
-                {swatch}
-              </button>
-            )
-          })}
-        </div>
-      </div>
 
-      <div className="h-px bg-border" />
 
       {!hideVariantSelector && (
       <div>

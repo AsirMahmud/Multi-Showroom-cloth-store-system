@@ -3,11 +3,13 @@ import { ShoppingCart, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { usePOSStore } from "@/store/pos-store";
+import { useToast } from "@/components/ui/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatCurrency } from "@/lib/utils";
 
 export default function FloatingCart() {
-  const { cart, handleCompletePayment } = usePOSStore();
+  const { toast } = useToast();
+  const { cart, openCustomerCheckoutModal } = usePOSStore();
 
   // Calculate total
   const total = cart.reduce((sum, item) => {
@@ -46,12 +48,12 @@ export default function FloatingCart() {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    // TODO: Implement view cart functionality
+                    // View cart
                   }}
                 >
                   View Cart
                 </Button>
-                <Button size="sm" onClick={handleCompletePayment}>
+                <Button size="sm" onClick={() => openCustomerCheckoutModal(toast, false)}>
                   Checkout
                 </Button>
               </div>

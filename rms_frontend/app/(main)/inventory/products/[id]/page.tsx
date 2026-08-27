@@ -236,7 +236,7 @@ function ProductDetails({ product }: ProductDetailsProps) {
         <TabsContent value="details" className="space-y-8">
           {/* Product overview card */}
           <Card className="overflow-hidden border-0 shadow-lg">
-            <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700 p-6 border-b">
+            <div className="bg-slate-50 border-b">
               <div className="flex justify-between items-start">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
@@ -251,7 +251,7 @@ function ProductDetails({ product }: ProductDetailsProps) {
                   <p className="text-muted-foreground">{product.description}</p>
                 </div>
                 {isLowStock && (
-                  <div className="bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 px-3 py-1.5 rounded-md flex items-center gap-2 text-sm font-medium">
+                  <div className="bg-amber-50 text-amber-700 px-3 py-1.5 rounded-md flex items-center gap-2 text-sm font-medium">
                     <AlertTriangle className="h-4 w-4" />
                     {isOutOfStock ? "Out of Stock" : "Low Stock"}
                   </div>
@@ -484,7 +484,7 @@ function ProductDetails({ product }: ProductDetailsProps) {
 
           {/* Stock Addition History */}
           <Card className="overflow-hidden border-0 shadow-lg">
-            <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700 p-6 border-b">
+            <div className="bg-slate-50 border-b">
               <h3 className="text-lg font-semibold flex items-center gap-2">
                 <Warehouse className="h-5 w-5 text-emerald-600" />
                 Stock Addition History
@@ -534,7 +534,7 @@ function ProductDetails({ product }: ProductDetailsProps) {
           {/* Material Composition */}
           {product.material_composition && product.material_composition.length > 0 && (
             <Card className="overflow-hidden border-0 shadow-lg">
-              <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700 p-6 border-b">
+              <div className="bg-slate-50 border-b">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -559,10 +559,10 @@ function ProductDetails({ product }: ProductDetailsProps) {
               <div className="p-6">
                 <div className="space-y-3">
                   {product.material_composition.map((material, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900 rounded-full flex items-center justify-center">
-                          <span className="text-amber-600 dark:text-amber-400 font-bold text-sm">
+                        <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
+                          <span className="text-amber-600 font-bold text-sm">
                             {material.percentige}%
                           </span>
                         </div>
@@ -583,7 +583,7 @@ function ProductDetails({ product }: ProductDetailsProps) {
           {/* Who Is This For */}
           {product.who_is_this_for && product.who_is_this_for.length > 0 && (
             <Card className="overflow-hidden border-0 shadow-lg">
-              <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700 p-6 border-b">
+              <div className="bg-slate-50 border-b">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -607,11 +607,11 @@ function ProductDetails({ product }: ProductDetailsProps) {
               <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {product.who_is_this_for.map((item, index) => (
-                    <div key={index} className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                      <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                    <div key={index} className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <h4 className="font-semibold text-blue-900 mb-2">
                         {item.title || "Target Audience"}
                       </h4>
-                      <p className="text-sm text-blue-700 dark:text-blue-300">
+                      <p className="text-sm text-blue-700">
                         {item.description || "No description provided"}
                       </p>
                     </div>
@@ -624,7 +624,7 @@ function ProductDetails({ product }: ProductDetailsProps) {
           {/* Product Features */}
           {product.features && product.features.length > 0 && (
             <Card className="overflow-hidden border-0 shadow-lg">
-              <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700 p-6 border-b">
+              <div className="bg-slate-50 border-b">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -651,8 +651,8 @@ function ProductDetails({ product }: ProductDetailsProps) {
               <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {product.features.map((feature, index) => (
-                    <div key={index} className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                      <h4 className="font-semibold text-green-900 dark:text-green-100 mb-2 flex items-center gap-2">
+                    <div key={index} className="p-4 bg-green-50 rounded-lg border border-green-200">
+                      <h4 className="font-semibold text-green-900 mb-2 flex items-center gap-2">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           viewBox="0 0 24 24"
@@ -667,7 +667,7 @@ function ProductDetails({ product }: ProductDetailsProps) {
                         </svg>
                         {feature.title || "Feature"}
                       </h4>
-                      <p className="text-sm text-green-700 dark:text-green-300">
+                      <p className="text-sm text-green-700">
                         {feature.description || "No description provided"}
                       </p>
                     </div>
@@ -680,7 +680,7 @@ function ProductDetails({ product }: ProductDetailsProps) {
           {/* Product Gallery */}
           {product.galleries && product.galleries.length > 0 && (
             <Card className="overflow-hidden border-0 shadow-lg">
-              <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700 p-6 border-b">
+              <div className="bg-slate-50 border-b">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -783,7 +783,7 @@ function ProductDetails({ product }: ProductDetailsProps) {
           {/* Legacy Product image (fallback) */}
           {product.image && (!product.galleries || product.galleries.length === 0) && (
             <Card className="overflow-hidden border-0 shadow-lg">
-              <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700 p-6 border-b">
+              <div className="bg-slate-50 border-b">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -824,7 +824,7 @@ function ProductDetails({ product }: ProductDetailsProps) {
           {/* Product Designs & Colors */}
           {product.designs && product.designs.length > 0 && (
             <Card className="overflow-hidden border-0 shadow-lg">
-              <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700 p-6 border-b flex items-center justify-between">
+              <div className="bg-slate-50 border-b flex items-center justify-between">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   <Tag className="h-5 w-5 text-blue-500" />
                   Designs & Colors
@@ -842,7 +842,7 @@ function ProductDetails({ product }: ProductDetailsProps) {
               <div className="p-6 space-y-8">
                 {product.designs.map((design) => (
                   <div key={design.id} className="space-y-4">
-                    <h4 className="text-md font-bold text-slate-700 dark:text-slate-200 border-b pb-2">
+                    <h4 className="text-md font-bold text-slate-700 border-b pb-2">
                       Design: {design.name}
                     </h4>
                     <div className="overflow-x-auto">

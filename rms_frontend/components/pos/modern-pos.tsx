@@ -48,6 +48,7 @@ import CustomerSearchModal from "./CustomerSearchModal";
 import CustomerAddModal from "./CustomerAddModal";
 import CartAndCheckout from "./CartAndCheckout";
 import DiscountModal from "./DiscountModal";
+import { CustomerCheckoutModal } from "./CustomerCheckoutModal";
 import { usePOSStore } from "@/store/pos-store";
 import { Product, ProductVariation } from "@/types/inventory";
 import ReceiptModal from "./ReceiptModal";
@@ -129,7 +130,12 @@ export function ModernPOS() {
     setShowReceiptModal,
     receiptData,
     setReceiptData,
+    showCustomerCheckoutModal,
+    setShowCustomerCheckoutModal,
+    pendingCheckoutMarkAsDue,
+    selectedCustomer: storeSelectedCustomer,
   } = usePOSStore();
+  const [isSubmittingCheckout, setIsSubmittingCheckout] = useState(false);
 
   // Note: We no longer fetch all products for scanning - we fetch from backend on each scan
 
@@ -713,6 +719,29 @@ export function ModernPOS() {
 
       {/* Discount Modal */}
       <DiscountModal />
+
+      {/* Customer Checkout Info Modal */}
+      <CustomerCheckoutModal
+        open={showCustomerCheckoutModal}
+        onOpenChange={setShowCustomerCheckoutModal}
+        initialCustomer={storeSelectedCustomer ? {
+          name: `${storeSelectedCustomer.first_name || ""} ${storeSelectedCustomer.last_name || ""}`.trim() || storeSelectedCustomer.name,
+          phone: storeSelectedCustomer.phone,
+          address: storeSelectedCustomer.address,
+        } : null}
+        onConfirm={async (customerData) => {
+          try {
+            setIsSubmittingCheckout(true);
+            await completePayment(toast, pendingCheckoutMarkAsDue, customerData);
+          } catch (error) {
+            console.error(error);
+          } finally {
+            setIsSubmittingCheckout(false);
+          }
+        }}
+        isSubmitting={isSubmittingCheckout}
+        markAsDue={pendingCheckoutMarkAsDue}
+      />
 
       {/* Receipt Modal */}
       <ReceiptModal

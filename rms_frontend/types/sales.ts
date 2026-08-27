@@ -70,6 +70,8 @@ export interface Sale {
         }
     );
     customer_phone: string | null;
+    customer_name?: string | null;
+    customer_address?: string | null;
     date?: string;
     subtotal: number;
     tax: number;

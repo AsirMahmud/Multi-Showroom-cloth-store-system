@@ -412,60 +412,6 @@ export function CategoryFilters({
             </div>
           </AccordionContent>
         </AccordionItem>
-
-        {/* Colors Section */}
-        <AccordionItem value="colors" className="border-none">
-          <AccordionTrigger className="hover:no-underline py-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/80">
-            Colors
-          </AccordionTrigger>
-          <AccordionContent className="pt-2">
-            <TooltipProvider>
-              <div className="grid grid-cols-5 gap-y-4 gap-x-2 px-1">
-                {colors.map((color) => {
-                  const isSelected = selectedColor === color.value
-                  return (
-                    <Tooltip key={color.value}>
-                      <TooltipTrigger asChild>
-                        <button
-                          onClick={() => handleColorSelect(color.value)}
-                          className="group flex flex-col items-center gap-1.5 outline-none"
-                        >
-                          <div
-                            className={cn(
-                              "relative h-10 w-10 rounded-full border-2 transition-all duration-300 flex items-center justify-center overflow-hidden",
-                              isSelected
-                                ? "border-primary scale-110 shadow-lg shadow-black/10 ring-2 ring-primary/20"
-                                : "border-secondary group-hover:border-muted-foreground/30 shadow-sm"
-                            )}
-                            style={{ backgroundColor: color.hex }}
-                          >
-                            {isSelected && (
-                              <div className={cn(
-                                "absolute inset-0 flex items-center justify-center bg-black/10 transition-opacity",
-                                color.value === 'white' ? 'text-black' : 'text-white'
-                              )}>
-                                <Check className="h-5 w-5 stroke-[3]" />
-                              </div>
-                            )}
-                          </div>
-                          <span className={cn(
-                            "text-[9px] uppercase font-bold tracking-tighter transition-colors w-full text-center truncate",
-                            isSelected ? "text-primary" : "text-muted-foreground/60 group-hover:text-foreground"
-                          )}>
-                            {color.name}
-                          </span>
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="font-bold">
-                        {color.name}
-                      </TooltipContent>
-                    </Tooltip>
-                  )
-                })}
-              </div>
-            </TooltipProvider>
-          </AccordionContent>
-        </AccordionItem>
       </Accordion>
 
       {/* Mobile Sidebar Footer */}

@@ -319,9 +319,10 @@ class ProductViewSet(viewsets.ModelViewSet):
             )
 
         if not design.colors.filter(color__iexact=color).exists():
-            return Response(
-                {'color': 'Color does not belong to this design.'},
-                status=status.HTTP_400_BAD_REQUEST,
+            ProductVariation.objects.get_or_create(
+                design=design,
+                color=color,
+                defaults={'color_hax': color_hax or '#FFFFFF', 'stock': 0}
             )
 
         # Get or create gallery for this design and color

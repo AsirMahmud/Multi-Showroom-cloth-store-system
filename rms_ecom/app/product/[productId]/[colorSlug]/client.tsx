@@ -211,18 +211,20 @@ export default function ProductByColorPage() {
         ? images.map(i => i.url)
         : []
 
-    // Prepare ProductInfo props (use current color only to drive size stock)
+    const displayName = data.design?.name ? `${data.product.name} - ${data.design.name}` : data.product.name
+
+    // Prepare ProductInfo props
     const productInfo = {
-        name: `${data.product.name} - ${data.color.name}`,
+        name: displayName,
         price: Math.round(Number(data.product.price)),
         originalPrice: data.discount_info?.original_price,
         discount: data.discount_info?.discount_value,
         description: productDescription,
-        colors: [{ name: data.color.name, value: "#000000" }],
+        colors: [{ name: "Standard", value: "#000000" }],
         sizes: sizes.map(s => s.size),
         variants: sizes.map((s, index) => ({
             size: s.size,
-            color: data.color.name,
+            color: "Standard",
             color_hex: "#000000",
             stock: s.stock_qty,
             variant_id: data.variations?.[index]?.id || data.combination_id,
@@ -235,7 +237,7 @@ export default function ProductByColorPage() {
     const breadcrumbItems = [
         { label: "Home", href: "/" },
         { label: "All Products", href: "/products" },
-        { label: `${data.product.name} - ${data.color.name}`, href: `/product/${data.product.id}/${data.color.slug}` },
+        { label: displayName, href: `/product/${data.product.id}/${data.color.slug}` },
     ]
 
     return (

@@ -103,8 +103,16 @@ interface POSState {
         isPaid: boolean;
         isDue?: boolean;
     } | null;
-    setReceiptData: (data: POSState['receiptData']) => void;
-    handleCompletePayment: (toastFn: (props: { title: string; description: string; variant?: "default" | "destructive" }) => void, markAsDue?: boolean) => Promise<Sale | undefined>;
+    showCustomerCheckoutModal: boolean;
+    setShowCustomerCheckoutModal: (show: boolean) => void;
+    pendingCheckoutMarkAsDue: boolean;
+    setPendingCheckoutMarkAsDue: (markAsDue: boolean) => void;
+    openCustomerCheckoutModal: (toastFn: (props: { title: string; description: string; variant?: "default" | "destructive" }) => void, markAsDue?: boolean) => boolean;
+    handleCompletePayment: (
+        toastFn: (props: { title: string; description: string; variant?: "default" | "destructive" }) => void,
+        markAsDue?: boolean,
+        customerInfo?: { name: string; phone: string; address: string }
+    ) => Promise<Sale | undefined>;
 }
 
 const initialNewCustomer: CreateCustomerData = {
@@ -483,10 +491,61 @@ export const usePOSStore = create<POSState>((set, get) => ({
     setShowDiscountModal: (show) => set({ showDiscountModal: show }),
     showReceiptModal: false,
     setShowReceiptModal: (show) => set({ showReceiptModal: show }),
+    showCustomerCheckoutModal: false,
+    setShowCustomerCheckoutModal: (show) => set({ showCustomerCheckoutModal: show }),
+    pendingCheckoutMarkAsDue: false,
+    setPendingCheckoutMarkAsDue: (markAsDue) => set({ pendingCheckoutMarkAsDue: markAsDue }),
     receiptData: null,
-    setReceiptData: (data) => set({ receiptData: data }),
+    setReceiptData: (data: POSState['receiptData']) => set({ receiptData: data }),
 
-    handleCompletePayment: async (toastFn, markAsDue = false) => {
+    openCustomerCheckoutModal: (toastFn, markAsDue = false) => {
+        const { cart, paymentMethod, cashAmount, splitPayments, cartDiscount } = get();
+        if (cart.length === 0) {
+            toastFn({
+                title: "Empty Cart",
+                description: "Your cart is empty",
+                variant: "destructive",
+            });
+            return false;
+        }
+
+        const { total } = calculateCartTotals(cart, cartDiscount);
+
+        if (!markAsDue && paymentMethod === "cash") {
+            const cashPaid = Number.parseFloat(cashAmount);
+            if (!Number.isFinite(cashPaid) || cashPaid < total) {
+                toastFn({
+                    title: "Insufficient Cash",
+                    description: `Cash received must be at least ${total.toFixed(2)}.`,
+                    variant: "destructive",
+                });
+                return false;
+            }
+        }
+
+        if (!markAsDue && paymentMethod === "split") {
+            const splitTotal = splitPayments.reduce(
+                (sum, payment) => sum + (Number.parseFloat(payment.amount) || 0),
+                0
+            );
+            if (Math.abs(splitTotal - total) > 0.01) {
+                toastFn({
+                    title: "Invalid Split Payment",
+                    description: `Split payments must equal ${total.toFixed(2)}.`,
+                    variant: "destructive",
+                });
+                return false;
+            }
+        }
+
+        set({
+            pendingCheckoutMarkAsDue: markAsDue,
+            showCustomerCheckoutModal: true,
+        });
+        return true;
+    },
+
+    handleCompletePayment: async (toastFn, markAsDue = false, customerInfo?: { name: string; phone: string; address: string }) => {
         const { cart, selectedCustomer, paymentMethod, cashAmount, splitPayments, cartDiscount } = get();
         if (cart.length === 0) {
             toastFn({
@@ -509,31 +568,9 @@ export const usePOSStore = create<POSState>((set, get) => ({
                 total,
             } = calculateCartTotals(cart, cartDiscount);
 
-            if (!markAsDue && paymentMethod === "cash") {
-                const cashPaid = Number.parseFloat(cashAmount);
-                if (!Number.isFinite(cashPaid) || cashPaid < total) {
-                    toastFn({
-                        title: "Insufficient Cash",
-                        description: `Cash received must be at least ${total.toFixed(2)}.`,
-                        variant: "destructive",
-                    });
-                    return;
-                }
-            }
-            if (!markAsDue && paymentMethod === "split") {
-                const splitTotal = splitPayments.reduce(
-                    (sum, payment) => sum + (Number.parseFloat(payment.amount) || 0),
-                    0
-                );
-                if (Math.abs(splitTotal - total) > 0.01) {
-                    toastFn({
-                        title: "Invalid Split Payment",
-                        description: `Split payments must equal ${total.toFixed(2)}.`,
-                        variant: "destructive",
-                    });
-                    return;
-                }
-            }
+            const custName = customerInfo?.name || selectedCustomer?.first_name || "নগদ বিক্রয়";
+            const custPhone = customerInfo?.phone || selectedCustomer?.phone || "";
+            const custAddress = customerInfo?.address || selectedCustomer?.address || "ঢাকা";
 
             let paymentData: any[] = [];
             if (markAsDue) {
@@ -563,7 +600,9 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
             const saleData: Partial<Sale> = {
                 customer: selectedCustomer?.id,
-                customer_phone: selectedCustomer?.phone,
+                customer_name: custName,
+                customer_phone: custPhone,
+                customer_address: custAddress,
                 subtotal: subtotalBeforeDiscount,
                 tax,
                 discount: globalDiscount,
@@ -603,8 +642,8 @@ export const usePOSStore = create<POSState>((set, get) => ({
                 : Math.max(0, total - amountPaid);
 
             const receipt = {
-                id: `INV-${Math.floor(100000 + Math.random() * 900000)}`,
-                date: new Date().toISOString(),
+                id: sale.invoice_number || `INV-${sale.id}`,
+                date: sale.date || new Date().toISOString(),
                 items: itemsWithDiscounts,
                 subtotal: subtotalBeforeDiscount,
                 discountedSubtotal,
@@ -618,15 +657,21 @@ export const usePOSStore = create<POSState>((set, get) => ({
                 paymentMethod: markAsDue ? "credit" : paymentMethod,
                 cashAmount: paymentMethod === "cash" && !markAsDue ? Number.parseFloat(cashAmount) : null,
                 changeDue: paymentMethod === "cash" && !markAsDue ? Number.parseFloat(cashAmount) - total : null,
-                customer: selectedCustomer,
+                customer: {
+                    id: selectedCustomer?.id || 0,
+                    name: custName,
+                    phone: custPhone,
+                    address: custAddress,
+                } as any,
                 splitPayments: paymentMethod === "split" && !markAsDue ? splitPayments : null,
                 storeCredit: 0,
-                isPaid: amountDue <= 0,
-                isDue: amountDue > 0,
+                isPaid: !markAsDue && amountDue <= 0,
+                isDue: markAsDue || amountDue > 0,
             };
 
             set({
                 receiptData: receipt,
+                showCustomerCheckoutModal: false,
                 showReceiptModal: true,
                 cart: [],
                 cartDiscount: null,

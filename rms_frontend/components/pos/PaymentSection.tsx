@@ -80,7 +80,7 @@ export default function PaymentSection({
   setAllowPartialPayment,
 }: PaymentSectionProps) {
   const { toast } = useToast();
-  const { handleCompletePayment, cartDiscount } = usePOSStore();
+  const { openCustomerCheckoutModal, cartDiscount } = usePOSStore();
   const totals = React.useMemo(() => calculateCartTotals(cart, cartDiscount), [cart, cartDiscount]);
   const [paymentSummary, setPaymentSummary] = useState({
     totalPaid: 0,
@@ -516,7 +516,7 @@ export default function PaymentSection({
         {/* Payment Action Buttons */}
         <div className="space-y-2 pt-1">
           <Button
-            onClick={() => handleCompletePayment(toast)}
+            onClick={() => openCustomerCheckoutModal(toast, false)}
             className={`w-full h-10 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 ${
               canCompletePayment()
                 ? "bg-slate-900 hover:bg-slate-800 text-white shadow-md hover:shadow-lg"
@@ -529,7 +529,7 @@ export default function PaymentSection({
           </Button>
           
           <Button
-            onClick={() => handleCompletePayment(toast, true)}
+            onClick={() => openCustomerCheckoutModal(toast, true)}
             className="w-full h-8.5 text-xs font-bold uppercase tracking-wider rounded-xl border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-all duration-200"
             variant="outline"
             disabled={cart.length === 0}
