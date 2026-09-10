@@ -28,17 +28,58 @@ const statusConfig: Record<string, { color: string; icon: any }> = {
     CANCELLED: { color: "bg-red-100 text-red-800", icon: XCircle },
 };
 
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { sendAdminPurchaseConfirmed, sendAdminPurchaseCancelled } from "@/lib/gtm";
+
 export function OrderDetailsSheet({ order, isOpen, onClose, onRefresh, onEdit, onStartVerification }: OrderDetailsSheetProps) {
+    const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+    const [cancelReason, setCancelReason] = useState("Fake Customer / Fake Order");
+    const [isFakeCustomer, setIsFakeCustomer] = useState(true);
+    const [isSubmittingCancel, setIsSubmittingCancel] = useState(false);
+
     if (!order) return null;
 
     const handleStatusChange = async (newStatus: string) => {
-        // Simple status update; verification can be triggered via separate button
+        if (newStatus === "CANCELLED") {
+            setCancelReason("Fake Customer / Fake Order");
+            setIsFakeCustomer(true);
+            setCancelDialogOpen(true);
+            return;
+        }
+
         try {
             await onlinePreordersApi.updateStatus(order.id, newStatus);
             toast({ title: "Success", description: `Order status updated to ${newStatus}` });
+            
+            if (newStatus === "CONFIRMED") {
+                sendAdminPurchaseConfirmed({ ...order, status: newStatus });
+            }
+
             onRefresh();
         } catch (error) {
             toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
+        }
+    };
+
+    const handleConfirmCancel = async () => {
+        if (!order) return;
+        setIsSubmittingCancel(true);
+        try {
+            await onlinePreordersApi.updateStatus(order.id, "CANCELLED");
+            sendAdminPurchaseCancelled(order, cancelReason, isFakeCustomer);
+            toast({ 
+                title: isFakeCustomer ? "Order Cancelled & Flagged as Fake" : "Order Cancelled", 
+                description: `Order #${order.id} status updated to CANCELLED.` 
+            });
+            setCancelDialogOpen(false);
+            onRefresh();
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to cancel order", variant: "destructive" });
+        } finally {
+            setIsSubmittingCancel(false);
         }
     };
 
@@ -103,8 +144,7 @@ export function OrderDetailsSheet({ order, isOpen, onClose, onRefresh, onEdit, o
                                 {["PENDING", "CONFIRMED", "DELIVERED", "COMPLETED", "CANCELLED"].map((statusValue) => {
                                     const isActive = order.status === statusValue;
                                     const isDisabled =
-                                        (statusValue === "COMPLETED" && order.status !== "DELIVERED") ||
-                                        (statusValue === "DELIVERED" && !!onStartVerification); // encourage using Verify Order
+                                        (statusValue === "COMPLETED" && order.status !== "DELIVERED");
 
                                     const baseClasses =
                                         "px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors";
@@ -162,7 +202,7 @@ export function OrderDetailsSheet({ order, isOpen, onClose, onRefresh, onEdit, o
                                     {order.shipping_address ? (
                                         <div className="whitespace-pre-line">
                                             {order.shipping_address.address}<br />
-                                            {order.shipping_address.city}, {order.shipping_address.upazila}
+                                            {order.shipping_address.city || order.shipping_address.thana || ""}{order.shipping_address.district ? `, ${order.shipping_address.district}` : ""}
                                         </div>
                                     ) : (
                                         "No shipping address provided"
@@ -177,6 +217,107 @@ export function OrderDetailsSheet({ order, isOpen, onClose, onRefresh, onEdit, o
                             </div>
                         </div>
 
+                        {/* Fraud Risk & Customer History Card */}
+                        {order.fraud_summary && (
+                            <div className="bg-white p-4 rounded-xl border shadow-sm space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2 font-semibold text-slate-800">
+                                        <AlertCircle className="w-4 h-4 text-indigo-600" />
+                                        <span>Fraud Risk & Customer History</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-slate-500 font-medium">Score: {order.fraud_summary.risk_score}/100</span>
+                                        <Badge className={`px-2.5 py-0.5 text-xs font-bold border-none ${
+                                            order.fraud_summary.risk_level === 'HIGH' ? 'bg-red-100 text-red-800' :
+                                            order.fraud_summary.risk_level === 'MEDIUM' ? 'bg-amber-100 text-amber-800' :
+                                            'bg-emerald-100 text-emerald-800'
+                                        }`}>
+                                            Risk: {order.fraud_summary.risk_level}
+                                        </Badge>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-4 gap-2 bg-slate-50 p-3 rounded-lg text-center text-xs">
+                                    <div>
+                                        <div className="text-slate-400 font-medium">Total Orders</div>
+                                        <div className="font-bold text-slate-900 text-sm mt-0.5">{order.fraud_summary.customer_stats.total_orders}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-slate-400 font-medium">Delivered</div>
+                                        <div className="font-bold text-emerald-700 text-sm mt-0.5">{order.fraud_summary.customer_stats.delivered_count}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-slate-400 font-medium">Cancelled</div>
+                                        <div className="font-bold text-amber-700 text-sm mt-0.5">{order.fraud_summary.customer_stats.cancelled_count}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-slate-400 font-medium">Refused/Fake</div>
+                                        <div className="font-bold text-red-700 text-sm mt-0.5">{order.fraud_summary.customer_stats.returned_refused_count}</div>
+                                    </div>
+                                </div>
+
+                                {order.fraud_summary.matching_signals.length > 0 && (
+                                    <div className="space-y-1 text-xs">
+                                        <div className="font-medium text-slate-500">Risk Signals:</div>
+                                        <ul className="list-disc list-inside space-y-0.5 text-slate-700">
+                                            {order.fraud_summary.matching_signals.map((sig, idx) => (
+                                                <li key={idx} className="text-amber-800">{sig}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Marketing & Meta Attribution Signals Card */}
+                        {(order.utm_source || order.fbp || order.fbc || order.fbclid) && (
+                            <div className="bg-white p-4 rounded-xl border shadow-sm space-y-3">
+                                <div className="flex items-center gap-2 font-semibold text-slate-800">
+                                    <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                                    <span>Attribution & Tracking Signals</span>
+                                </div>
+
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                                    {order.utm_source && (
+                                        <div className="bg-slate-50 p-2 rounded border">
+                                            <span className="text-slate-400 block font-medium">UTM Source</span>
+                                            <span className="font-semibold text-slate-800">{order.utm_source}</span>
+                                        </div>
+                                    )}
+                                    {order.utm_medium && (
+                                        <div className="bg-slate-50 p-2 rounded border">
+                                            <span className="text-slate-400 block font-medium">UTM Medium</span>
+                                            <span className="font-semibold text-slate-800">{order.utm_medium}</span>
+                                        </div>
+                                    )}
+                                    {order.utm_campaign && (
+                                        <div className="bg-slate-50 p-2 rounded border">
+                                            <span className="text-slate-400 block font-medium">UTM Campaign</span>
+                                            <span className="font-semibold text-slate-800">{order.utm_campaign}</span>
+                                        </div>
+                                    )}
+                                    {order.fbp && (
+                                        <div className="bg-slate-50 p-2 rounded border truncate" title={order.fbp}>
+                                            <span className="text-slate-400 block font-medium">Meta _fbp</span>
+                                            <span className="font-mono text-[10px] text-slate-700">{order.fbp}</span>
+                                        </div>
+                                    )}
+                                    {order.fbc && (
+                                        <div className="bg-slate-50 p-2 rounded border truncate" title={order.fbc}>
+                                            <span className="text-slate-400 block font-medium">Meta _fbc</span>
+                                            <span className="font-mono text-[10px] text-slate-700">{order.fbc}</span>
+                                        </div>
+                                    )}
+                                    {order.purchase_event_sent && (
+                                        <div className="bg-emerald-50 p-2 rounded border border-emerald-200">
+                                            <span className="text-emerald-600 block font-medium">Meta Purchase CAPI</span>
+                                            <span className="font-bold text-emerald-800">Sent ✓</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Payment Section */}
                         <div className="bg-white p-4 rounded-xl border shadow-sm flex flex-col gap-4">
                             <div className="flex items-center gap-2 text-indigo-600 font-semibold">
@@ -184,6 +325,8 @@ export function OrderDetailsSheet({ order, isOpen, onClose, onRefresh, onEdit, o
                                 Billing details
                             </div>
                             <div className="space-y-2">
+                                {Number(order.automatic_discount_amount || 0) > 0 && <div className="flex justify-between text-sm text-red-600"><span>Automatic discount</span><span>-৳{Number(order.automatic_discount_amount).toLocaleString()}</span></div>}
+                                {Number(order.coupon_discount_amount || 0) > 0 && <div className="flex justify-between text-sm text-green-700"><span>Coupon ({order.coupon_code})</span><span>-৳{Number(order.coupon_discount_amount).toLocaleString()}</span></div>}
                                 <div className="flex justify-between text-sm">
                                     <span className="text-slate-500">Subtotal</span>
                                     <span className="font-medium">৳{(Number(order.total_amount) - Number(order.delivery_charge || 0)).toLocaleString()}</span>
@@ -217,7 +360,7 @@ export function OrderDetailsSheet({ order, isOpen, onClose, onRefresh, onEdit, o
                                             )}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <div className="font-semibold text-slate-900 truncate">
+                                            <div className="font-semibold text-slate-900 break-words whitespace-normal line-clamp-2" title={item.product_name || `Product ID: ${item.product_id}`}>
                                                 {item.product_name || `Product ID: ${item.product_id}`}
                                             </div>
                                             <div className="text-xs text-slate-500 mt-0.5 font-medium">
@@ -302,6 +445,86 @@ export function OrderDetailsSheet({ order, isOpen, onClose, onRefresh, onEdit, o
                         </div>
                     </div>
                 </ScrollArea>
+
+                {/* Cancel Order Confirmation Modal */}
+                <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+                    <DialogContent className="sm:max-w-md bg-white">
+                        <DialogHeader>
+                            <DialogTitle className="text-xl font-bold text-red-600 flex items-center gap-2">
+                                <XCircle className="w-5 h-5 text-red-600" />
+                                Cancel Order #{order.id}
+                            </DialogTitle>
+                            <DialogDescription>
+                                Specify the reason for cancelling this order. This event will be logged and dispatched to Meta GTM tracking.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-3">
+                            <div className="space-y-2">
+                                <Label className="font-semibold text-slate-700">Quick Reason Preset</Label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {[
+                                        { label: "Fake Customer / Fake Order", isFake: true },
+                                        { label: "Unreachable / Invalid Phone", isFake: true },
+                                        { label: "Customer Cancelled", isFake: false },
+                                        { label: "Out of Stock", isFake: false },
+                                    ].map((preset) => (
+                                        <button
+                                            key={preset.label}
+                                            type="button"
+                                            className={`px-3 py-2 text-xs font-semibold rounded-lg border text-left transition-all ${
+                                                cancelReason === preset.label
+                                                    ? "bg-red-50 text-red-700 border-red-300 font-bold"
+                                                    : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                                            }`}
+                                            onClick={() => {
+                                                setCancelReason(preset.label);
+                                                setIsFakeCustomer(preset.isFake);
+                                            }}
+                                        >
+                                            {preset.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="cancelReason" className="font-semibold text-slate-700">Custom Reason</Label>
+                                <Input
+                                    id="cancelReason"
+                                    value={cancelReason}
+                                    onChange={(e) => setCancelReason(e.target.value)}
+                                    placeholder="Enter cancellation reason..."
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-2 pt-2">
+                                <input
+                                    type="checkbox"
+                                    id="isFakeCheckbox"
+                                    checked={isFakeCustomer}
+                                    onChange={(e) => setIsFakeCustomer(e.target.checked)}
+                                    className="w-4 h-4 rounded text-red-600 focus:ring-red-500 border-slate-300 cursor-pointer"
+                                />
+                                <Label htmlFor="isFakeCheckbox" className="text-sm font-semibold text-red-700 cursor-pointer">
+                                    Flag as Fake Customer / Fake Order (Dispatches `is_fake: true` to Meta)
+                                </Label>
+                            </div>
+                        </div>
+                        <DialogFooter className="gap-2 sm:gap-0">
+                            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
+                                Keep Order
+                            </Button>
+                            <Button 
+                                variant="destructive" 
+                                onClick={handleConfirmCancel}
+                                disabled={isSubmittingCancel}
+                                className="bg-red-600 hover:bg-red-700 font-bold"
+                            >
+                                {isSubmittingCancel ? "Cancelling..." : "Confirm Cancellation"}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </SheetContent>
         </Sheet>
     );

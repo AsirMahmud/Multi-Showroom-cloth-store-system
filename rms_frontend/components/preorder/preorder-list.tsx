@@ -10,6 +10,7 @@ import {
   useUpdatePreorder,
 } from "@/hooks/queries/use-preorder";
 import { useSales } from "@/hooks/queries/use-sales";
+import { sendAdminPurchaseConfirmed, sendAdminPurchaseCancelled } from "@/lib/gtm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -72,7 +73,6 @@ import { Preorder } from "@/types/preorder";
 import axios from "@/lib/api/axios-config";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { TableSkeleton } from "@/components/ui/professional";
 
 const STATUS_OPTIONS = [
   { value: "all", label: "All Statuses" },
@@ -233,6 +233,16 @@ export function PreorderList({ source, title = "Preorders", showCreateButton = t
           description: "Preorder completed and converted to sale successfully!",
         });
       }
+
+      // Trigger GTM events on confirm / completion or cancellation
+      const targetPreorder = preorders?.data?.find((p: Preorder) => p.id === preorderId);
+      if (targetPreorder) {
+        if (newStatus === "CONFIRMED") {
+          sendAdminPurchaseConfirmed({ ...targetPreorder, status: newStatus });
+        } else if (newStatus === "CANCELLED") {
+          sendAdminPurchaseCancelled({ ...targetPreorder, status: newStatus });
+        }
+      }
     } catch (error) {
       console.error("Error updating preorder status or creating sale:", error);
       toast({
@@ -327,7 +337,11 @@ export function PreorderList({ source, title = "Preorders", showCreateButton = t
   };
 
   if (isLoading) {
-    return <TableSkeleton cols={9} />;
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   return (
